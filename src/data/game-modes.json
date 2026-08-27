@@ -1,0 +1,12 @@
+{
+  "simple": {
+    "courtPreset": "backyard",
+    "windMps": 0,
+    "toppleAngleDeg": 50
+  },
+  "advanced": {
+    "courtPreset": "tournament",
+    "windMps": 1.5,
+    "toppleAngleDeg": 60
+  }
+}

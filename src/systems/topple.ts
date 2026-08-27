@@ -3,22 +3,25 @@ import type { Entity } from '@iwsdk/core';
 import { KingPiece } from '../components/king-piece.js';
 import { Resettable } from '../components/resettable.js';
 import { StickState } from '../components/stick-state.js';
-import { pieces } from '../config.js';
+import { getGameMode, pieces } from '../config.js';
 import { gameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
 import type { Quat } from '../core/quat.js';
 import { isResting } from '../core/restState.js';
 import { isToppled } from '../core/topple.js';
+import { settingsState } from '../settingsState.js';
 import { readBodySpeed } from './bodySpeed.js';
 
 /**
  * Kubbs/king only (Resettable minus StickState — sticks are
  * projectiles, not toppleable targets). Emits KubbFelled/KingFelled
- * exactly once per piece, when it tips past config.toppleAngleDeg AND
- * has been at rest for restDurationS (never a merely wobbling piece —
- * docs/PLAN.md §1). Tracking resets when the Reset event fires (the
- * menu's "Ny runda" button, or a round auto-reset), since every
- * Resettable piece is teleported back upright at that point.
+ * exactly once per piece, when it tips past the active game mode's
+ * topple angle (docs/sessions/M4.md: Simple 50°, Advanced 60° —
+ * src/data/game-modes.json) AND has been at rest for restDurationS
+ * (never a merely wobbling piece — docs/PLAN.md §1). Tracking resets
+ * when the Reset event fires (the menu's "Ny runda" button, or a
+ * round auto-reset), since every Resettable piece is teleported back
+ * upright at that point.
  */
 export class ToppleSystem extends createSystem({
   toppleable: {
@@ -59,7 +62,10 @@ export class ToppleSystem extends createSystem({
     this.tmpQuat[1] = orientation[1] ?? 0;
     this.tmpQuat[2] = orientation[2] ?? 0;
     this.tmpQuat[3] = orientation[3] ?? 1;
-    if (!isToppled(this.tmpQuat, pieces.toppleAngleDeg)) {
+    const toppleAngleDeg = getGameMode(
+      settingsState.current.gameMode,
+    ).toppleAngleDeg;
+    if (!isToppled(this.tmpQuat, toppleAngleDeg)) {
       this.restTimerStartS.delete(entity.index);
       return;
     }

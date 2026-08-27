@@ -1,0 +1,11 @@
+{
+  "menuTitle": "Menu",
+  "resetButton": "New round",
+  "languageNameSv": "Swedish",
+  "languageNameEn": "English",
+  "gameModeNameSimple": "Simple",
+  "gameModeNameAdvanced": "Advanced",
+  "hudRoundLabel": "Round",
+  "hudFelledLabel": "Felled",
+  "hudBestLabel": "Best"
+}

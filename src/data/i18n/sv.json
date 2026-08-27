@@ -1,0 +1,11 @@
+{
+  "menuTitle": "Meny",
+  "resetButton": "Ny runda",
+  "languageNameSv": "Svenska",
+  "languageNameEn": "Engelska",
+  "gameModeNameSimple": "Enkelt",
+  "gameModeNameAdvanced": "Avancerat",
+  "hudRoundLabel": "Runda",
+  "hudFelledLabel": "Fallna",
+  "hudBestLabel": "Rekord"
+}

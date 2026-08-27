@@ -24,8 +24,10 @@
     "radiusM": 0.01,
     "heightM": 0.3
   },
-  "toppleAngleDeg": 60,
   "visualSinkM": 0.0025,
+  "wind": {
+    "dragFactor": 0.02
+  },
   "throw": {
     "restLinearThresholdMps": 0.05,
     "restAngularThresholdRadS": 0.1,

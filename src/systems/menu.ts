@@ -11,6 +11,9 @@ import { StickPhase, StickState } from '../components/stick-state.js';
 import { gameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
 import type { Vec3 } from '../core/vec3.js';
+import { i18nState } from '../i18nState.js';
+import { settingsState } from '../settingsState.js';
+import { SettingsSystem } from './settings.js';
 
 interface HomePose {
   position: Vec3;
@@ -18,23 +21,25 @@ interface HomePose {
 }
 
 /**
- * B button (right controller) toggles a small pause menu whose only
- * option is Reset — teleports every kubb/king/stick back to its
- * authored spawn pose (captured once at init, before physics has moved
- * anything) and returns sticks to StickState.Racked. No round/score
- * state exists yet (that's M3), so this is purely a "start over"
- * button for now.
+ * B button (right controller) toggles a small pause menu: Reset
+ * (teleports every kubb/king/stick back to its authored spawn pose,
+ * captured once at init, before physics has moved anything; returns
+ * sticks to StickState.Racked), plus language and game-mode toggles
+ * (M4) that call SettingsSystem directly — a UI action dispatch, not
+ * the scoring/stats/haptics traffic the "one event bus" rule targets.
  */
 export class MenuSystem extends createSystem({
   resettable: { required: [Resettable] },
 }) {
   private grabSystem!: GrabSystem;
   private physicsSystem!: PhysicsSystem;
+  private settingsSystem!: SettingsSystem;
   private homePoses = new Map<number, HomePose>();
   private menuPanel!: UIKitMLAsset;
   private menuOpen = false;
   private currentTimeS = 0;
   private unsubscribeRoundEnded?: () => void;
+  private unsubscribeLanguageChanged?: () => void;
 
   init(): void {
     const grabSystem = this.world.getSystem(GrabSystem);
@@ -49,8 +54,15 @@ export class MenuSystem extends createSystem({
         'MenuSystem requires PhysicsSystem — enable the "physics" world feature in iwsdk.config.json',
       );
     }
+    const settingsSystem = this.world.getSystem(SettingsSystem);
+    if (!settingsSystem) {
+      throw new Error(
+        'MenuSystem requires SettingsSystem to be registered first',
+      );
+    }
     this.grabSystem = grabSystem;
     this.physicsSystem = physicsSystem;
+    this.settingsSystem = settingsSystem;
 
     for (const entity of this.queries.resettable.entities) {
       const object3D = entity.object3D;
@@ -79,6 +91,18 @@ export class MenuSystem extends createSystem({
       this.resetAll();
       this.setMenuOpen(false);
     });
+    const languageButton = this.menuPanel.requireElementById('language-button');
+    languageButton.addEventListener('click', () => {
+      this.settingsSystem.toggleLanguage();
+    });
+    const gameModeButton =
+      this.menuPanel.requireElementById('game-mode-button');
+    gameModeButton.addEventListener('click', () => {
+      this.settingsSystem.toggleGameMode();
+      this.refreshLabels();
+    });
+
+    this.refreshLabels();
 
     // A finished round (RoundSystem) auto-resets through the exact
     // same path as the menu's manual Reset button — one reset
@@ -86,10 +110,36 @@ export class MenuSystem extends createSystem({
     this.unsubscribeRoundEnded = gameEvents.on('RoundEnded', () => {
       this.resetAll();
     });
+    this.unsubscribeLanguageChanged = gameEvents.on('LanguageChanged', () => {
+      this.refreshLabels();
+    });
   }
 
   destroy(): void {
     this.unsubscribeRoundEnded?.();
+    this.unsubscribeLanguageChanged?.();
+  }
+
+  private refreshLabels(): void {
+    const t = i18nState.t;
+    this.menuPanel
+      .requireElementById('menu-title')
+      .setProperties({ text: t('menuTitle') });
+    this.menuPanel
+      .requireElementById('reset-button-label')
+      .setProperties({ text: t('resetButton') });
+    this.menuPanel.requireElementById('language-button-label').setProperties({
+      text:
+        settingsState.current.language === 'sv'
+          ? t('languageNameSv')
+          : t('languageNameEn'),
+    });
+    this.menuPanel.requireElementById('game-mode-button-label').setProperties({
+      text:
+        settingsState.current.gameMode === 'simple'
+          ? t('gameModeNameSimple')
+          : t('gameModeNameAdvanced'),
+    });
   }
 
   update(_delta: number, time: number): void {

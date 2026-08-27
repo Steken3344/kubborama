@@ -1,3 +1,4 @@
+import type { Language } from './i18n.js';
 import type { RoundResult } from './scoring.js';
 import type { Vec3 } from './vec3.js';
 import type { ThrowStyle } from './underhandClassifier.js';
@@ -88,6 +89,9 @@ export interface GameEvents {
     longestFellingThrowM: number | null;
     roundDurationS: number;
     timeS: number;
+  };
+  LanguageChanged: {
+    language: Language;
   };
 }
 

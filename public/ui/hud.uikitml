@@ -4,10 +4,10 @@
   src/systems/hud.ts, which listens for RoundEnded — no per-frame
   polling needed, only updates when a round actually finishes.
 
-  Text avoids å/ä/ö on purpose — see public/ui/reset-menu.uikitml and
-  docs/DECISIONS.md for why (the bundled DM Sans hotlink doesn't
-  render those glyphs here; a genuine M4 "verify åäö in the font
-  atlas" item, not re-litigated per panel).
+  Text avoids å/ä/ö throughout on purpose — confirmed root cause in
+  public/ui/reset-menu.uikitml and docs/DECISIONS.md (gh#5). Labels
+  driven by src/i18nState.ts, refreshed by HudSystem on language
+  change.
 -->
 <style>
   @font-face {
@@ -51,15 +51,15 @@
 </style>
 <Panel class="panel-root">
   <div class="row">
-    <span class="label">Runda</span>
+    <span id="round-label" class="label">Runda</span>
     <span id="round-number" class="value">1</span>
   </div>
   <div class="row">
-    <span class="label">Fallna</span>
+    <span id="felled-label" class="label">Fallna</span>
     <span id="last-round-felled" class="value">-</span>
   </div>
   <div class="row">
-    <span class="label">Rekord</span>
+    <span id="best-label" class="label">Rekord</span>
     <span id="best-felled" class="value">0</span>
   </div>
 </Panel>

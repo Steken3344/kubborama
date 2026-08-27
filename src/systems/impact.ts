@@ -9,10 +9,11 @@ import type { Entity } from '@iwsdk/core';
 import { StickPhase, StickState } from '../components/stick-state.js';
 import { pieces } from '../config.js';
 import { gameEvents } from '../core/events.js';
-import { impactRumble } from '../core/haptics.js';
+import { impactRumble, scaleHapticPulse } from '../core/haptics.js';
 import { detectImpact } from '../core/impactDetector.js';
 import { log } from '../core/log.js';
 import type { Vec3 } from '../core/vec3.js';
+import { settingsState } from '../settingsState.js';
 
 /**
  * No public collision-event API exists (see docs/DECISIONS.md): this
@@ -91,10 +92,18 @@ export class ImpactSystem extends createSystem({
     if (!isHand(hand)) {
       return;
     }
-    const pulse = impactRumble(
+    const rawPulse = impactRumble(
       deltaVMps,
       pieces.throw.impactMaxForceForFullHapticMps,
     );
+    const pulse = scaleHapticPulse(
+      rawPulse,
+      settingsState.current.hapticsEnabled,
+      settingsState.current.hapticsIntensityPercent,
+    );
+    if (!pulse) {
+      return;
+    }
     const gamepad = this.input.xr.gamepads[hand];
     gamepad?.inputSource.gamepad?.hapticActuators?.[0]?.pulse(
       pulse.intensity,

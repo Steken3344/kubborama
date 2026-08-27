@@ -156,16 +156,53 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
   velocity-read block, both fixed). Full writeup in docs/DECISIONS.md.
   Tagged `v0.4-m3` — no headset gate for this milestone.
 
-## M4 — Wind, tunables & settings `status: not started`
+## M4 — Wind, tunables & settings `status: in progress — core done, settings panel deferred`
 
-- [ ] wind.ts: force on Flying sticks only; dragFactor in config
-- [ ] Settings panel: music/SFX volume, haptics toggle+intensity,
-      language (sv/en), mode Simple(6x3, wind 0, topple 50°)/Advanced
-      (8x5, wind 1.5 m/s, topple 60°), local profile name (non-blocking
-      first-run), stats tab, court-lines toggle
-- [ ] i18n complete — zero hardcoded strings; åäö verified in font atlas
-- [ ] Dev debug panel (tweakpane reuse); optional leaf wind indicator
-- Review gate → tag v0.5-m4
+- [x] core/wind.ts (TDD): F = windVector × dragFactor; `WindSystem`
+      re-adds `PhysicsManipulation({force})` every tick to Flying
+      sticks only (dragFactor in `pieces.json`'s new `wind` section).
+      Verified live in Advanced mode with no errors through a full
+      flight
+- [x] core/i18n.ts (TDD): typed `t(key)` over sv/en dictionaries,
+      never throws on a missing key. core/settings.ts (TDD): zod
+      schema, versioned, persisted to localStorage — same pattern as
+      M2/M3's telemetry/stats stores. `SettingsSystem` owns
+      loading/persisting into a shared `settingsState` singleton
+      (mirrors `tuningState.ts`)
+- [x] Game mode Simple (backyard, wind 0, topple 50°) / Advanced
+      (tournament, wind 1.5 m/s lateral, topple 60°) — `ToppleSystem`'s
+      topple angle and `WindSystem`'s wind vector both read the active
+      mode live (`src/data/game-modes.json`). **Known gap:** court
+      _size_ doesn't change yet — switching mode changes topple/wind
+      immediately but kubbs/king/stakes stay at whatever layout was
+      baked into the scene at load (a real re-layout system, reusing
+      `computeCourtLayout()`, is a fast-follow, not attempted this
+      session)
+- [x] Language (sv/en) toggle and game mode toggle wired into the
+      existing "Ny runda" menu, verified live (screenshots: both
+      toggles flip labels across both the menu and the HUD correctly).
+      Haptics enabled/intensity setting wired into every existing pulse
+      call site (`core/haptics.ts`'s new `scaleHapticPulse`)
+- [x] i18n retrofit of all existing UIKitML text (reset-menu, HUD) —
+      zero hardcoded strings in those two panels. **Root cause found
+      and documented** for why å/ä/ö can't render in UIKitML text at
+      all right now (confirmed in library source, not guessed — see
+      docs/DECISIONS.md, filed as
+      [gh#5](https://github.com/Steken3344/kubborama/issues/5)): the
+      sv/en dictionaries deliberately avoid those glyphs, and a test
+      (`src/i18nState.test.ts`) guards against regressing that
+- [ ] Settings panel UI: music/SFX volume sliders, haptics toggle UI,
+      profile name prompt (non-blocking first-run), stats tab,
+      court-lines toggle+rendering — **not built this session**. The
+      settings _model_/persistence for every one of these already
+      exists (`core/settings.ts`); only the panel controls are
+      missing. Deliberately cut rather than rushed — this is
+      player-facing UX worth a design pass, unlike the mostly-mechanical
+      pieces above
+- [ ] Dev debug panel (tweakpane reuse) for wind knobs; optional leaf
+      wind indicator — not built, low priority relative to the above
+- Review gate on what's built so far; `v0.5-m4` tags once the settings
+  panel closes out the milestone
 
 ## M5 — Polish & performance `status: not started`
 

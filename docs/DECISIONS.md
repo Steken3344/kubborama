@@ -860,3 +860,95 @@ either way. `HudSystem`'s dependency on `StatsSystem` being registered
 first in `src/index.ts` is real, commented, but unenforced by code —
 acceptable for now, a candidate for a `StatsUpdated` event later if it
 ever bites someone.
+
+## 2026-08-27 — M4: wind, i18n/settings core, and the definitive åäö root cause
+
+Continued straight into M4 after tagging `v0.4-m3`, per Erik's
+"keep going" instruction. Scoped down deliberately partway through —
+see the cut at the end of this entry.
+
+**core/wind.ts + WindSystem**, TDD: `F = windVector × dragFactor`
+(docs/PLAN.md §1), re-added every tick to Flying sticks only —
+`PhysicsManipulation` is one-shot, confirmed via the official Buoyancy
+example in `.claude/skills/iwsdk-physics/references/workflows.md`
+(`entity.addComponent(PhysicsManipulation, { force })` with
+**only** `force` set, never touching `linearVelocity`/
+`angularVelocity` — passing those would override the stick's real
+flight velocity to whatever was passed, which very nearly ended up in
+this code before double-checking against that reference). Verified
+live in Advanced mode (wind on) through a full grab→swing→release→
+settle cycle with zero console errors.
+
+**core/i18n.ts + core/settings.ts**, TDD: a typed `t(key)` translator
+over sv/en dictionaries (never throws on a missing key — falls back to
+the key itself), and a versioned zod-schema settings store persisted
+to localStorage, same never-throws-on-corrupt-data pattern as M2/M3's
+telemetry/stats. `SettingsSystem` owns loading/persisting into a
+shared `settingsState` singleton (mirrors `tuningState.ts`'s
+`presetBank`) and an `i18nState` singleton holding the live translator,
+rebuilt on language change. `ToppleSystem`'s topple angle and
+`WindSystem`'s wind vector both now read the active game mode
+(`src/data/game-modes.json`: Simple = backyard/wind 0/topple 50°,
+Advanced = tournament/wind 1.5 m/s lateral/topple 60°) instead of a
+fixed config value — the same live-tunable pattern M2's tuning lab
+already established for gravity etc.
+
+Extended the existing "Ny runda" menu with language and game-mode
+toggle buttons (both call `SettingsSystem` directly — a UI action
+dispatch, not the scoring/stats/haptics traffic the "one event bus"
+rule is about) and retrofitted every existing UIKitML string (that
+menu, the HUD) through the new translator. A `LanguageChanged` event
+lets both panels refresh their own labels when the language changes.
+Verified live end-to-end: toggling language flips every label on both
+panels correctly (screenshots); toggling game mode flips "Enkelt"/
+"Avancerat" correctly (took several attempts to physically aim the
+emulated ray at the right button — the panel's layout shifted once a
+third button was added, and earlier-tested y-coordinates from M2/M3
+no longer landed on the buttons they used to; not a code issue, just
+CLI aiming against a taller panel).
+
+**The åäö root cause, found for real this time** (docs/DECISIONS.md
+already logged two earlier attempts and a workaround, in the M2 and M3
+entries above — this closes it out with an actual mechanism, filed as
+[gh#5](https://github.com/Steken3344/kubborama/issues/5)):
+`@pmndrs/uikit`'s `TTFLoader._generate()`
+(`node_modules/@pmndrs/uikit/dist/loaders/ttf.js`) hardcodes the MSDF
+atlas-baking charset to plain ASCII:
+
+```js
+charset: ' \tABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?.,;:\'"()-[]{}@#$%&*+=/\\<>',
+```
+
+`TTFLoader.loadAsync()` _does_ accept a per-font `charset` override,
+but `@drawcall/uikitml`'s `loadTTF()` always calls it with a bare URL
+string, never an options object — so a UIKitML `@font-face` has
+**no way** to widen the charset, regardless of what glyphs the actual
+source `.ttf` contains. This is why the self-hosted Google-subset font
+from the M2 entry still failed: the truncation happens in the bake
+step, after the font loads, not because of anything about the font
+file itself. Confirmed by reading the actual library source
+end-to-end (`@iwsdk/core`'s `uikitml.js` → `@drawcall/uikitml`'s
+`instantiate.js`/`fonts.js` → `@pmndrs/uikit`'s `ttf.js`), not
+guessed. Real fix options (upstream PR, or pre-baking a custom atlas
+with `@zappar/msdf-generator` directly and registering it as a
+bundled-style font family) are written up in gh#5 for whoever picks
+this up — out of scope to build now. The working convention going
+forward: sv/en dictionary values never contain å/ä/ö/Å/Ä/Ö, enforced
+by a regex test in `src/i18nState.test.ts` so a future dictionary edit
+can't silently reintroduce the bug.
+
+**Deliberately cut, not built this session:** the player-facing
+settings panel UI (music/SFX volume sliders, haptics toggle control,
+non-blocking first-run profile-name prompt, stats tab, court-lines
+toggle+rendering) and the dev debug panel's wind knobs. The
+_model_/persistence layer for every one of these already exists in
+`core/settings.ts` — only the UI controls are missing. This is a
+genuine scope cut, not an oversight: after two full milestones
+in one session (M2's feedback pass + regression fix, M3's full build),
+a player-facing settings panel is exactly the kind of design-facing
+work that benefits from Erik's review rather than being pushed through
+solo at 1am. Also still open: game-mode switching doesn't yet
+re-lay-out the court to the new preset's actual dimensions (topple
+angle and wind change immediately; kubb/king/stake positions don't) —
+noted in docs/MILESTONES.md as a known gap, not silently shipped as if
+it worked.

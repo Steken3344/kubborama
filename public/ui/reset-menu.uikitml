@@ -3,13 +3,14 @@
   kit. Toggled by the B button on the right controller — see
   src/systems/menu.ts. Hidden by default (display: none on the root).
 
-  Button label avoids å/ä/ö on purpose: the bundled DM Sans .ttf (same
-  hotlink the IWSDK starter template uses) doesn't render those glyphs
-  here — confirmed live, not just in the isolated preview — even after
-  swapping in a locally-hosted, Google-subset font built to include
-  them. Root cause not chased further; docs/PLAN.md already scopes
-  "åäö verified in font atlas" to M4, and this is now a concrete,
-  investigated data point for that milestone (see docs/DECISIONS.md).
+  Text avoids å/ä/ö throughout on purpose (confirmed root cause, not a
+  workaround guess — see docs/DECISIONS.md and gh#5): UIKitML's custom
+  @font-face path always bakes its MSDF atlas from a hardcoded
+  ASCII-only charset (@pmndrs/uikit's TTFLoader), regardless of what
+  glyphs the source .ttf actually contains — there is currently no way
+  to pass a wider charset through from UIKitML. Text driven by
+  src/i18nState.ts (core/i18n.ts's translator over
+  src/data/i18n/{sv,en}.json) — see src/systems/menu.ts.
 -->
 <style>
   @font-face {
@@ -60,10 +61,16 @@
 </style>
 <Panel id="menu-root" class="panel-root" style="display: none">
   <div class="panel-content">
-    <div class="heading">Meny</div>
+    <div id="menu-title" class="heading">Meny</div>
     <Divider></Divider>
   </div>
   <Button id="reset-button" class="button">
-    <ButtonLabel>Ny runda</ButtonLabel>
+    <ButtonLabel id="reset-button-label">Ny runda</ButtonLabel>
+  </Button>
+  <Button id="language-button" class="button">
+    <ButtonLabel id="language-button-label">Svenska</ButtonLabel>
+  </Button>
+  <Button id="game-mode-button" class="button">
+    <ButtonLabel id="game-mode-button-label">Enkelt</ButtonLabel>
   </Button>
 </Panel>

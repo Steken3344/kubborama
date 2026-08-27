@@ -46,6 +46,25 @@ export function impactRumble(
   };
 }
 
+/**
+ * Applies the player's haptics settings (M4) at the one place every
+ * pulse funnels through, rather than each call site checking the
+ * setting itself. Returns null when haptics are off — the adapter
+ * should skip the actuator call entirely rather than fire a
+ * zero-intensity pulse.
+ */
+export function scaleHapticPulse(
+  pulse: HapticPulse,
+  hapticsEnabled: boolean,
+  hapticsIntensityPercent: number,
+): HapticPulse | null {
+  if (!hapticsEnabled) {
+    return null;
+  }
+  const scale = hapticsIntensityPercent / 100;
+  return { intensity: pulse.intensity * scale, durationMs: pulse.durationMs };
+}
+
 // M3+ patterns — defined now (cheap, pure data) even though their
 // trigger systems don't exist yet.
 export const kubbFelled: HapticSequence = {

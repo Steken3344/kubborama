@@ -278,3 +278,55 @@ docs/sessions/M4.md, or pause here — Erik is asleep and gave a broad
 "keep going" instruction with no explicit ceiling, so the call on how
 much further to push in one unattended stretch is judgment, not a rule
 already settled.
+
+## 2026-08-27 — M4 (Wind, tunables & settings), partial — same session
+
+Continued straight into M4. Built, TDD'd, and verified live: wind
+(`core/wind.ts` + `WindSystem`, force on Flying sticks only — checked
+the official Buoyancy-pattern reference doc first to confirm
+`PhysicsManipulation` with only `force` set never touches the stick's
+real velocity, which very nearly went in wrong); i18n (`core/i18n.ts`,
+a typed translator over sv/en dictionaries) and settings
+(`core/settings.ts`, versioned zod schema, localStorage-persisted,
+same pattern as M2/M3's stores) with `SettingsSystem` owning both;
+game mode (Simple/Advanced) now drives topple angle and wind live,
+the same way M2's tuning lab drives gravity; language and game-mode
+toggle buttons added to the existing menu, with every existing
+UIKitML string (menu, HUD) retrofitted through the translator.
+
+**Chased the åäö font bug to its actual root cause this time** (M2 and
+M3's entries above document two earlier attempts and a workaround) —
+`@pmndrs/uikit`'s TTF-to-MSDF loader hardcodes an ASCII-only bake
+charset with no way for UIKitML to override it. Confirmed by reading
+the library source end to end, not guessed. Filed as
+[gh#5](https://github.com/Steken3344/kubborama/issues/5) with the two
+real fix paths for whoever picks it up; the sv/en dictionaries just
+avoid those glyphs, now guarded by a regression test.
+
+Verified live: language toggle flips every label on both panels
+(screenshots); game-mode toggle flips correctly too (took a few
+attempts to physically aim the emulated ray — the panel got taller
+once a third button was added, so earlier sessions' y-coordinates
+stopped landing on the same buttons; a CLI aiming issue, not a code
+one); wind runs error-free through a full flight in Advanced mode.
+
+**Stopped deliberately before the full milestone.** The settings
+_model_ now supports everything M4 asks for (volumes, haptics
+intensity, profile name, court lines), but the actual settings-panel
+UI (sliders, stats tab, profile-name prompt, court-lines rendering),
+the dev debug panel's wind knobs, and re-laying-out the court when
+game mode changes are not built. After two complete milestones in one
+unattended session, a player-facing settings panel felt like exactly
+the kind of design-facing work worth Erik's eyes before going further,
+rather than guessing at layout/wording alone at 1am. Full detail and
+the full cut list in docs/DECISIONS.md and docs/MILESTONES.md.
+
+Mechanical pass green throughout (tsc/eslint/prettier/vitest — 125
+tests now, up from 109 — /build/smoke).
+
+**Handover.** M4 is genuinely in progress, not done — no tag yet.
+Next session (or later tonight, if the instruction to keep going is
+still meant to hold): either finish M4's settings panel, or treat this
+as a natural stopping point and let Erik weigh in on the panel's
+design first. Everything built so far is committed, tested, and
+documented either way.

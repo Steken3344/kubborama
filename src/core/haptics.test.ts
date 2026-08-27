@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { impactRumble } from './haptics.js';
+import { impactRumble, scaleHapticPulse } from './haptics.js';
 
 describe('impactRumble', () => {
   it('scales intensity and duration between 0.2-1.0 / 30-80ms across the force range', () => {
@@ -26,5 +26,31 @@ describe('impactRumble', () => {
     const mid = impactRumble(5, 10);
     expect(mid.intensity).toBeCloseTo(0.6, 5);
     expect(mid.durationMs).toBeCloseTo(55, 5);
+  });
+});
+
+describe('scaleHapticPulse', () => {
+  const pulse = { intensity: 0.5, durationMs: 20 };
+
+  it('returns null when haptics are disabled — never fires a pulse', () => {
+    expect(scaleHapticPulse(pulse, false, 100)).toBeNull();
+  });
+
+  it('passes the pulse through unscaled at 100%', () => {
+    expect(scaleHapticPulse(pulse, true, 100)).toEqual(pulse);
+  });
+
+  it('scales intensity by the percent, leaving duration untouched', () => {
+    expect(scaleHapticPulse(pulse, true, 50)).toEqual({
+      intensity: 0.25,
+      durationMs: 20,
+    });
+  });
+
+  it('scales to zero intensity at 0%, but does not return null (still enabled)', () => {
+    expect(scaleHapticPulse(pulse, true, 0)).toEqual({
+      intensity: 0,
+      durationMs: 20,
+    });
   });
 });

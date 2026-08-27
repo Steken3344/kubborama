@@ -11,9 +11,10 @@ import type { Entity } from '@iwsdk/core';
 import { StickPhase, StickState } from '../components/stick-state.js';
 import { pieces } from '../config.js';
 import { gameEvents } from '../core/events.js';
-import { grabTick, releaseClick } from '../core/haptics.js';
+import { grabTick, releaseClick, scaleHapticPulse } from '../core/haptics.js';
 import { log } from '../core/log.js';
 import { isResting } from '../core/restState.js';
+import { settingsState } from '../settingsState.js';
 import { readBodySpeed } from './bodySpeed.js';
 import {
   computeHandVelocity,
@@ -254,10 +255,18 @@ export class ThrowingSystem extends createSystem({
     if (hand === null) {
       return;
     }
+    const pulse = scaleHapticPulse(
+      pattern,
+      settingsState.current.hapticsEnabled,
+      settingsState.current.hapticsIntensityPercent,
+    );
+    if (!pulse) {
+      return;
+    }
     const gamepad = this.input.xr.gamepads[hand];
     gamepad?.inputSource.gamepad?.hapticActuators?.[0]?.pulse(
-      pattern.intensity,
-      pattern.durationMs,
+      pulse.intensity,
+      pulse.durationMs,
     );
   }
 }
