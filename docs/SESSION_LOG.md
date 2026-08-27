@@ -58,7 +58,28 @@ cold.
   finding folded in.
 - Updated docs/MILESTONES.md M0 checkboxes for everything above.
 
-Remaining before the M0 headset gate: commit + push, confirm the
-GitHub Actions CI and Pages-deploy runs go green, then hand off to Erik
-to open the deployed URL on the Quest 2 and restart Claude Code here so
-the IWSDK MCP servers load for future sessions.
+Committed (67dc9cb, be16e25, 1a57a44, 37ec12d) and pushed. Both
+GitHub Actions workflows (CI, Pages deploy) went green on every push;
+https://steken3344.github.io/kubborama/ verified live (HTTP 200,
+assets load).
+
+Milestone review gate run in full: mechanical pass green, fresh-eyes
+subagent review (GO, two low-severity findings — one fixed
+immediately, one filed as
+[gh#1](https://github.com/Steken3344/kubborama/issues/1)), adversarial
+pass on the CI gates themselves (confirmed lint/format/typecheck/test
+all genuinely fail on a violation, not no-ops). Full writeup in
+docs/DECISIONS.md.
+
+**Handover.** M0 is code-complete and self-verified; the only
+remaining item is the human headset gate — parked, needs Erik:
+
+1. Open https://steken3344.github.io/kubborama/ on the Quest 2, tap
+   "Enter XR", confirm it works (or note what breaks).
+2. Restart Claude Code in this directory (`/home/erikkalstrom/Proj/KubbOrama`)
+   so the three IWSDK MCP servers (`iwsdk-runtime`, `iwsdk-reference`,
+   `metavr`) load — needed before M1 can use them for scene
+   verification.
+
+Once both are done, tag `v0.1-m0` and start M1 fresh per
+docs/sessions/M1.md.
