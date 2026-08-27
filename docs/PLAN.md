@@ -1,10 +1,11 @@
 # KubbOrama — Implementation & Asset Plan
 
-# Companion to CLAUDE_CODE_START_PROMPT.txt. Put this file in the repo root
+The living implementation plan — module architecture, geometry/physics
+parameters, asset sources, and the build order for milestones M0–M6.
+Update it here when reality diverges from the plan; docs/DECISIONS.md
+holds the verified-facts layer that overrides this when they conflict.
 
-# so Claude Code can reference it while building milestones M0–M6.
-
-# All asset sources below are CC0 (public domain) — verified 2026-08-26.
+All asset sources below are CC0 (public domain) — verified 2026-08-26.
 
 ## 1. Architecture (IWSDK / ECS)
 

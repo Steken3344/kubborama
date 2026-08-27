@@ -286,3 +286,38 @@ visible, "Remote Control Active" indicator) → `npx iwsdk xr exit` →
 (`iwsdk-runtime`, `iwsdk-reference`, `metavr`) still need Erik to
 restart Claude Code in this directory before they appear as callable
 tools in a session — that part of the M0 checklist is still pending.
+
+## 2026-08-27 — M0: milestone review gate
+
+Mechanical pass: CI green on first push (typecheck, lint, format:check,
+test, build all pass; Pages deploy green, `https://steken3344.github.io/kubborama/`
+returns 200 with assets loading via the unchanged `base: './'` path).
+
+Fresh-eyes review: a separate subagent with no implementation context
+reviewed the M0 diff cold (secret hygiene, clean-clone-and-build
+reproducibility, CLAUDE.md merge coherence, docs decomposition
+integrity, CI/deploy workflow correctness, config sanity, README
+accuracy). Verdict: **GO**, no blockers. Two low-severity findings: (1)
+`docs/PLAN.md` had a stale header referencing the deleted
+`CLAUDE_CODE_START_PROMPT.txt` and a "put this file in the repo root"
+instruction that no longer applied — fixed immediately (trivial,
+foundation-adjacent enough to fix now rather than file); (2) `ci.yml`
+and `deploy.yml` both rebuild the project on every push to main
+(redundant, not incorrect) — filed as
+[#1](https://github.com/Steken3344/kubborama/issues/1) (tech-debt),
+not urgent enough to fix now.
+
+Adversarial pass: M0 has no interactive game logic yet to attack in
+the usual sense (grab-two-sticks, throw-straight-down etc. start at
+M2), so the adversarial check here was aimed at the milestone's actual
+deliverable — the CI gates themselves. Verified each gate genuinely
+fails on a violation rather than being a no-op: a temporary `any`-typed
+file failed `eslint` (`no-explicit-any`); a temporary
+badly-formatted file failed `prettier --check`; a temporary type
+mismatch failed `tsc --noEmit`; a temporary deliberately-failing test
+failed `vitest run` (exit 1). All four scratch files were deleted
+after the check, never committed.
+
+Go/no-go: **GO**, presented to Erik. The one remaining item is the
+human headset gate (open the deployed URL on the Quest 2, confirm
+"Enter XR" works) — parked, cannot be self-approved.
