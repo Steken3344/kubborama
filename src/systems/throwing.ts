@@ -14,6 +14,7 @@ import { pieces } from '../config.js';
 import { gameEvents } from '../core/events.js';
 import { grabTick, releaseClick } from '../core/haptics.js';
 import { log } from '../core/log.js';
+import { isResting } from '../core/restState.js';
 import {
   computeHandVelocity,
   computeReleaseVelocity,
@@ -227,11 +228,9 @@ export class ThrowingSystem extends createSystem({
       angVel[1] ?? 0,
       angVel[2] ?? 0,
     );
-    const isResting =
-      linSpeedMps < pieces.throw.restLinearThresholdMps &&
-      angSpeedRadS < pieces.throw.restAngularThresholdRadS;
+    const resting = isResting(linSpeedMps, angSpeedRadS, pieces.throw);
 
-    if (!isResting) {
+    if (!resting) {
       this.restTimerStartS.delete(entity.index);
       return;
     }

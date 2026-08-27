@@ -1,9 +1,13 @@
 import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 import { GrabHighlightSystem } from './systems/grabHighlight.js';
+import { HudSystem } from './systems/hud.js';
 import { ImpactSystem } from './systems/impact.js';
 import { MenuSystem } from './systems/menu.js';
+import { RoundSystem } from './systems/round.js';
+import { StatsSystem } from './systems/stats.js';
 import { ThrowingSystem } from './systems/throwing.js';
+import { ToppleSystem } from './systems/topple.js';
 import { TuningLabSystem } from './systems/tuningLab.js';
 
 // NOT `await World.create(...)` at module top level — that breaks the
@@ -20,6 +24,17 @@ World.create(
   world.registerSystem(ImpactSystem);
   world.registerSystem(MenuSystem);
   world.registerSystem(GrabHighlightSystem);
+  // M3: ToppleSystem emits KubbFelled/KingFelled -> RoundSystem drives
+  // the round reducer and emits RoundEnded -> StatsSystem records it
+  // (must come before HudSystem, which reads StatsSystem.stats in the
+  // same RoundEnded tick) -> HudSystem repaints the scoreboard.
+  // MenuSystem (registered above) also subscribes to RoundEnded to
+  // auto-reset. Order matters here, unlike the event-only systems
+  // below.
+  world.registerSystem(ToppleSystem);
+  world.registerSystem(RoundSystem);
+  world.registerSystem(StatsSystem);
+  world.registerSystem(HudSystem);
   // Reads gameEvents emitted by ThrowingSystem/ImpactSystem — order
   // doesn't matter for correctness (subscriptions, not query timing),
   // but registering last keeps init order readable.

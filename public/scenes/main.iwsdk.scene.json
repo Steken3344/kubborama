@@ -227,7 +227,8 @@
           "linearDamping": 0.1,
           "angularDamping": 0.1
         },
-        "Resettable": {}
+        "Resettable": {},
+        "KingPiece": {}
       }
     },
     {
@@ -732,6 +733,18 @@
           "phase": "RACKED"
         },
         "Resettable": {}
+      }
+    },
+    {
+      "id": "hud-panel",
+      "name": "HUD",
+      "content": {
+        "type": "asset",
+        "asset": "hud"
+      },
+      "transform": {
+        "position": [1, 1.5, -1],
+        "rotationDeg": [0, -45, 0]
       }
     },
     {

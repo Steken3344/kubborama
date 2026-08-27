@@ -1,3 +1,4 @@
+import type { RoundResult } from './scoring.js';
 import type { Vec3 } from './vec3.js';
 import type { ThrowStyle } from './underhandClassifier.js';
 
@@ -71,6 +72,21 @@ export interface GameEvents {
     timeS: number;
   };
   Reset: {
+    timeS: number;
+  };
+  KubbFelled: {
+    entityId: string;
+    timeS: number;
+  };
+  KingFelled: {
+    timeS: number;
+  };
+  RoundEnded: {
+    result: RoundResult;
+    sticksThrownThisRound: number;
+    longestThrowM: number;
+    longestFellingThrowM: number | null;
+    roundDurationS: number;
     timeS: number;
   };
 }

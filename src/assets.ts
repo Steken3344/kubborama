@@ -25,6 +25,11 @@ export default defineAssets({
     url: publicAssetUrl('ui/reset-menu.uikitml'),
     name: 'Reset menu',
   },
+  hud: {
+    type: AssetType.UIKitML as const,
+    url: publicAssetUrl('ui/hud.uikitml'),
+    name: 'HUD scoreboard',
+  },
   'tree-plateau': gltfAsset('tree_plateau', 'Garden tree (round)'),
   'tree-fat-fall': gltfAsset('tree_fat_fall', 'Garden tree (autumn, full)'),
   'tree-small-fall': gltfAsset(

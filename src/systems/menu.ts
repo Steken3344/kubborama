@@ -34,6 +34,7 @@ export class MenuSystem extends createSystem({
   private menuPanel!: UIKitMLAsset;
   private menuOpen = false;
   private currentTimeS = 0;
+  private unsubscribeRoundEnded?: () => void;
 
   init(): void {
     const grabSystem = this.world.getSystem(GrabSystem);
@@ -78,6 +79,17 @@ export class MenuSystem extends createSystem({
       this.resetAll();
       this.setMenuOpen(false);
     });
+
+    // A finished round (RoundSystem) auto-resets through the exact
+    // same path as the menu's manual Reset button — one reset
+    // implementation, two triggers.
+    this.unsubscribeRoundEnded = gameEvents.on('RoundEnded', () => {
+      this.resetAll();
+    });
+  }
+
+  destroy(): void {
+    this.unsubscribeRoundEnded?.();
   }
 
   update(_delta: number, time: number): void {
