@@ -19,6 +19,11 @@ optimized runtime files actually used in `public/` are committed.
 | `gltf/tree_cone_fall/tree_cone_fall.glb`              | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden treeline (autumn variant)                                                                              |
 | `gltf/tree_thin_dark/tree_thin_dark.glb`              | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden treeline                                                                                               |
 | `gltf/fence_planks/fence_planks.glb`                  | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Boundary fence behind the player                                                                              |
+| `gltf/rock_large_d/rock_large_d.glb`                  | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden dressing (M2 feedback: court surroundings felt bare)                                                   |
+| `gltf/rock_small_c/rock_small_c.glb`                  | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden dressing                                                                                               |
+| `gltf/rock_tall_g/rock_tall_g.glb`                    | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden dressing                                                                                               |
+| `gltf/rock_small_g/rock_small_g.glb`                  | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden dressing                                                                                               |
+| `gltf/rock_large_b/rock_large_b.glb`                  | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden dressing                                                                                               |
 
 ## Raw downloads (not committed — `assets/raw/`, fetched by `fetch-assets.sh`)
 
@@ -32,9 +37,9 @@ optimized runtime files actually used in `public/` are committed.
 | `brown_planks_03_nor_gl_1k.jpg`       | https://polyhaven.com/a/brown_planks_03       | CC0     |
 | `Grass004_1K-JPG.zip`                 | https://ambientcg.com/view?id=Grass004        | CC0     |
 | `autumn_park_1k.hdr`                  | https://polyhaven.com/a/autumn_park           | CC0     |
-| `ballawley_park_1k.hdr`               | https://polyhaven.com/a/ballawley_park        | CC0     | Alternative sky, unused for now                   |
-| `autumn_park_2k.hdr`                  | https://polyhaven.com/a/autumn_park           | CC0     | Higher-res version, unused for now (1k in use)    |
-| `kenney_nature-kit.zip`               | https://kenney.nl/assets/nature-kit           | CC0     | 330 low-poly models; only trees/fence used so far |
+| `ballawley_park_1k.hdr`               | https://polyhaven.com/a/ballawley_park        | CC0     | Alternative sky, unused for now                    |
+| `autumn_park_2k.hdr`                  | https://polyhaven.com/a/autumn_park           | CC0     | Higher-res version, unused for now (1k in use)     |
+| `kenney_nature-kit.zip`               | https://kenney.nl/assets/nature-kit           | CC0     | 330 low-poly models; trees/fence/rocks used so far |
 
 Pending (M5): Kenney Impact Sounds (klonk variants) and a Pixabay music
 loop — not fetched yet, out of scope for M1.

@@ -30,8 +30,11 @@ describe('courtLayout (default backyard preset)', () => {
   it('matches the backyard preset dimensions (6x3 m)', () => {
     const layout = courtLayout(defaultCourtPreset);
     expect(layout.kingPosition[2]).toBeCloseTo(-3);
-    for (const [, , z] of layout.kubbPositions) {
+    for (const [, , z] of layout.kubbPositions.slice(0, 5)) {
       expect(z).toBeCloseTo(-6);
+    }
+    for (const [, , z] of layout.kubbPositions.slice(5)) {
+      expect(z).toBeLessThan(0);
     }
   });
 });

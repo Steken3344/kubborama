@@ -16,33 +16,48 @@ describe('computeCourtLayout', () => {
     expect(layout.kingPosition).toEqual([0, dims.kingHeightM / 2, -3]);
   });
 
-  it('places 5 kubbs evenly spaced along the far (short) baseline', () => {
+  it('places 10 kubbs, 5 evenly spaced on each (short) baseline', () => {
     const layout = computeCourtLayout(backyard, dims, 1);
-    expect(layout.kubbPositions).toHaveLength(5);
-    for (const [x, y, z] of layout.kubbPositions) {
+    expect(layout.kubbPositions).toHaveLength(10);
+    for (const [x, y] of layout.kubbPositions) {
       expect(y).toBeCloseTo(dims.kubbHeightM / 2);
-      expect(z).toBeCloseTo(-backyard.lengthM);
       expect(x).toBeGreaterThan(-backyard.widthM / 2);
       expect(x).toBeLessThan(backyard.widthM / 2);
     }
-    // Evenly spaced: consecutive gaps are equal.
-    const xs = layout.kubbPositions.map(([x]) => x);
-    const gaps: number[] = [];
-    for (let i = 1; i < xs.length; i++) {
-      const curr = xs[i];
-      const prev = xs[i - 1];
-      if (curr === undefined || prev === undefined) {
-        throw new Error('unreachable: index within bounds');
+    // First 5 are the far baseline, last 5 are the near (player's) baseline.
+    const far = layout.kubbPositions.slice(0, 5);
+    const near = layout.kubbPositions.slice(5);
+    for (const [, , z] of far) {
+      expect(z).toBeCloseTo(-backyard.lengthM);
+    }
+    for (const [, , z] of near) {
+      expect(z).toBeGreaterThan(-1);
+      expect(z).toBeLessThan(0);
+    }
+
+    function expectEvenlySpaced(row: typeof far): void {
+      const xs = row.map(([x]) => x);
+      const gaps: number[] = [];
+      for (let i = 1; i < xs.length; i++) {
+        const curr = xs[i];
+        const prev = xs[i - 1];
+        if (curr === undefined || prev === undefined) {
+          throw new Error('unreachable: index within bounds');
+        }
+        gaps.push(curr - prev);
       }
-      gaps.push(curr - prev);
+      const [firstGap] = gaps;
+      if (firstGap === undefined) {
+        throw new Error('unreachable: row is non-empty');
+      }
+      for (const gap of gaps) {
+        expect(gap).toBeCloseTo(firstGap);
+      }
     }
-    const [firstGap] = gaps;
-    if (firstGap === undefined) {
-      throw new Error('unreachable: kubbPositions is non-empty');
-    }
-    for (const gap of gaps) {
-      expect(gap).toBeCloseTo(firstGap);
-    }
+    expectEvenlySpaced(far);
+    expectEvenlySpaced(near);
+    // Both baselines use the same x layout (mirrored court).
+    expect(near.map(([x]) => x)).toEqual(far.map(([x]) => x));
   });
 
   it('places 4 corner stakes at the court corners, not along the lines', () => {
@@ -92,8 +107,12 @@ describe('computeCourtLayout', () => {
     const tournament: CourtPreset = { widthM: 5, lengthM: 8 };
     const layout = computeCourtLayout(tournament, dims, 1);
     expect(layout.kingPosition).toEqual([0, dims.kingHeightM / 2, -4]);
-    for (const [, , z] of layout.kubbPositions) {
+    for (const [, , z] of layout.kubbPositions.slice(0, 5)) {
       expect(z).toBeCloseTo(-8);
+    }
+    for (const [, , z] of layout.kubbPositions.slice(5)) {
+      expect(z).toBeGreaterThan(-1);
+      expect(z).toBeLessThan(0);
     }
   });
 });

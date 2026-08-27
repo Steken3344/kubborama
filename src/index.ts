@@ -1,6 +1,8 @@
 import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
+import { GrabHighlightSystem } from './systems/grabHighlight.js';
 import { ImpactSystem } from './systems/impact.js';
+import { MenuSystem } from './systems/menu.js';
 import { ThrowingSystem } from './systems/throwing.js';
 import { TuningLabSystem } from './systems/tuningLab.js';
 
@@ -16,6 +18,8 @@ World.create(
   // velocities each frame.
   world.registerSystem(ThrowingSystem);
   world.registerSystem(ImpactSystem);
+  world.registerSystem(MenuSystem);
+  world.registerSystem(GrabHighlightSystem);
   // Reads gameEvents emitted by ThrowingSystem/ImpactSystem — order
   // doesn't matter for correctness (subscriptions, not query timing),
   // but registering last keeps init order readable.

@@ -24,16 +24,9 @@
     "radiusM": 0.01,
     "heightM": 0.3
   },
-  "physics": {
-    "pieceFriction": 0.6,
-    "pieceRestitution": 0.15,
-    "groundFriction": 0.8,
-    "groundRestitution": 0.05
-  },
   "toppleAngleDeg": 60,
   "visualSinkM": 0.0025,
   "throw": {
-    "poseWindowSize": 5,
     "restLinearThresholdMps": 0.05,
     "restAngularThresholdRadS": 0.1,
     "restDurationS": 0.5,

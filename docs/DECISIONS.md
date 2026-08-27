@@ -568,3 +568,139 @@ run preview`, loaded in a real or headless browser, checking for a
 non-empty `#scene-container`) as part of the mechanical pass, not just
 `npm run dev` / the IWSDK emulator (which uses dev-mode, unbundled
 code) or a bare HTTP status check on the deployed URL.
+
+## 2026-08-27 — M2 review gate: fresh-eyes findings, then Erik's first playtest feedback
+
+**Fresh-eyes review** (full diff from `v0.2-m1` through the M2 core
+mechanic) found no blockers. Two worth-fixing nitpicks, both fixed
+immediately: a dead `pieces.throw.poseWindowSize` value in
+`pieces.json` (the live window size actually comes from the tuning
+preset), and a per-frame `Vec3` allocation in `ImpactSystem.update()`
+(now one persisted array per entity, mutated in place, matching
+`ThrowingSystem`'s `tmp*` convention). My own adversarial pass
+(simultaneous two-hand grab/release with zero pose samples) found no
+issues either.
+
+Erik then played the build and sent structured feedback, addressed in
+the same session rather than filed for later, since all of it was
+reversible and within M2's own throw-feel/court scope:
+
+**1. Kubbs on both baselines.** docs/PLAN.md always named the full set
+as "10 kubbs, 5 per baseline — POC uses one side, full set deferred";
+Erik's ask is exactly that deferred scope, not a new design. Extended
+`computeCourtLayout()` (TDD: tests updated first) to mirror the far row
+onto the near baseline. The near row can't sit exactly on the z=0
+corner-stake line, though — the player spawns at world origin (0,0,0)
+with no authored `player.transform`, so a kubb centered at x=0 there
+would land exactly on the player's own spawn point. Less obviously: it
+also can't sit inside the stick-scatter zone (z ∈ [-0.9, -0.15]) — see
+the tunneling bug below, found because the first attempt (setback
+0.3 m) put it right there. Settled on a 0.05 m setback: far enough off
+the exact origin, comfortably outside the scatter zone.
+
+**2. Throw feels good but needs less effort.** Asked for 10% less
+gravity specifically. `tuning-params.json`'s `gravityMps2` default
+percent 50→40 (9.81 → 8.829 m/s², exactly -10% off the 0-100 scale's
+midpoint mapping) — a data-only change, the live tuning system already
+applies it every frame via `TuningLabSystem.applyTuningToPhysics()`.
+
+**3. B-menu with Reset.** New `MenuSystem` + `public/ui/reset-menu.uikitml`
+(Horizon-kit `Panel`/`Button`, authored per the `iwsdk-ui` skill).
+Right controller's B button (`InputComponent.B_Button`, re-exported
+from `@iwsdk/xr-input` via `@iwsdk/core`) toggles the panel. Reset
+replays each piece's pose exactly as it was when `MenuSystem.init()`
+ran (captured once, before physics has moved anything) via
+`PhysicsSystem.setBodyTransform()` — deliberately not re-derived from
+`computeCourtLayout()` a second time, since that would also require
+reconstructing the stick mesh's baked tip-rotation quaternion for no
+benefit. A new `Resettable` tag component marks every kubb/king/stick.
+Verified live: teleported a stick away via `ecs_set_component`, clicked
+Reset via a ray+select on the emulated right controller, confirmed the
+stick returned to its captured pose and `StickState` reset to `RACKED`.
+
+Font note: the button label avoids å/ä/ö ("Ny runda" instead of
+"Återställ") on purpose. The starter template's hotlinked DM Sans
+`.ttf` doesn't render those glyphs (troika-three-text logs "Missing
+glyph info") — confirmed live via `browser_screenshot`, not just the
+(separately broken, see below) isolated preview. Tried self-hosting a
+Google-subset font built from a `text=` request that should have
+included exactly those glyphs; still missing, and "Meny" (all-ASCII)
+rendered in what looked like a generic fallback rather than DM Sans —
+so the custom `@font-face` may not even be taking effect at all, not a
+glyph-coverage problem. Not chased further: docs/PLAN.md already scopes
+"åäö verified in font atlas" to M4, and this is now a concrete,
+investigated data point for that milestone rather than a guess.
+
+**4. Ground feels hard, not grass — should have a little bounce, then
+settle.** Root cause found by reading the code, not by guessing: the
+scene JSON already baked a reasonable per-stick `angularDamping: 0.05`,
+but `TuningLabSystem.applyTuningToPhysics()` unconditionally overwrites
+`PhysicsBody.angularDamping` from the `angularDampingInFlight` tuning
+param every frame — and that param's default was 0%, silently zeroing
+the baked value on load. A cylinder with ~zero angular damping just
+keeps rolling on any friction surface (Coulomb friction opposes
+sliding, not rolling) — reads exactly like "hard floor that never
+settles." Fixed the actual default: `angularDampingInFlight` 0%→25%
+(real ≈0.125, comfortably above the old baked 0.05). Also bumped ground
+`restitution` 0.05→0.1 for a touch more "little bounce" on first
+impact, per Erik's literal ask.
+
+**5. Grab-range highlight.** New `GrabHighlightSystem`. Uses the
+documented pattern verbatim (`@iwsdk/core`'s `state-tags.d.ts` ships a
+"Highlight on hover" example using `RayInteractable` + `Hovered`) rather
+than inventing custom proximity detection — sticks already carry
+`RayInteractable` for `DistanceGrabbable`. Swaps `.material` to a
+cloned-and-tinted `woodMaterial` on hover, never mutates the shared
+instance in place (would tint every stick/kubb/stake at once — see
+`.claude/rules/assets-and-manifest.md`).
+
+**Critical regression found while verifying #1: static ground tunneling.**
+The first near-baseline setback (0.3 m) placed the new kubbs inside the
+stick-scatter zone. With the fixed seed, at least one scattered stick
+spawned overlapping a kubb; Havok's overlap-resolution impulse launched
+it clean through the ground (observed at y ≈ -550 to -11,400 depending
+on the run) _before I'd touched anything by hand_ — reproduced on a
+fully clean `dev down`/`dev up` cycle, so not an artifact of manual MCP
+testing. The ground's `PhysicsShape` was only 0.02 m thick (a thin
+plate), trivial to tunnel through in one frame given enough corrective
+velocity. Fixed both causes: moved the near kubb row out of the scatter
+zone (see #1), and — as a general defense against this whole bug class,
+not just this one trigger — thickened the ground collider to 1 m
+(`dimensions: [30, 1, 30]`, position adjusted to keep the same top
+surface at y=0.01 so nothing visibly moved). Verified stable across
+five clean reloads (including one held for 15s of settling) with all
+10 kubbs, the king, and all 6 sticks landing at consistent resting
+heights every time.
+
+**Investigated, not reproduced: left-hand grab.** Erik reported only
+the right hand can pick up sticks. Emulator test (move `controller-left`
+onto a stick, squeeze button index 1) grabbed it exactly like the right
+hand — `Grabbed` added, `StickState` → `HELD`. No hand-specific code
+path exists anywhere in the grab/throw pipeline. Logged in
+docs/QUESTIONS.md rather than guess-fixed; likely a real-headset-only
+cause (input mapping, hand-tracking mode, hardware) the emulator can't
+surface.
+
+**Deferred, filed as issues rather than built now:**
+[gh#4](https://github.com/Steken3344/kubborama/issues/4) — a "klonk"
+sound when two held sticks strike each other. No audio system exists
+yet (M5 scope per docs/MILESTONES.md); the impact detector already
+fires the event M5's audio adapter will need, so nothing to build now.
+[gh#3](https://github.com/Steken3344/kubborama/issues/3) — noticed
+while adding rocks (below): several autumn-tinted Kenney trees render
+their foliage as flat cyan/teal in both the static scene-composer
+render and the live runtime. Pre-existing since M1, unrelated to this
+session's changes (the newly-added rocks, from the same Kenney pack,
+render correctly).
+
+**Environment felt bare — added rocks.** Erik asked for hills/rocks
+around the court. `metavr` doesn't run on Linux (platform binary
+unsupported, consistent with the M0 note); the Kenney Nature Kit
+archive was already present in `assets/raw/models/` from M1's original
+manual download, so five rock variants were copied straight into
+`public/gltf/` (no re-compression needed — Kenney's low-poly rocks are
+already 3-9 KB, smaller than the committed tree GLBs) and scattered
+around the garden perimeter alongside the existing trees. "Hills"
+specifically skipped — real terrain modeling is a bigger job than this
+feedback pass warranted; the larger rock variants (`rock_large_b/d`)
+stand in for now.

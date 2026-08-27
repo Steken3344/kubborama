@@ -129,3 +129,86 @@ MCP (screenshots + `ecs_pause`/`ecs_step`/`ecs_query_entity` physics
 inspection), and CI is green. No headset gate required for M1 (that's
 M0/M2/M5 only). Tag `v0.2-m1` and start M2 (throwing — the big one)
 fresh per docs/sessions/M2.md.
+
+## 2026-08-27 — M2 (Throwing), same session, continued per Erik's request
+
+Built per docs/sessions/M2.md: `core/throwRelease.ts` (frame-averaged
+recency-weighted hand velocity + lever-arm v_com = v_hand + ω×r, TDD
+with an explicit "classic VR throwing bug" regression test),
+`core/quat.ts` (angular velocity between two orientations, incl. the
+double-cover sign flip), the event bus (`core/events.ts`), impact
+detection (`core/impactDetector.ts`), a haptics library
+(`core/haptics.ts`), an underhand/flip-quality classifier
+(`core/underhandClassifier.ts`), the stick state machine
+(`StickState`: Racked→Held→Flying→Settled), `ThrowingSystem` (the
+adapter wiring all of the above to `PhysicsManipulation` on release,
+with the end grip emerging from the live grab point rather than a
+hardcoded offset), `ImpactSystem`, and a full desktop tweakpane tuning
+lab (8 params as 0-100 sliders, ballistic target bands, presets A/B/C,
+JSON export/import, zod-versioned telemetry persisted to
+localStorage). 77 tests across 15 files by the end of the build.
+
+Mid-build, two urgent interruptions were handled inline: pushing
+everything so Erik could test on GitHub, then a critical **blank
+production site** report (both desktop and Quest). Root-caused via git
+worktree bisection (not guesswork) to a top-level `await
+World.create(...)` in `src/index.ts` breaking Vite/Rollup's production
+bundling (silent hang, dev mode tolerated it fine) — full writeup in
+docs/DECISIONS.md. Fixed, and permanently guarded with a new
+`scripts/smoke-test.mjs` CI step (serves the real production build in
+headless Chromium, checks for a non-empty scene) — verified to
+actually catch this regression class by re-introducing the bug and
+confirming the smoke test fails.
+
+Milestone review gate: mechanical pass green, fresh-eyes subagent
+review (no blockers, two nitpicks fixed immediately — a dead config
+value and an un-pooled per-frame allocation in `ImpactSystem`), my own
+adversarial pass (simultaneous two-hand grab/release with zero pose
+samples — clean).
+
+**Erik then played the build and sent structured feedback**, addressed
+in the same session (all reversible, all within M2's own scope) rather
+than filed for later — full technical writeup in docs/DECISIONS.md:
+
+- Kubbs on both baselines (10 total — docs/PLAN.md's always-deferred
+  full set, not new scope).
+- Gravity -10% (a data-only tuning-default change).
+- New B-button reset menu (`MenuSystem` + `reset-menu.uikitml`,
+  Horizon-kit panel) — verified live end-to-end (teleported a stick
+  away, clicked Reset via emulated ray+select, confirmed it returned
+  to its spawn pose).
+- Ground/stick settling fixed at the root cause: the tuning system was
+  silently zeroing a sane baked-in angular-damping value every load;
+  fixed the actual default instead of papering over the symptom.
+- Grab-range highlight (`GrabHighlightSystem`, using
+  `@iwsdk/core`'s own documented `RayInteractable`+`Hovered` pattern).
+- A handful of Kenney rocks around the garden (metavr doesn't run on
+  this Linux box; reused the Nature Kit archive already on disk from
+  M1's manual download instead).
+
+**Found and fixed a real regression while verifying the kubb change:**
+the first near-baseline kubb placement sat inside the stick-scatter
+zone; with the fixed seed, a scattered stick spawned overlapping a kubb
+and Havok's overlap-resolution impulse launched it clean through the
+(too-thin, 0.02 m) ground — reproduced on a fully clean server restart,
+so a real bug, not a testing artifact. Fixed both the immediate trigger
+(moved the kubb row) and the underlying fragility (thickened the ground
+collider to 1 m) — verified stable across five clean reloads.
+
+Left-hand grab (Erik: only right hand seems to work) investigated but
+not reproduced in the emulator — logged in docs/QUESTIONS.md rather
+than guess-fixed. A "klonk" sound on stick-vs-stick contact
+([gh#4](https://github.com/Steken3344/kubborama/issues/4)) and a
+pre-existing cyan-tinted autumn-tree texture bug noticed while adding
+rocks
+([gh#3](https://github.com/Steken3344/kubborama/issues/3)) were filed
+rather than built/fixed now — no audio system exists yet (M5 scope),
+and the texture bug predates this session entirely.
+
+**Handover.** M2 is code-complete including a full round of live
+feedback, mechanical checks all green (tsc/eslint/prettier/vitest/
+build/smoke), and pushed. **Still blocks tagging `v0.3-m2`:** Erik's
+real headset calibration gate (10-15 flat + 10-15 backspin throws,
+recorded feedback) — a human gate, never self-approved even
+autonomously. Next: continue straight into M3 (toppling, rounds &
+stats) per Erik's explicit instruction, without waiting for that gate.

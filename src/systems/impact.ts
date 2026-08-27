@@ -26,20 +26,33 @@ export class ImpactSystem extends createSystem({
     where: [eq(PhysicsBody, 'state', PhysicsState.Dynamic)],
   },
 }) {
+  // One persisted Vec3 per entity (allocated once, on first sighting),
+  // mutated in place every frame after that — see docs/DECISIONS.md,
+  // fresh-eyes M2 review nitpick about per-frame allocation here.
   private previousVelocity = new Map<number, Vec3>();
+  private tmpCurr: Vec3 = [0, 0, 0];
   private tmpPos = new Vector3();
 
   update(_delta: number, time: number): void {
     for (const entity of this.queries.dynamicBodies.entities) {
       const linVel = entity.getVectorView(PhysicsBody, '_linearVelocity');
-      const curr: Vec3 = [linVel[0] ?? 0, linVel[1] ?? 0, linVel[2] ?? 0];
-      const prev = this.previousVelocity.get(entity.index) ?? curr;
+      this.tmpCurr[0] = linVel[0] ?? 0;
+      this.tmpCurr[1] = linVel[1] ?? 0;
+      this.tmpCurr[2] = linVel[2] ?? 0;
+
+      let prev = this.previousVelocity.get(entity.index);
+      if (prev === undefined) {
+        prev = [this.tmpCurr[0], this.tmpCurr[1], this.tmpCurr[2]];
+        this.previousVelocity.set(entity.index, prev);
+      }
       const { isImpact, deltaVMps } = detectImpact(
         prev,
-        curr,
+        this.tmpCurr,
         pieces.throw.impactThresholdMps,
       );
-      this.previousVelocity.set(entity.index, curr);
+      prev[0] = this.tmpCurr[0];
+      prev[1] = this.tmpCurr[1];
+      prev[2] = this.tmpCurr[2];
 
       if (!isImpact) {
         continue;

@@ -70,6 +70,9 @@ export interface GameEvents {
     position: Vec3;
     timeS: number;
   };
+  Reset: {
+    timeS: number;
+  };
 }
 
 export const gameEvents = new EventBus<GameEvents>();

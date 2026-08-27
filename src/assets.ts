@@ -20,6 +20,11 @@ export default defineAssets({
   king,
   stick,
   stake,
+  'reset-menu': {
+    type: AssetType.UIKitML as const,
+    url: publicAssetUrl('ui/reset-menu.uikitml'),
+    name: 'Reset menu',
+  },
   'tree-plateau': gltfAsset('tree_plateau', 'Garden tree (round)'),
   'tree-fat-fall': gltfAsset('tree_fat_fall', 'Garden tree (autumn, full)'),
   'tree-small-fall': gltfAsset(
@@ -32,4 +37,9 @@ export default defineAssets({
   ),
   'tree-thin-dark': gltfAsset('tree_thin_dark', 'Garden tree (thin, dark)'),
   'fence-planks': gltfAsset('fence_planks', 'Boundary fence section'),
+  'rock-large-d': gltfAsset('rock_large_d', 'Garden rock (large)'),
+  'rock-small-c': gltfAsset('rock_small_c', 'Garden rock (small)'),
+  'rock-tall-g': gltfAsset('rock_tall_g', 'Garden rock (tall)'),
+  'rock-small-g': gltfAsset('rock_small_g', 'Garden rock (small)'),
+  'rock-large-b': gltfAsset('rock_large_b', 'Garden rock (large)'),
 });

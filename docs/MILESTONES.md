@@ -48,11 +48,13 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       (autumn_park), 1 directional light (shadow-casting), hemisphere
       tint; fence (Kenney, linear pattern) + 5 Kenney trees
 - [x] Court: 4 corner stakes (no lines, red-tipped); king at court
-      center; 5 kubbs evenly spaced along the far short baseline; 6
-      sticks lying scattered near the player baseline (seeded RNG, not
-      Math.random); kubb/king sunk 2-3mm into grass visually (collider
-      unchanged). Real dynamic shadows used instead of blob-shadow
-      decals — strictly better grounding, same visual goal.
+      center; 5 kubbs evenly spaced along the far short baseline
+      (**superseded in M2 by Erik's feedback — both baselines now
+      populated, 10 kubbs total, see M2 below**); 6 sticks lying
+      scattered near the player baseline (seeded RNG, not Math.random);
+      kubb/king sunk 2-3mm into grass visually (collider unchanged).
+      Real dynamic shadows used instead of blob-shadow decals — strictly
+      better grounding, same visual goal.
 - [x] All pieces are physics bodies (PhysicsShape/PhysicsBody, real
       birch density/friction/restitution); eye height 1.6 m (default
       IWSDK player origin, unmodified)
@@ -94,9 +96,10 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       player-facing UI, out of scope until the HUD exists (M3+)
 - [x] Both spin styles honest by construction: no spin
       assist/normalization anywhere in the pipeline, angular damping
-      in flight is a tunable (0-100, default 0). Not yet _verified_
-      with real flat vs. backspin throws — that's exactly what the
-      headset gate below is for
+      in flight is a tunable (0-100, default 25 as of Erik's first
+      playtest — see below). Not yet _verified_ with real flat vs.
+      backspin throws — that's exactly what the headset gate below is
+      for
 - [~] Golden-throw regression scripted via MCP: attempted, hit a real
   MCP-tooling limitation (documented in detail in
   docs/DECISIONS.md, filed as
@@ -104,6 +107,19 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
   Pipeline correctness verified a different way instead: rigorous
   unit tests on the math, live confirmation of the full grab→
   release→settle state machine and event flow
+- [x] Erik's first playtest feedback (2026-08-27, full writeup in
+      docs/DECISIONS.md): kubbs on both baselines (10 total, mirroring
+      docs/PLAN.md's always-deferred full set); gravity -10%; B-button
+      reset menu (`MenuSystem` + `reset-menu.uikitml`); ground
+      angular-damping default fixed (was silently zeroed by the tuning
+      system every load) + a touch more ground restitution so sticks
+      settle instead of rolling forever; grab-range highlight
+      (`GrabHighlightSystem`, `RayInteractable`+`Hovered`); a handful of
+      Kenney rocks around the garden. Also found and fixed a real
+      regression while verifying the kubb change: a too-thin ground
+      collider let scattered sticks tunnel through the floor on load.
+      Left-hand-grab report investigated, not reproduced in the
+      emulator — logged in docs/QUESTIONS.md
 - **GATE (Erik, headset): feel calibration — 10-15 flat + 10-15 backspin
   throws recorded to JSON; structured feedback (words + numbers)** 🎧
   — not yet done, blocks tagging v0.3-m2

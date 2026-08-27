@@ -68,15 +68,15 @@
         "receiveShadow": true
       },
       "transform": {
-        "position": [0, 0, 0]
+        "position": [0, -0.49, 0]
       },
       "components": {
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [30, 0.02, 30],
+          "dimensions": [30, 1, 30],
           "density": 640,
           "friction": 0.8,
-          "restitution": 0.05
+          "restitution": 0.1
         },
         "PhysicsBody": {
           "state": "STATIC"
@@ -226,7 +226,8 @@
           "state": "DYNAMIC",
           "linearDamping": 0.1,
           "angularDamping": 0.1
-        }
+        },
+        "Resettable": {}
       }
     },
     {
@@ -252,7 +253,8 @@
           "state": "DYNAMIC",
           "linearDamping": 0.1,
           "angularDamping": 0.1
-        }
+        },
+        "Resettable": {}
       }
     },
     {
@@ -278,7 +280,8 @@
           "state": "DYNAMIC",
           "linearDamping": 0.1,
           "angularDamping": 0.1
-        }
+        },
+        "Resettable": {}
       }
     },
     {
@@ -304,7 +307,8 @@
           "state": "DYNAMIC",
           "linearDamping": 0.1,
           "angularDamping": 0.1
-        }
+        },
+        "Resettable": {}
       }
     },
     {
@@ -330,7 +334,8 @@
           "state": "DYNAMIC",
           "linearDamping": 0.1,
           "angularDamping": 0.1
-        }
+        },
+        "Resettable": {}
       }
     },
     {
@@ -356,7 +361,143 @@
           "state": "DYNAMIC",
           "linearDamping": 0.1,
           "angularDamping": 0.1
-        }
+        },
+        "Resettable": {}
+      }
+    },
+    {
+      "id": "kubb-5",
+      "name": "Kubb 5",
+      "content": {
+        "type": "asset",
+        "asset": "kubb",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [-1.2, 0.075, -0.05]
+      },
+      "components": {
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.07, 0.15, 0.07],
+          "density": 640,
+          "friction": 0.6,
+          "restitution": 0.15
+        },
+        "PhysicsBody": {
+          "state": "DYNAMIC",
+          "linearDamping": 0.1,
+          "angularDamping": 0.1
+        },
+        "Resettable": {}
+      }
+    },
+    {
+      "id": "kubb-6",
+      "name": "Kubb 6",
+      "content": {
+        "type": "asset",
+        "asset": "kubb",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [-0.6, 0.075, -0.05]
+      },
+      "components": {
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.07, 0.15, 0.07],
+          "density": 640,
+          "friction": 0.6,
+          "restitution": 0.15
+        },
+        "PhysicsBody": {
+          "state": "DYNAMIC",
+          "linearDamping": 0.1,
+          "angularDamping": 0.1
+        },
+        "Resettable": {}
+      }
+    },
+    {
+      "id": "kubb-7",
+      "name": "Kubb 7",
+      "content": {
+        "type": "asset",
+        "asset": "kubb",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [0, 0.075, -0.05]
+      },
+      "components": {
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.07, 0.15, 0.07],
+          "density": 640,
+          "friction": 0.6,
+          "restitution": 0.15
+        },
+        "PhysicsBody": {
+          "state": "DYNAMIC",
+          "linearDamping": 0.1,
+          "angularDamping": 0.1
+        },
+        "Resettable": {}
+      }
+    },
+    {
+      "id": "kubb-8",
+      "name": "Kubb 8",
+      "content": {
+        "type": "asset",
+        "asset": "kubb",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [0.6, 0.075, -0.05]
+      },
+      "components": {
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.07, 0.15, 0.07],
+          "density": 640,
+          "friction": 0.6,
+          "restitution": 0.15
+        },
+        "PhysicsBody": {
+          "state": "DYNAMIC",
+          "linearDamping": 0.1,
+          "angularDamping": 0.1
+        },
+        "Resettable": {}
+      }
+    },
+    {
+      "id": "kubb-9",
+      "name": "Kubb 9",
+      "content": {
+        "type": "asset",
+        "asset": "kubb",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [1.2, 0.075, -0.05]
+      },
+      "components": {
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.07, 0.15, 0.07],
+          "density": 640,
+          "friction": 0.6,
+          "restitution": 0.15
+        },
+        "PhysicsBody": {
+          "state": "DYNAMIC",
+          "linearDamping": 0.1,
+          "angularDamping": 0.1
+        },
+        "Resettable": {}
       }
     },
     {
@@ -394,7 +535,8 @@
         },
         "StickState": {
           "phase": "RACKED"
-        }
+        },
+        "Resettable": {}
       }
     },
     {
@@ -432,7 +574,8 @@
         },
         "StickState": {
           "phase": "RACKED"
-        }
+        },
+        "Resettable": {}
       }
     },
     {
@@ -470,7 +613,8 @@
         },
         "StickState": {
           "phase": "RACKED"
-        }
+        },
+        "Resettable": {}
       }
     },
     {
@@ -508,7 +652,8 @@
         },
         "StickState": {
           "phase": "RACKED"
-        }
+        },
+        "Resettable": {}
       }
     },
     {
@@ -546,7 +691,8 @@
         },
         "StickState": {
           "phase": "RACKED"
-        }
+        },
+        "Resettable": {}
       }
     },
     {
@@ -584,7 +730,22 @@
         },
         "StickState": {
           "phase": "RACKED"
-        }
+        },
+        "Resettable": {}
+      }
+    },
+    {
+      "id": "reset-menu-panel",
+      "name": "Reset menu",
+      "content": {
+        "type": "asset",
+        "asset": "reset-menu"
+      },
+      "transform": {
+        "position": [0, 1.4, -0.6]
+      },
+      "components": {
+        "RayInteractable": {}
       }
     },
     {
@@ -666,6 +827,84 @@
       "transform": {
         "position": [4.2, 0, -4],
         "rotationDeg": [0, 150, 0]
+      }
+    },
+    {
+      "id": "rock-0",
+      "name": "Rock (large)",
+      "content": {
+        "type": "asset",
+        "asset": "rock-large-d",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [5, 0, -2],
+        "rotationDeg": [0, 45, 0]
+      }
+    },
+    {
+      "id": "rock-1",
+      "name": "Rock (small)",
+      "content": {
+        "type": "asset",
+        "asset": "rock-small-c",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [2.2, 0, -6.7],
+        "rotationDeg": [0, 10, 0]
+      }
+    },
+    {
+      "id": "rock-2",
+      "name": "Rock (tall)",
+      "content": {
+        "type": "asset",
+        "asset": "rock-tall-g",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [-2, 0, 0.8],
+        "rotationDeg": [0, 200, 0]
+      }
+    },
+    {
+      "id": "rock-3",
+      "name": "Rock (small)",
+      "content": {
+        "type": "asset",
+        "asset": "rock-small-g",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [4.5, 0, -0.5],
+        "rotationDeg": [0, 300, 0]
+      }
+    },
+    {
+      "id": "rock-4",
+      "name": "Rock (large)",
+      "content": {
+        "type": "asset",
+        "asset": "rock-large-b",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [-4.8, 0, -1.8],
+        "rotationDeg": [0, 120, 0]
+      }
+    },
+    {
+      "id": "rock-5",
+      "name": "Rock (small)",
+      "content": {
+        "type": "asset",
+        "asset": "rock-small-c",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [-2.5, 0, -6.5],
+        "rotationDeg": [0, 60, 0]
       }
     }
   ]
