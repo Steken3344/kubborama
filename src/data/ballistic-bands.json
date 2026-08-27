@@ -1,0 +1,7 @@
+{
+  "_comment": "Computed, physics-correct target bands for the backyard preset's 6m throw distance (docs/PLAN.md §9d1b). Used as the tuning lab's initial green bands until Erik's calibration throws replace them.",
+  "distanceM": { "min": 5.5, "max": 6.5 },
+  "releaseSpeedMps": { "min": 6.9, "max": 7.7 },
+  "flightTimeS": { "min": 0.83, "max": 1.3 },
+  "spinRadS": { "min": 3, "max": 13 }
+}

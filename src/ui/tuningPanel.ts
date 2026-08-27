@@ -1,8 +1,16 @@
 import { Pane } from 'tweakpane';
+import { ballisticBands, bandVerdict } from '../core/ballisticBands.js';
+import type { Band } from '../core/ballisticBands.js';
 import { activePreset, tuningParams } from '../core/tuning.js';
 import type { PresetId, TuningParamId } from '../core/tuning.js';
 import type { TuningLabSystem } from '../systems/tuningLab.js';
 import { presetBank } from '../tuningState.js';
+
+const VERDICT_SUFFIX = { low: ' ↓ low', ok: ' ✓', high: ' ↑ high' };
+
+function withVerdict(band: Band, value: number, unit: string): string {
+  return `${value} ${unit}${VERDICT_SUFFIX[bandVerdict(band, value)]}`;
+}
 
 const PARAM_IDS = Object.keys(tuningParams) as TuningParamId[];
 
@@ -58,30 +66,35 @@ export function createTuningPanel(tuningLab: TuningLabSystem): void {
       });
   }
 
-  const metersFolder = pane.addFolder({ title: 'Last throw' });
+  // Ballistic target bands (docs/PLAN.md §9d1b) show as a ✓/low/high
+  // verdict next to each reading — green bands until Erik's real
+  // calibration throws replace them.
+  const metersFolder = pane.addFolder({
+    title: 'Last throw (vs. target band)',
+  });
   const meterState = {
-    releaseSpeedMps: 0,
-    spinRadS: 0,
-    flightTimeS: 0,
-    distanceM: 0,
+    releaseSpeedMps: '—',
+    spinRadS: '—',
+    flightTimeS: '—',
+    distanceM: '—',
     style: '—',
     flipQualityScore: 0,
   };
   metersFolder.addBinding(meterState, 'releaseSpeedMps', {
     readonly: true,
-    label: 'Speed (m/s)',
+    label: 'Speed',
   });
   metersFolder.addBinding(meterState, 'spinRadS', {
     readonly: true,
-    label: 'Spin (rad/s)',
+    label: 'Spin',
   });
   metersFolder.addBinding(meterState, 'flightTimeS', {
     readonly: true,
-    label: 'Flight time (s)',
+    label: 'Flight time',
   });
   metersFolder.addBinding(meterState, 'distanceM', {
     readonly: true,
-    label: 'Distance (m)',
+    label: 'Distance',
   });
   metersFolder.addBinding(meterState, 'style', {
     readonly: true,
@@ -100,10 +113,26 @@ export function createTuningPanel(tuningLab: TuningLabSystem): void {
     if (!last) {
       return;
     }
-    meterState.releaseSpeedMps = Math.round(last.releaseSpeedMps * 100) / 100;
-    meterState.spinRadS = Math.round(last.spinRadS * 100) / 100;
-    meterState.flightTimeS = Math.round(last.flightTimeS * 100) / 100;
-    meterState.distanceM = Math.round(last.distanceM * 100) / 100;
+    meterState.releaseSpeedMps = withVerdict(
+      ballisticBands.releaseSpeedMps,
+      Math.round(last.releaseSpeedMps * 100) / 100,
+      'm/s',
+    );
+    meterState.spinRadS = withVerdict(
+      ballisticBands.spinRadS,
+      Math.round(last.spinRadS * 100) / 100,
+      'rad/s',
+    );
+    meterState.flightTimeS = withVerdict(
+      ballisticBands.flightTimeS,
+      Math.round(last.flightTimeS * 100) / 100,
+      's',
+    );
+    meterState.distanceM = withVerdict(
+      ballisticBands.distanceM,
+      Math.round(last.distanceM * 100) / 100,
+      'm',
+    );
     meterState.style = last.style;
     meterState.flipQualityScore = last.flipQualityScore;
     pane.refresh();
