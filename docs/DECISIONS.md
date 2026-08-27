@@ -517,3 +517,54 @@ synthetic fixed clock during `ecs_step`, or a different technique
 entirely (e.g. driving pose samples directly through a test-only
 seam in `ThrowingSystem` rather than through real XR device
 simulation). Out of scope to solve in this session.
+
+## 2026-08-27 — CRITICAL: top-level `await World.create(...)` breaks the production build
+
+Erik reported the deployed site was completely blank (both desktop
+browser and Quest VR). `npm run dev` and every emulator/MCP check this
+session had shown a working scene — because **the dev server was never
+the same code path as the production build**, and nobody had actually
+loaded the built (`vite build` + serve) output in a real browser since
+M0.
+
+Bisected with git worktrees (`v0.1-m0`, `v0.2-m1`) built and served
+headlessly via `playwright-core` (Chromium already cached locally at
+`~/.cache/ms-playwright`), watching `pageerror`/network/worker events:
+
+- `v0.1-m0`'s production build rendered fine (canvas present, 3 workers
+  spun up, WebGL activity).
+- `v0.2-m1`'s production build was blank — **even with the scene
+  emptied to `nodes: []` and the asset manifest emptied to `{}`**,
+  ruling out the court/pieces/Kenney assets/HDRI entirely. No console
+  error, no failed request, no page error — a silent hang, not a
+  crash.
+- Diffing `src/index.ts` between the two tags found the actual change:
+  M0's scaffold used `World.create(...).then((world) => {...})`; M1
+  rewrote it to top-level `await World.create(...)`. Reverting to
+  `.then()` in the M1 worktree fixed the production build completely
+  (HDRI, scene.json, all 6 GLBs, Havok WASM, canvas — everything
+  loaded). Applied the same fix to the real `src/index.ts`, rebuilt,
+  and reconfirmed with the same headless harness: `canvasCount: 1`.
+
+**Root cause, best understanding:** Vite/Rollup's production bundling
+of a top-level `await` in the entry module behaves differently from
+native browser ESM (which is what `npm run dev` actually ships
+unbundled) — something about how the entry chunk gets wrapped causes
+the awaited promise to never settle in the built output, while dev
+mode's native per-module ESM execution tolerates it fine. Did not dig
+further into _why_ Rollup's output breaks this — the fix (avoid
+top-level await on `World.create()`, use `.then()`) is what matters
+and matches the scaffold's own original pattern, which apparently
+existed for exactly this reason and was undone by rewriting `index.ts`
+in M1 without realizing the constraint.
+
+**Process lesson, now fixed:** the M0/M1 review gates never included
+"run `npm run build`, serve `dist/` for real, load it in a real
+browser." `npm run build` succeeding (compiles) and the deployed HTML
+returning 200 (server config right) are necessary but not sufficient —
+neither proves the app actually _runs_. Every milestone from here on
+must include a real production-build smoke test (`npm run build && npm
+run preview`, loaded in a real or headless browser, checking for a
+non-empty `#scene-container`) as part of the mechanical pass, not just
+`npm run dev` / the IWSDK emulator (which uses dev-mode, unbundled
+code) or a bare HTTP status check on the deployed URL.
