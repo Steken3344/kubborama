@@ -1,0 +1,69 @@
+KubbOrama — Prepp under dagen (innan kvällens M0-session)
+===========================================================
+
+DET BARA DU KAN GÖRA (gör i denna ordning — några har väntetid):
+
+1. META-UTVECKLARKONTO + UTVECKLARLÄGE (kan ta en stund — starta tidigt)
+   - Gå till developer.meta.com och skapa en (gratis) utvecklar-
+     organisation med ditt Meta-konto.
+   - I Meta Horizon-appen i mobilen: välj din Quest 2 → Headset-
+     inställningar → Utvecklarläge → PÅ. (Behövs först för USB/adb,
+     men kontot är bra att ha klart.)
+   - Ladda headsetet OCH kontrollerna. Kolla att headsetet är på samma
+     Wi-Fi som datorn.
+
+2. DATORN (Pop!_OS)
+   - Node 22:  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
+               (ny terminal) nvm install 22 && node --version
+   - gh:       sudo apt install gh   →   gh auth login
+               (GitHub.com → HTTPS → logga in via webbläsaren)
+   - Verifiera: git --version, gh auth status
+   - INTEGRITETSTIPS (publikt repo): din git-e-post syns i varje commit.
+     Vill du hålla den privat: GitHub → Settings → Emails → bocka i
+     "Keep my email addresses private", kopiera noreply-adressen
+     (ID+användarnamn@users.noreply.github.com) och kör:
+     git config --global user.email "DIN-NOREPLY-ADRESS"
+   - Valfritt (för framtida Godot-porten):
+               flatpak install flathub org.godotengine.Godot
+
+3. ARBETSMAPPEN
+   - Skapa t.ex. ~/dev/kubborama-start/
+   - Kopiera dit från KubbOrama-mappen:
+       CLAUDE_CODE_START_PROMPT.txt
+       IMPLEMENTATION_AND_ASSETS.txt
+       DERISK_FINDINGS.txt
+       GODOT_PLAN_B.txt
+       KUBB_RULES_REFERENCE.md   (ersätter KubbRoules.txt — sammanvägd
+                                  ur sex källor med VM-boken som norm)
+       fetch-assets.sh
+       SESSION_KIT/  (hela mappen — färdiga milstolpsdokument)
+
+GITHUB-PREPP (webbgränssnittet, säkra inställningar — ladda INTE upp
+några filer i repot: M0 kräver att det är tomt för första pushen!):
+   - Settings → Code security: slå på Secret scanning + Push protection
+   - About (kugghjulet på repots startsida): beskrivning + topics
+     (webxr, vr, kubb, meta-quest, threejs, game)
+   - Settings → Actions → General: kontrollera att Actions är tillåtna
+
+MODELLVAL (i Claude Code: /model):
+   - sonnet    = arbetshästen — kör milstolparna på denna (bäst tokens
+                 per krona; våra detaljerade dokument gör att den räcker
+                 långt). Sonnet 5 har dessutom 1M-kontextfönster.
+   - opusplan  = smart mellanläge: Opus tänker i planläge, Sonnet bygger
+                 — passar vårt "spec före kod"-flöde perfekt.
+   - opus/fable = eskalera selektivt (M2-kastkänslan, svåra fysikbuggar,
+                 review-grindarnas färska-ögon-agent). OBS: Fable kan
+                 dra usage credits beroende på plan — Claude Code frågar
+                 innan.
+   - /effort   = sänk för mekaniska sysslor, höj för svår debugging.
+
+4. IKVÄLL: cd ~/dev/kubborama-start && claude
+   → klistra in HELA innehållet i CLAUDE_CODE_START_PROMPT.txt som
+     första meddelande. Session 1 gör bara M0 och stannar för ditt
+     headset-test av emulatorscenen + den deployade länken.
+
+REDAN FÖRBERETT ÅT DIG (i SESSION_KIT/ — M0 använder dem i stället för
+att skriva dem från noll):
+   CLAUDE_MD_ADDITIONS.md   → blocket som M0 mergar in i genererade CLAUDE.md
+   MILESTONES.md            → M0-M6 med Definition of Done-kryssrutor
+   sessions/M1.md ... M6.md → färdiga kickoff-prompts för session 2-7

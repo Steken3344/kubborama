@@ -1,0 +1,132 @@
+# KubbOrama — Godot native-port research (Plan B, deep-dive)
+# All facts verified 2026-08-27 against official sources. This document
+# seeds the future port project; keep it with the other planning docs.
+
+## Verdict
+
+YES — Godot is the right engine for the native Quest version, and the
+case strengthened on every axis investigated. Unity-on-Linux exists (Hub
++ editor officially support Ubuntu) but remains the weaker choice here:
+Meta's XR SDK officially supports only Windows/macOS editors, no Quest
+Link on Linux, editor-centric workflow hostile to agent-driven coding,
+and Unity's licensing history vs Godot's MIT/free-forever.
+
+## Verified stack (2026-08-27)
+
+- Godot 4.7.2 stable (released 2026-08-18). MIT license, no fees ever.
+  Linux-native editor (x86_64/arm64), self-contained binary.
+- JOLT PHYSICS IS BUILT IN since Godot 4.4 — an alternative engine to
+  Godot Physics, developed "with a focus on games and VR applications".
+  For kubb (rigid-body impacts, stacks, tumbling sticks) Jolt is the
+  right choice: enable it in project settings. This materially de-risks
+  the port's physics quality.
+- OpenXR is core; godot_openxr_vendors (GDExtension; Godot Asset Store
+  for 4.7+) provides the full Meta feature set:
+    hand tracking (mesh/capsules/aim, simultaneous hands+controllers),
+    body & face tracking, passthrough (reconstruction/projection, color
+    mapping/LUT filters), scene manager + spatial anchors (persistent),
+    environment depth (occlusion), composition layers, color space,
+    DYNAMIC RESOLUTION, APPLICATION SPACEWARP (big perf headroom on
+    Quest 2), performance metrics, hybrid apps.
+  → Unlocks features the web version can't do: a PASSTHROUGH MR MODE
+    (play kubb on your real lawn!) and SpaceWarp-assisted 72→"120%"
+    smoothness on Quest 2.
+- Godot XR Tools 4.5.1 (needs Godot 4.4+): ready-made grab/throw/
+  locomotion helpers (verified earlier).
+- Full pipeline on Pop!_OS: editor, Android export (Android SDK + JDK +
+  gradle, all Linux-native), export templates per version. Distribution:
+  standard APK/AAB → Meta Horizon Store submission (plus Meta's VRC
+  technical requirements — research those at port time).
+
+## Vibe-coding toolchain for Godot (the worry, now answered)
+
+- godot-mcp (github.com/Coding-Solo/godot-mcp, 4.1k stars, active):
+    claude mcp add godot -- npx @coding-solo/godot-mcp
+  Gives Claude Code: launch editor/run project in debug, CAPTURE console
+  output and errors, create/edit scenes and nodes programmatically,
+  project structure introspection. The agent loop (edit → run →
+  read errors → fix) works without a human relaying output.
+- gdUnit4 v6.2.1 (supports Godot 4.3-4.7): GDScript/C# unit testing with
+  HEADLESS CLI execution, JUnit XML/HTML reports, GitHub Actions
+  integration, fuzzing, scene simulation with synthetic input, orphan-
+  node (leak) detection, flaky-test retries. → The TDD + CI discipline
+  from the POC transfers 1:1.
+- .tscn/.gd/.tres are TEXT files — diffable, reviewable, agent-editable.
+  Godot also runs `--headless` for CI builds/exports.
+- Honest deltas vs the WebXR setup: no equivalent of IWSDK's 32-tool
+  scene/ECS inspection MCP (godot-mcp is good but less deep), and the
+  test loop on hardware is build+sideload (minutes) instead of reload-
+  a-URL (seconds). The desktop editor preview + XR simulator covers most
+  iteration; the slower device loop is the price of native.
+
+## What migrates from the POC (most of the hard-won value)
+
+Directly reusable: all planning docs and the METHOD (milestone gates,
+review gates, tuning lab concept, golden-throw calibration, telemetry-
+driven feel work); config values (piece dimensions, masses, friction/
+restitution starting points, topple thresholds, court presets, ballistic
+target bands); assets (GLB models, KTX2 textures, HDRI, audio files —
+all standard formats Godot imports natively); i18n string tables (Godot
+has first-class localization; export our sv/en dictionaries to CSV/PO);
+stats/settings schemas (re-implement, same shape).
+Rewrite (small, mechanical): the pure-core TS modules → GDScript
+(reducers, state machines, throw-release math are small pure functions;
+the unit tests translate to gdUnit4 and the golden throws are
+RE-RECORDED against Jolt — never assume Havok-tuned values carry
+exactly).
+Lost/replaced: IWSDK-specific components (grab, spatial UI, emulator)
+→ XR Tools + Godot UI; Trystero (browser WebRTC) → Godot multiplayer
+(ENet/WebRTC peer) — the sync design (presence/transforms/events,
+thrower authority) carries, the transport changes.
+NOT available in Godot: Meta Avatars SDK (Unity/native only) — keep the
+Quaternius custom avatars, which we own end-to-end anyway.
+
+## Concept mapping table (IWSDK/web → Godot) — for the port session
+
+  IWSDK / web POC                    Godot 4 equivalent
+  ---------------------------------  --------------------------------------
+  PhysicsBody (Dynamic/Static)       RigidBody3D / StaticBody3D (Jolt)
+  PhysicsShape (capsule/box)         CollisionShape3D (Capsule/BoxShape3D)
+  PhysicsManipulation (velocity)     RigidBody3D.linear_velocity /
+                                     angular_velocity, apply_impulse()
+  OneHand/DistanceGrabbable          XR Tools: XRToolsPickable (+ ranged)
+  Grab handle end-offset             XRToolsGrabPointHand placement
+  AudioSource (positional)           AudioStreamPlayer3D
+  AudioSource (music, flat)          AudioStreamPlayer
+  DomeTexture + IBLTexture (HDR)     WorldEnvironment: PanoramaSkyMaterial
+                                     + ambient from sky (same .hdr file)
+  DirectionalLightComponent          DirectionalLight3D
+  Event bus (core/events.ts)         Autoload singleton with signals
+  UIKitML spatial panels             Viewport-on-3D-quad UI or XR Tools
+                                     viewport_2d_in_3d scenes
+  elics ECS systems                  Nodes + _physics_process (adapters)
+  Trystero (WebRTC rooms)            WebRTCMultiplayerPeer or ENet +
+                                     same sync design (thrower authority)
+  localStorage + zod                 FileAccess (user://) + typed loaders
+  vitest / fast-check                gdUnit4 (incl. fuzzing)
+  IWSDK MCP (32 tools)               godot-mcp + gdUnit4 headless
+  vite-plugin-pwa                    n/a (native APK) — keep the PWA live
+  Vite dev server                    Godot editor + `godot --headless`
+  Telemetry/golden JSON files        UNCHANGED — replayed against Jolt
+
+## POC portability rules (mirrored in the start prompt)
+
+The POC stores config, presets, i18n, stats schemas, ghosts and golden-
+throw recordings as engine-neutral JSON loaded by code (never code
+literals), keeps the pure core in "boring TS" with math documented in
+comments, keeps all assets in standard formats (GLB/KTX2/HDR/OGG), and
+derives scene layout from config. Port acceptance test: replay the
+golden-throw JSON against Jolt and tune until outcomes fall inside the
+recorded ranges — Erik's real throws are the contract between engines.
+
+## When to trigger the port (decision criteria, not dates)
+
+1. Store ambition: you want KubbOrama ON the Meta Horizon Store as a
+   native title (PWA-in-store is the lighter alternative — weigh both).
+2. Passthrough MR mode becomes a wanted feature (web passthrough is
+   limited; native is first-class).
+3. The web version hits a real performance ceiling that SpaceWarp/
+   native headroom would solve.
+4. Platform identity/social (real Meta username, friends, leaderboards)
+   justifies full Platform SDK.
+Until one of these is true, every hour goes further in the web version.

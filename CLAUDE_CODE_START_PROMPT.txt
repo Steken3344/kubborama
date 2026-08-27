@@ -1,0 +1,811 @@
+# KubbOrama — Claude Code start prompt
+# Paste everything below this line as the first message to Claude Code.
+# ---------------------------------------------------------------------
+
+You are helping me build **KubbOrama**, a VR prototype of the traditional
+Swedish lawn game **kubb** for **Meta Quest 2**. I develop on **Pop!_OS
+(Linux)**. This is a proof-of-concept: the core experience is standing in a
+garden and throwing a wooden stick (kastpinne) at kubb blocks so they topple
+over realistically. A full game with complete kubb rules comes later.
+
+## Tech stack (decided — do not re-litigate unless truly blocked)
+
+- **WebXR** using **Meta's Immersive Web SDK (IWSDK)** — `@iwsdk/core`
+  (currently v0.5.x on npm, actively maintained by Meta, MIT license).
+  It is built on Three.js + an ECS (elics), ships **Havok physics** running
+  in a web worker, and has **grab & throw interactions out of the box**
+  (e.g. `OneHandGrabbable`), locomotion, and desktop emulation.
+- Scaffold with (verified command):
+  `npm create @iwsdk@latest kubborama -- --yes --target vr --language ts --install --git`
+  The dev toolchain is Vite with `@iwsdk/vite-plugin-dev` (XR emulation in
+  a desktop browser + AI-agent/dev tooling). The scaffold auto-generates
+  .mcp.json (three MCP servers: iwsdk-runtime, iwsdk-reference, metavr),
+  its own CLAUDE.md, AGENTS.md and .claude/ skills — MERGE our rules into
+  that CLAUDE.md, never overwrite it, and restart Claude Code in the
+  project dir to pick up the MCP servers.
+- A companion file `DERISK_FINDINGS.txt` contains VERIFIED facts from a
+  successful test scaffold + build (exact API names like PhysicsBody/
+  PhysicsManipulation/OneHandGrabbable/AudioSource, dev-server facts,
+  Meta's super-three fork, resolved design knots for throwing/wind).
+  Read it before M0. PRECEDENCE RULE: where DERISK_FINDINGS.txt conflicts
+  with ANYTHING in this prompt or the plan — including instructions
+  flagged IMPORTANT — DERISK wins; it is the verified layer.
+- Language: **TypeScript**. No game engine editor is needed — everything is
+  code, which is exactly why we chose this stack.
+- Docs: https://iwsdk.dev and https://github.com/facebook/immersive-web-sdk
+  — consult them before inventing APIs; IWSDK is pre-1.0 so verify against
+  the installed version's typings, not from memory.
+- **Fallback only if IWSDK genuinely blocks us** (e.g. a physics feature we
+  can't reach): plain Three.js + Rapier (`@dimforge/rapier3d`) with
+  `renderer.xr` + VRButton. Ask me before switching.
+
+## Why this stack (for your context)
+
+Everything runs on Linux with just Node.js; no Android SDK, no APK builds,
+no sideloading, no Meta developer account needed for the prototype — the
+Quest 2 browser runs WebXR directly, and the desktop browser emulation gives
+an instant test loop without putting on the headset.
+
+## Testing on the Quest 2
+
+1. Primary loop: desktop browser with IWSDK's built-in emulation
+   (`npm run dev`, open the printed URL).
+2. On headset (the dev server already listens on 0.0.0.0 and the PORT IS
+   DYNAMIC — always get the real URL from `npx iwsdk dev status`, never
+   assume a number):
+   a. Simplest: open the DEPLOYED GitHub Pages URL in the Quest browser
+      (HTTPS for free, no dev mode, works from anywhere).
+   b. Same Wi-Fi against the live dev server: WebXR needs a secure
+      context — check whether `iwsdk dev` already serves HTTPS; if not,
+      add `@vitejs/plugin-basic-ssl` (pre-approved for this case only)
+      and open `https://<LAN-IP>:<port from dev status>`, accepting the
+      certificate warning.
+   c. USB (once the USB-C card arrives): `adb reverse tcp:<port> tcp:<port>`
+      with the port from `dev status`, open `http://localhost:<port>`
+      (localhost is a secure context; requires developer mode).
+   Set this up and document the exact steps in the README as part of M0.
+
+## Game design for the prototype
+
+Court and pieces (real kubb dimensions, meters):
+- Court from config preset (default backyard 6 x 3 m; tournament is 8 x 5 m)
+  on flat grass. ORIENTATION IS CRITICAL and easy to get wrong: the
+  BASELINES are the SHORT sides — the 5 kubbs stand evenly spaced along
+  the short (3 m / 5 m) edge, and the LONG dimension (6 m / 8 m) is the
+  throwing distance between the baselines. Player stands behind one
+  baseline; the king stands at the court's center point.
+- Court markings, authentic style (per reference photos in PICS/): real
+  kubb courts have NO painted lines — just 4 corner stakes (hompinnar,
+  thin wooden pins, often red-topped) and sometimes 2 centerline stakes.
+  Default: corner stakes only. Painted/faint dotted lines are an OPTIONAL
+  toggle in settings (on = beginner-friendly, off = authentic).
+- King: 9 x 9 x 30 cm, center of court.
+- Kubbs: 7 x 7 x 15 cm, five evenly spaced along the far baseline.
+- Throwing sticks (kastpinnar): 4.4 cm diameter, 30 cm long, six of them
+  LYING ON THE GRASS in front of the player's baseline, loosely scattered
+  like in a real kubb game (not in a rack).
+
+First-run experience (the whole POC IS this): the app starts DIRECTLY in
+the garden in free-throw mode — no menu, no lobby, nothing to click
+through. You put on the headset, you're standing outdoors on grass behind
+your baseline, six sticks lie at your feet, five kubbs and the king stand
+across the court, and you just start throwing. The settings panel and HUD
+exist but never gate entry. Open sky, garden horizon (trees/fence at the
+edges) — it must FEEL like standing outside even though you're in a room.
+
+Core loop (prototype scope ONLY):
+1. Player picks up a stick with either controller: direct grab (bend down,
+   grip button) AND distance grab — point at a stick on the ground and
+   pull it to the hand (IWSDK's DistanceGrabbable, verified API). Distance
+   grab matters for comfort: constantly crouching to the floor in VR gets
+   old fast, but bending down must still work for players who want the
+   real kubb feeling.
+2. Player throws it — and the throw physics must be HONEST in three
+   specific ways:
+   a. END GRIP: the hand holds the stick at one END (grip anchor in the
+      last ~8 cm), never at the center. This is what makes the
+      end-over-end flip emerge naturally from the swing — anchor at the
+      center and all rotation feel dies. Configure the grab component's
+      handle/anchor for this (spike the IWSDK handle API if unclear).
+   b. CORRECT RELEASE VELOCITY (the classic VR throwing bug): the stick's
+      center of mass is offset from the hand, so on release compute
+        v_com = v_hand + ω_hand × (p_com − p_hand)
+      and set { linearVelocity: v_com, angularVelocity: ω_hand } via
+      PhysicsManipulation. Copying raw controller velocity to the CoM
+      makes every throw feel subtly wrong. This math lives in the pure
+      core (throwRelease.ts) and is heavily unit-tested with recorded
+      controller sample series.
+   c. RELEASE TIMING IS THE SKILL: releasing at the right point of the
+      swing arc is what the player practices. Frame-average the release
+      velocity over a SHORT window (~3-5 frames, weighted toward the most
+      recent) — enough to kill sensor noise, never so much that release
+      timing feels laggy or "late".
+   d. SPIN STYLES MUST BOTH WORK — this is decisive for throw feel.
+      Real kubb players split into styles: flat/no-spin throws (Erik's
+      style) and heavy-BACKSPIN throws. The spin a player puts on the
+      stick decides its orientation at arrival (broadside = big hit
+      area) and how it behaves on ground contact (backspin "dies" or
+      kicks back; forward roll tumbles onward). Requirements:
+      - NO spin assist or normalization by default: the wrist's actual
+        angular velocity at release is what the stick gets — different
+        styles must EMERGE from the physics, never be scripted.
+      - Correct moment of inertia: the physics shape must be a capsule/
+        cylinder with the stick's real dimensions and mass so spin
+        behaves like a wooden stick, not a generic box.
+      - angularDamping is 0 by default in the engine — expose an
+        "angular damping in flight" tunable in the tuning lab (air
+        resistance on rotation is small but real), alongside the
+        existing spin multiplier.
+      - Magnus effect (spin-induced lift) is consciously OMITTED in the
+        POC — negligible for a dense wooden stick; note it in
+        docs/DECISIONS.md so nobody "fixes" it later without data.
+      - Ground-contact behavior under spin (backspin kick-back vs
+        forward tumble) comes from friction + restitution — tune these
+        against BOTH styles, not just one.
+      - The M2 calibration gate must record BOTH styles: Erik's flat
+        throws AND a set of deliberate backspin throws (Erik can fake
+        the style, or a friend supplies it). Golden regression tests
+        then cover two profiles — flat and backspin — each with
+        expected outcome ranges. Never tune one style without re-running
+        the other's goldens.
+   Underhand detection: kubb rules require vertical underhand throws
+   (end-over-end flip; "helicopter" spin is illegal). Implement a pure-core
+   classifier — inputs: the last ~0.5 s of hand poses + release velocity;
+   output: style (underhand / overhand / helicopter) + a 0-100 "flip
+   quality" score (how well the spin axis is horizontal and perpendicular
+   to the throw direction). Show the result after each throw: a HUD badge
+   ("Underhand ✓" / "Helicopter!") and a flip-quality meter in the tuning
+   lab. Do NOT reject illegal throws in the POC — inform, never punish
+   (rule enforcement is a later option, as planned).
+3. Gravity acts on the stick; a **wind** vector adds a constant lateral
+   force while airborne.
+4. A kubb hit hard enough topples. Count a kubb as "felled" when its local
+   up-axis tilts more than ~60 degrees from world up and it comes to rest.
+   Show a simple HUD/scoreboard: sticks thrown, kubbs felled, king felled.
+   MICRO-GOAL (what makes the sandbox feel like a game): free-throw mode
+   is played in ROUNDS of 6 sticks. The round's goal: fell all 5 kubbs,
+   then the king. When the 6th stick settles (or the king falls), show
+   the round result — kubbs felled, sticks used, "court cleared!" if all
+   6 pieces fell — plus the session's PERSONAL BEST, then auto-reset for
+   the next round after a few seconds. No rules engine, no turns — just
+   purpose, a reason to throw again, and a number to beat.
+   STATS & PERSONAL BESTS (core/stats.ts, pure core, fed by the same
+   event bus as scoring — one source of truth, DRY):
+   - Per round: kubbs felled, sticks used, court cleared or not.
+   - Personal bests (persisted): fewest sticks to clear the court, most
+     kubbs felled in a round, longest streak of cleared rounds, LONGEST
+     THROW (release point → landing point, meters — from the telemetry
+     the throw system already records), and longest FELLING throw (the
+     greatest distance at which a throw toppled a kubb — the bragging
+     stat).
+   - Lifetime totals (persisted): rounds played, total throws, total
+     kubbs felled, kings felled, courts cleared, TOTAL PLAY TIME (count
+     active in-XR time, not page-open time; shown as h:mm), and HIT
+     ACCURACY — throws that felled at least one piece / total throws,
+     shown as a percentage both lifetime and for the current round.
+   - Persistence in localStorage behind a VERSIONED zod schema (schema
+     version field + migration path), because the stats shape WILL grow:
+     the schema reserves a matches section (wins/losses vs AI, vs ghosts,
+     vs live opponents) AND an optional userId field — a future store-
+     installed PWA can read Meta's app-scoped user id (Digital Goods API,
+     getLoggedInUserId) and it becomes the stable key for stats. Identity
+     roadmap details are in IMPLEMENTATION_AND_ASSETS.txt section 10.
+   - LOCAL PROFILE: at first run, ask the player for a display name
+     (spatial UI keyboard; skippable, default "Player"). Stored with
+     settings, editable in the settings panel, shown on the HUD and —
+     later — on the multiplayer avatar name tag. No accounts in the POC:
+     plain web apps get no Meta identity by design.
+   - HUD shows current round + the relevant personal best; a stats tab on
+     the settings panel shows the full list (all strings via i18n).
+   - PROGRESS TRACKING (skill development over time — "am I getting
+     better?"). In the POC (cheap, the data already exists per throw):
+       * per-hand accuracy — left vs right hand hit % (fun and useful)
+       * average flip quality — the underhand classifier's 0-100 score,
+         rolling average of the last 50 throws vs lifetime; the clearest
+         "your technique is improving" number
+       * form curve — hit accuracy over the last 50 throws vs lifetime
+         accuracy, so improvement is visible ("form: 62% ↑ / career 48%")
+       * personal-best history — each PB stored with a timestamp, so the
+         stats tab can show WHEN records fell (a progression timeline)
+     Post-POC (schema reserves fields now, built later — file as issues):
+       * grouping radius — spread of landing points around their center,
+         the throwing equivalent of shot grouping; consistency IS skill
+       * accuracy per distance band (near/mid/far kubbs)
+       * first-throw strike rate per round
+       * king stats — attempts, hit rate, longest king fell
+       * play streaks — days-in-a-row played, sessions per week
+       * small achievement badges (first cleared court, 100 kubbs felled,
+         perfect round 6-for-6...) — ties into the progression lens
+     All stats are LOCAL to the device (localStorage) — no accounts, no
+     tracking, nothing leaves the headset. Show only a handful of numbers
+     on the HUD; the full list lives in the stats tab. Never let stats
+     UI clutter the core throwing experience.
+   - Stats derive ONLY from events (RoundEnded, KubbFelled, KingFelled,
+     CourtCleared...) and throw telemetry — never counted ad hoc in UI
+     code; the stats reducer is unit-tested with event sequences (TDD).
+5. Knocking the king counts separately (in real rules, felling the king
+   early = instant loss — just display it, no rule enforcement yet).
+6. A "reset round" action (controller button + a spatial UI button) puts
+   all pieces and sticks back.
+
+Tunables — put these in ONE config module (`src/config.ts`) because later
+versions make them player-adjustable options:
+- gravity (default 9.81 m/s²), wind vector (default 0), stick mass 0.29 kg,
+  kubb mass 0.47 kg, king mass 1.45 kg (density-computed birch defaults —
+  see the plan; material preset pine/birch/rubberwood scales them),
+  friction/restitution, topple angle
+  threshold, named camera poses, and court size as PRESETS (tournament
+  8x5 m, backyard 6x3 m, kids 5x2 m — POC uses backyard 6x3 by default,
+  it suits a garden and is beginner-friendly).
+Environment/background (garden) should also be swappable later — keep the
+environment in its own module/entity group.
+
+Out of scope for the prototype (do not build yet): full rule engine, turns,
+field kubbs, opponent/AI, multiplayer, hand tracking, sound design beyond
+simple hit sounds, menus beyond reset + wind/gravity debug sliders, and the
+spectator/grandstand view, avatars and realtime multiplayer. BUT: a future
+spectator mode (third-person side view on external screens) AND realtime
+multiplayer with visible avatars (opponent's head/hands live, voice chat,
+avatar picked at start) are both planned, and both are fed by the same
+state-sync architecture. Follow the four cheap preparation rules from
+IMPLEMENTATION_AND_ASSETS.txt (sections 8 and 10): keep simulation state
+separated from rendering, put named camera poses in config.ts, route all
+game events through one event bus, and treat the local player's head and
+hands as ordinary ECS entities with transform components from day one.
+
+## Milestones — work in this order, commit per milestone
+
+- **M0 Setup**: verify Node ≥ 20, scaffold the IWSDK app, git init, make the
+  emulator scene run on desktop, set up the GitHub Pages deploy via Actions
+  (see Git & GitHub below) with CI running typecheck + build, write README
+  with the Quest 2 testing steps above. Then park the headset-verification
+  gate for me — and if I'm away, continue per the Autonomous operation
+  rules with work that doesn't depend on it (M1 scene building in the
+  emulator is safe).
+- **M1 Scene**: garden ground plane + simple sky/lighting, corner stakes,
+  king + 5 kubbs + 6 sticks placed correctly, all as physics bodies at real
+  dimensions (player eye height 1.6 m — the verified emulator standing
+  height; use it consistently in scripted MCP throws too). Run
+  fetch-assets.sh (committed at repo root) as part of M1 asset work.
+- **M2 Throwing**: grab/release with correct velocity transfer (average the
+  controller velocity over the last few frames before release, never a
+  single-frame sample); sticks fly, bounce and rest believably; tune
+  mass/friction so it feels like wood. Include the pure-core IMPACT
+  DETECTOR (|Δv| per tick above threshold = impact, magnitude = force;
+  no collision-event API exists — see DERISK; M3 reuses its events),
+  haptics (grab tick, release click, impact rumble scaled by the
+  detector's force) and throw telemetry (log release speed, spin, flight
+  time, landing point per throw) — tune with numbers, not guesswork.
+  Model each stick as a state machine:
+  Racked → Held → Flying → Settled.
+  **M2 also delivers the THROW TUNING LAB** — throw feel must end up
+  perfect, so it gets a first-class, in-app tuning UI that Erik and
+  Claude both read the same way:
+  - Every feel parameter is exposed as a NORMALIZED 0-100 value with the
+    real unit alongside, e.g. "Stick mass 42/100 (0.29 kg)": velocity
+    transfer multiplier, angular (spin) multiplier, release smoothing
+    window, stick mass, friction, restitution, gravity, wind. The 0-100
+    mapping per parameter (min/max of its sane range) is defined ONCE in
+    config.ts and documented there — 0-100 is the shared language for
+    tuning conversations ("try raising spin from 35 to 50").
+  - After every throw, live METERS (0-100 bars) show that throw's
+    telemetry: release speed, spin rate, flight time, distance. Once
+    reference throws exist (M2 headset gate), each meter shows a green
+    target band so both of us instantly see "too hard / too flat /
+    too much spin" at a glance.
+  - Three preset slots (A/B/C) switchable instantly IN VR mid-session to
+    compare feels back-to-back, plus "export preset as JSON" (clipboard +
+    console) so Erik can paste the exact numbers into our chat, and
+    import to load numbers Claude proposes. Presets persist and every
+    telemetry log records which preset was active.
+  - The lab is the same state in both UIs: tweakpane panel on desktop,
+    spatial panel in VR. It is dev tooling — hidden behind a debug toggle,
+    not part of the player-facing settings.
+- **M3 Toppling, rounds & stats**: topple/felled logic (the |Δv| impact
+  detector is built in M2 — haptics needs it; M3 consumes its events),
+  the ROUND micro-goal loop (6 sticks per round, round result, auto-
+  reset), core/stats.ts with personal bests and lifetime totals behind
+  the versioned zod schema, HUD with round counts + relevant PB, reset
+  action. (The underhand classifier + flip-quality meter belong to M2;
+  the local profile + full stats tab belong to M4.)
+- **M4 Wind, tunables & settings**: wind force applied to airborne bodies,
+  dev debug panel with sliders for wind strength/direction and gravity.
+  Plus the PLAYER-FACING settings panel (spatial UI, separate from the dev
+  panel): music volume, SFX volume, haptics toggle + intensity (the config
+  values exist since M2, defaults on/100), language (Swedish/English),
+  game mode Simple/Advanced, and the LOCAL PROFILE name (first-run prompt
+  is a NON-BLOCKING panel — throwing must work before it's answered) +
+  the full stats tab. Settings persist in localStorage (zod-validated on
+  load, sane defaults on bad/missing data). Game modes map to config
+  presets with CONCRETE values: Simple = backyard 6x3 court, wind 0,
+  topple threshold 50°; Advanced = tournament 8x5 court, wind default
+  1.5 m/s lateral, topple threshold 60°. SIMPLE IS THE SHIPPED DEFAULT
+  MODE — on first run the config adopts Simple's full preset (so topple
+  = 50°; the standalone 60° default mentioned elsewhere applies only in
+  M1-M3 before modes exist).
+  Optional flourish: a handful of drifting leaf particles (three.quarks)
+  as a visible wind indicator for direction and strength.
+- **Haptics library (part of M2)** — use the controller hardware fully.
+  Mechanism (verified): IWSDK's StatefulGamepad exposes the raw
+  XRInputSource; standard WebXR haptics is
+  inputSource.gamepad.hapticActuators[0].pulse(intensity 0-1, durationMs).
+  Quest 2 Touch = one actuator per controller, simple pulses only (no
+  waveforms) — design patterns as short pulse sequences. Build
+  core/haptics.ts with NAMED patterns (data, pure core, unit-testable):
+    grabTick        light 0.3 × ~15 ms when a stick is gripped
+    releaseClick    crisp 0.5 × ~20 ms at release
+    impactRumble(f) intensity 0.2-1.0 and 30-80 ms scaled by the impact
+                    detector's force; fires on the hand that threw the
+                    stick (each stick remembers its last thrower)
+    kubbFelled      double pulse (short-short)
+    kingFelled      celebration triple pulse
+    roundCleared    rising three-pulse sequence
+    uiTick          0.15 × ~10 ms on settings-panel interactions
+  Rules: pulses are driven by EVENTS (grab/release/impact/felled — never
+  per-frame), always route to the correct hand, and always optional-chain
+  hapticActuators (absent in hand-tracking mode and in the emulator —
+  silent no-op, never a crash). Settings panel gets a haptics toggle
+  (+ intensity slider 0-100 like everything else). Haptics can only be
+  FELT on the real headset — it's part of the M2 headset gate checklist.
+- **M5 Polish for POC**: hit/thud sounds, cozy background music (calm
+  acoustic/folk loop from Pixabay Music — free commercial use, no
+  attribution; log every audio file + source + license in ASSETS.md; note
+  FreePD shut down in 2025, don't use it), separate music and SFX volume
+  channels wired to the M4 settings, small visual feedback on felled
+  kubbs, verify comfortable 72 Hz performance on Quest 2 (low-poly meshes,
+  no heavy post-processing, keep draw calls low, no allocations in
+  per-frame hot paths — pool vectors/objects to avoid GC frame drops).
+  Optional if time allows: slow-motion replay from the kingCam when the
+  king topples — a big payoff moment for little code.
+- **M6 (optional) PWA packaging**: add a web app manifest + icons +
+  service worker so the game can be installed from the Quest browser as a
+  PWA — it then gets its own icon in the Quest app library and launches
+  fullscreen like a native app, with no visible browser chrome. Goal: the
+  POC should feel like a real game from launch to play, not a website.
+
+## Portability rules — keep the Godot door open (see GODOT_PLAN_B.txt)
+
+A native Godot port is the planned Plan B. These POC rules make that
+migration cheap; none of them cost meaningful effort now:
+
+- **Everything valuable lives in engine-neutral JSON, not in code.**
+  Config values, court presets, 0-100 tuning mappings, tuning presets,
+  i18n dictionaries, stats/settings schemas, ghost recordings, and —
+  most importantly — the GOLDEN THROW RECORDINGS (controller pose
+  series + expected outcome ranges) are all stored as JSON files that
+  the TS modules LOAD, never as TS literals. Godot reads JSON natively:
+  the calibration data becomes the port's acceptance-test suite, and
+  Erik's recorded throws replay against Jolt physics unchanged.
+- **Boring TypeScript in the pure core.** Core modules use plain
+  functions and plain data — no fancy generics, no decorators, no
+  TS-exotica — and every non-obvious algorithm carries its math in a
+  comment (v_com = v_hand + ω × r etc.). Translation to GDScript must
+  be mechanical, not archaeological.
+- **Assets stay in standard formats** (GLB, KTX2, HDR, OGG/WAV) that
+  Godot imports natively — never convert anything INTO an IWSDK-only
+  format that isn't derived from a standard source in the repo.
+- **Scene layout derives from config**, never hand-authored in
+  IWSDK-specific scene files beyond what the scaffold requires — the
+  court builds itself from piecePositions(preset) in any engine.
+
+## Debug & observability (built in M1, not bolted on later)
+
+The app must be easy to debug for BOTH of us — and "both" includes you:
+everything below is designed so you can read the app's behavior through
+your MCP tools without a human relaying what happened.
+
+- **Structured logger** (pure core, core/log.ts): no raw console.log
+  anywhere. Every message goes through the logger with a level and a
+  channel tag — [throw], [physics], [grab], [state], [audio], [net],
+  [i18n], [settings]. Consistent prefix format, because
+  browser_get_console_logs supports pattern filtering: the tags exist so
+  you can pull exactly the channel you're debugging.
+- **Global error capture from M0**: window.onerror + unhandledrejection +
+  XR session failures are caught, logged with stack + the last ~20 log
+  lines of context, and — critically — shown IN-HEADSET as a red error
+  toast (the console is invisible when you're wearing the headset; errors
+  must never vanish silently). Error capture ships in production too;
+  the rest of the debug UI is dev-only.
+- **In-VR debug overlay** (toggle on the debug panel): FPS/frame time,
+  each stick's state-machine state, last throw's telemetry summary,
+  active tuning preset, last 5 log lines.
+- **State dump**: one command (console + reachable via MCP) that dumps
+  the full game state as a single JSON blob — piece transforms and
+  states, config values, settings, version. Pairs with your ecs_snapshot/
+  ecs_diff tools for frame-by-frame physics debugging.
+- **Debug report export**: one action bundles last N logs + errors +
+  throw telemetry + active preset + versions into one JSON for pasting
+  into our chat. When Erik says "something felt wrong", this file is the
+  answer to "what happened?".
+
+Hand tracking note: the scaffold enables handTracking as an optional XR
+feature and the input layer supports it — leave it enabled, but
+controllers stay the primary throwing input (bare-hand release precision
+isn't good enough for throw feel yet; revisit post-POC per the backlog).
+
+## Implementation & asset plan
+
+A companion file `IMPLEMENTATION_AND_ASSETS.txt` is provided next to this
+prompt. It contains the module architecture, exact geometry and physics
+parameters for every piece, verified CC0 texture/HDRI picks (Poly Haven,
+ambientCG, Kenney), the audio plan and the Quest 2 performance budget.
+Copy it into the repo root as TEMPORARY input for M0; during the M0
+document decomposition its content becomes docs/PLAN.md (the single
+living document) and the root copy is DELETED — never keep two copies.
+Commit fetch-assets.sh to the repo root (it runs in M1). Follow the plan;
+deviate only with a stated reason.
+
+## How we work together (AI workflow — as important as the tech rules)
+
+- **One milestone per session.** This session does M0 only (plus this
+  setup). Each later milestone runs in a FRESH session. Files are the
+  memory, not the chat: CLAUDE.md (constitution: decisions, rules,
+  toolchain), the implementation plan in the repo (living document —
+  update it when decisions change), and GitHub issues (backlog).
+- **M0 includes DOCUMENT DECOMPOSITION** — this start prompt is a one-time
+  bootstrap; future sessions must never need to re-read it. A SESSION_KIT/
+  folder is provided next to this prompt with PRE-AUTHORED versions:
+  CLAUDE_MD_ADDITIONS.md (the block to merge into the generated
+  CLAUDE.md), MILESTONES.md (M0-M6 with DoD checkboxes), and
+  sessions/M1.md-M6.md (the future kickoff prompts). USE THESE — copy
+  them into place (docs/, and merge the additions into CLAUDE.md),
+  adjusting only where reality diverged during M0; do not re-author from
+  scratch. The full decomposition target:
+    CLAUDE.md          — merge our rules into the generated one, then keep
+                         it LEAN (target < ~200 lines): only the rules that
+                         apply to every session (language, TS/testing
+                         rules, functional core, issue rule, three-
+                         alternatives rule, toolchain) + pointers to docs/.
+                         CLAUDE.md auto-loads every session — it is the
+                         real memory; everything in it costs every session,
+                         so nothing verbose lives there.
+    docs/PLAN.md       — the implementation & asset plan (from
+                         IMPLEMENTATION_AND_ASSETS.txt), living document.
+    docs/MILESTONES.md — M0-M6 definitions with definition-of-done, status
+                         checkboxes, and gate notes.
+    docs/DECISIONS.md  — append-only decision log (date, decision, why):
+                         spikes' findings, tuning conclusions, API gotchas.
+    docs/RULES_REFERENCE.md ← KUBB_RULES_REFERENCE.md (copied as-is; the
+                         normative kubb rules + glossary for M3+ and the
+                         future rules engine)
+    docs/GODOT_PLAN_B.txt ← copied as-is (CLAUDE.md and M6 point to it)
+    docs/sessions/M1.md ... M6.md — a SHORT kickoff prompt per milestone
+                         (~20 lines: read CLAUDE.md + the relevant PLAN
+                         sections, build this, DoD is that, and END with
+                         the milestone review gate from CLAUDE.md).
+                         Starting a new session then means pasting one
+                         small file — never this big prompt again.
+  DERISK_FINDINGS.txt merges into docs/DECISIONS.md; the Swedish research
+  notes stay in Erik's OneDrive folder (his reference, not the repo's).
+- **MILESTONE REVIEW GATE — no milestone is "done" without it.** We never
+  build on an unreviewed foundation; small faults get caught before they
+  become load-bearing. Between every milestone, in this order:
+  1. Mechanical pass: typecheck + lint + all tests green in CI, coverage
+     of the milestone's pure-core logic confirmed — and the commit history
+     shows test-first (TDD) order for pure-core changes.
+  2. Fresh-eyes code review: review the milestone's diff with a SEPARATE
+     subagent (or a fresh session) that has NOT seen the implementation
+     context — same-context self-review is weak. Checklist: functional-
+     core boundary respected (no three.js/IWSDK imports in core), no
+     hardcoded user-facing strings, no allocations in per-frame paths,
+     config values defined once, SI units + naming convention, zod at
+     untrusted boundaries, no duplicated logic.
+  3. Adversarial pass: actively try to break what was built — grab two
+     sticks at once, release mid-grab, throw straight down, set every
+     tuning slider to 0 and 100, spam reset during flight, kill the
+     network (later milestones). What breaks becomes a fix or an issue.
+  4. Review summary to me: what was built, what was verified and HOW,
+     known weaknesses, debt taken on (with issue links), and a clear
+     go/no-go recommendation. I approve before the next milestone starts.
+     A finding that undermines the foundation is fixed NOW, not filed.
+  5. Only after my go: update docs/MILESTONES.md status, tag the
+     milestone, write the handover.
+- **End-of-session ritual** (always, before stopping): update CLAUDE.md
+  with decisions made, update the plan if reality diverged from it,
+  UPDATE README.md if anything user-facing changed (the public repo's
+  shop window: play URL, feature list, setup/testing steps, screenshots
+  once they exist — a README that lies about the game is a bug), file
+  remaining findings as issues, and write a short handover summary (what
+  works, what's untested, where to start next). A fresh session must be
+  able to continue cold from the repo alone.
+- **Spec before code, per milestone.** Start each milestone by writing a
+  short plan — what will be built, in which files, and how it will be
+  verified — and get my approval before implementing.
+- **Headset gates with structured feedback** after M0, M2 and M5: I test
+  on the Quest 2 and report using concrete terms (too floaty/too heavy,
+  releases early/late, spins too fast/slow) together with the telemetry
+  numbers. Never tune "feel" from adjectives alone — always pair my words
+  with the logged data.
+- **Calibration by demonstration (during the M2 gate):** when I test
+  throwing, persist the telemetry of my real throws (10-15 throws:
+  release velocity, spin, flight time, landing point) to a JSON file.
+  Use my good throws as ground truth: tune physics until simulated
+  outcomes match them, and turn the best ones into golden regression
+  tests. My throws teach you the feel — not my descriptions.
+- **Spike rule:** when an IWSDK API is uncertain (pre-1.0!), time-box a
+  throwaway spike (~30 min) to prove the API works as believed BEFORE
+  building design on top of it. Delete the spike, keep the knowledge
+  (note it in CLAUDE.md).
+- **Three alternatives rule:** whenever you need my input on an open
+  question (a design choice, a visual style, a UX flow, an approach with
+  real trade-offs), present exactly THREE alternatives — each with one
+  line on what it means and its main trade-off — plus your recommendation
+  and why. I pick fast, you build. Don't use this for trivial choices
+  with an obvious convention (just pick those yourself and note it), and
+  don't come with an open-ended "what do you want?" — always arrive with
+  options.
+
+## Autonomous operation (when Erik is away — which will be often)
+
+I will frequently let you work unattended for long stretches. When I'm
+not responding, DO NOT stall — switch to autonomous mode and keep
+delivering, under these rules:
+
+- **Decide instead of asking.** The three-alternatives rule becomes:
+  still formulate the three options, PICK the one you'd recommend, and
+  record all three + your choice + reasoning in docs/DECISIONS.md under
+  a "Decided autonomously" heading so I can audit and reverse later.
+  Collect anything that genuinely needs my answer in docs/QUESTIONS.md
+  (batched, with your suggested default per question) — never block on it.
+- **Reversible-only autonomy.** Autonomous decisions must be cheap to
+  reverse: code, tests, docs, issues, tuning presets, asset picks from
+  the approved CC0 sources. Things you may NOT do alone: force-push or
+  rewrite git history, delete branches/releases, change the deploy
+  target or repo visibility, add dependencies outside the pre-approved
+  list, spend money, or publish anywhere new. If the only way forward is
+  irreversible, prepare everything, write up the decision needed, stop.
+- **Human gates stay human.** The gates that need my body — first
+  headset run (M0), throw-feel calibration (M2), on-headset perf pass
+  (M5) — are parked, never self-approved. But parking a gate does not
+  mean idling: continue with work that does NOT build on the unverified
+  result (M1 scene layout doesn't need M0's headset check; M3 topple
+  logic pure-core TDD doesn't need M2's feel numbers; docs, tests, CI,
+  issue grooming and asset pipeline are always safe). Work that would
+  BAKE IN an unverified assumption waits.
+- **All other review gates run fully and self-approve.** Fresh-eyes
+  subagent review, adversarial pass, checklist — all of it, exactly as
+  specified. Write the go/no-go summary as usual; a self-approved "go"
+  must say so explicitly in docs/MILESTONES.md.
+- **Anti-thrash stop condition.** If the same problem survives ~3
+  distinct approaches, or a spike fails twice: stop hammering. File the
+  blocker as an issue with everything you learned, pick up other work,
+  and put the blocker at the top of docs/QUESTIONS.md.
+- **Leave a trail I can replay.** Small commits as always, plus a running
+  docs/SESSION_LOG.md: timestamped entries for milestones passed,
+  decisions taken, issues filed, gates parked. When I come back, reading
+  SESSION_LOG.md + QUESTIONS.md top-to-bottom must be enough to catch up
+  in five minutes and give you every answer you're waiting for.
+
+## Working rules
+
+- All code comments, identifiers, README and git commit messages in
+  **English**. Talk to me in **Swedish** in the chat.
+- **TypeScript strict** from M0: "strict": true + noUncheckedIndexedAccess
+  + exactOptionalPropertyTypes; typescript-eslint with no-explicit-any as
+  error; prettier.
+- **Functional core, imperative shell** — the testability rule: ALL game
+  logic (topple math, scoring reducer, state machines, court layout, wind
+  force, throw-release math from controller samples, config, replay/ghost
+  encoding) lives in pure TS modules that import NOTHING from three.js/
+  IWSDK/Havok — plain data in, plain data out. Rendering, XR input and
+  physics are thin adapters around that core. This lets most of the game
+  be unit-tested in Node without a headset.
+- **TDD for the pure core — tests come FIRST.** Red → green → refactor:
+  for every pure-core function or behavior change, write the failing
+  vitest test before the implementation, make it pass, then clean up.
+  Commit so the sequence is visible (test + impl in small commits).
+  The pragmatic boundary: TDD applies to the functional core (where
+  inputs/outputs are plain data); adapters (rendering, XR input, Havok
+  bindings) are NOT test-driven — they're covered by the golden-throw
+  regression and emulator/MCP verification instead. Use fast-check for
+  a few property-based tests where they pay off. The throw-release math
+  (frame-averaged velocity + lever-arm term from recorded controller
+  samples) is the most important unit under test in the project.
+  Each milestone's DoD still includes: pure-core logic covered, and
+  typecheck + lint + tests green in CI.
+- **DRY — every piece of knowledge lives in exactly ONE place.** Piece
+  dimensions, masses, the 0-100 tuning mappings, court presets, topple
+  threshold, i18n strings, event names, zod schemas: defined once
+  (config.ts / core modules) and imported everywhere else — never
+  re-typed, never copy-pasted. When the same LOGIC appears a second
+  time, extract it then and there. But DRY applies to knowledge, not to
+  incidental similarity: don't force two things that merely look alike
+  today into one premature abstraction — duplication is cheaper than
+  the wrong abstraction. The review gate already checks "config values
+  defined once" and "no duplicated logic"; treat violations as findings.
+- **Determinism**: no Math.random() in game code — inject a seedable RNG.
+  SI units everywhere (meters, seconds, radians, kg); suffix ambiguous
+  names (speedMps, angleRad). Golden physics tests assert ranges, never
+  exact positions.
+- **zod** at untrusted boundaries (persisted config now; peer messages
+  and ghosts later): types check compile time, zod checks runtime.
+- **i18n from day one** — the game is called **KubbOrama** and the UI must
+  support multiple languages. NO hardcoded user-facing strings anywhere:
+  every string goes through a small typed i18n module in the pure core
+  (a `t(key)` function over typed dictionaries; missing-key = type error).
+  Ship Swedish and English from the start; default to the browser
+  language, fall back to English; the language setting lives in the M4
+  settings panel and persists. Verify early that the spatial UI font
+  atlas includes å ä ö Å Ä Ö — MSDF/glyph atlases often omit them, and
+  it's cheaper to catch in M1 than after all UI is built.
+- Small, frequent commits (conventional commits style), one logical change
+  per commit.
+- MERGE into the scaffold-generated `CLAUDE.md` (never create a new one,
+  never overwrite — its IWSDK guidance is valuable): the stack decision,
+  the config-module rule, the milestone plan, and the testing loop — so
+  future sessions stay on track.
+- Pin dependency versions in package.json (IWSDK is pre-1.0; avoid
+  surprise breakage).
+- Verify each milestone in the desktop emulator BEFORE asking me to test
+  on the headset — and do it through IWSDK's own MCP servers: the
+  scaffold auto-generates .mcp.json (iwsdk-runtime, iwsdk-reference,
+  metavr) with 32 tools — scene inspection, simulated controller input,
+  screenshots, ECS debugging, an embedded Playwright browser. Restart
+  Claude Code in the project dir to pick them up (no manual wiring), use
+  ai mode 'collaborate' when I'm watching and 'agent' for autonomous
+  runs/CI. Also add these MCP servers
+  in M0: chrome-devtools-mcp (console/network/performance traces — later
+  attachable to the Quest browser over adb for on-headset profiling) and
+  context7 (current library docs — IWSDK is pre-1.0). Record the full
+  tool/MCP setup in CLAUDE.md.
+- If an IWSDK API doesn't exist as documented, read the installed package's
+  .d.ts files under node_modules to find the real API before working around
+  it, and prefer IWSDK's built-ins over custom code.
+- Ask me before adding any dependency beyond the scaffolded ones — EXCEPT
+  the pre-approved, verified library list in IMPLEMENTATION_AND_ASSETS.txt
+  section 12 (vite-plugin-pwa, tweakpane, trystero, nanoid, qrcode, vitest,
+  playwright, gltf-transform, etc.); add those when their milestone needs
+  them. Never add a second physics engine, grab system or UI kit — IWSDK
+  already bundles these.
+
+## Preflight check — do this FIRST, before any other M0 work
+
+Verify that you have the tools and MCP servers this project relies on.
+For anything missing, do not silently work around it: tell me exactly
+what is missing, why the project needs it, and give me the exact commands
+to set it up (or run them yourself where you safely can). Re-run the
+check after fixes and report a pass/fail table before continuing.
+
+The dev machine is LINUX (Pop!_OS, Ubuntu-based, apt) — all commands and
+paths must assume Linux; never suggest Windows/macOS-only tooling.
+
+1. CLI tools (check with `which`/`--version` via Bash):
+   - node matching the scaffold's engines range: >=20.19 <21, or
+     >=22.12 <23, or >=24 — simplest: Node 22 LTS. A bare "≥20" check is
+     NOT enough (20.0-20.18, 21.x and 22.0-22.11 fail npm's engines
+     check). Install via nvm:
+     `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash`
+     then `nvm install 22`
+   - git (required)
+   - adb (optional until headset USB testing):
+     `sudo apt install adb android-sdk-platform-tools-common`
+     The second package installs the udev rules Linux needs for USB access
+     to the Quest — without them `adb devices` shows "no permissions".
+     If the device still doesn't show: replug USB, put the headset on and
+     accept the "Allow USB debugging" dialog, check membership in the
+     `plugdev` group, and as a last resort add a udev rule for Oculus
+     vendor id 2833 followed by `sudo udevadm control --reload-rules`.
+     Developer mode must be enabled on the Quest via the Meta Horizon
+     phone app (requires a free Meta developer organization).
+   - gh (optional, for repo/CI): the Ubuntu/Pop repo version is often
+     stale — prefer GitHub's official apt repo (instructions at
+     https://github.com/cli/cli/blob/trunk/docs/install_linux.md), or
+     `sudo apt install gh` if a slightly older version is acceptable.
+   - blender (optional until avatar work): `sudo apt install blender` or,
+     for a current version, flatpak: `flatpak install flathub org.blender.Blender`
+     (headless runs then use `flatpak run org.blender.Blender --background`).
+   - gltf-transform (project-local dev dependency — install during M1
+     asset work, not globally)
+   - godot (OPTIONAL, warn-only — never blocks M0; this prepares the
+     planned native port, see GODOT_PLAN_B.txt): check `godot --version`
+     is ≥ 4.4 (Jolt physics built in from 4.4; current stable is 4.7.x).
+     If missing, recommend: `flatpak install flathub org.godotengine.Godot`
+     (or the official x86_64 binary from godotengine.org — it's a single
+     self-contained file). Report status in the pass/fail table as
+     "godot (optional)". Do NOT install Android SDK/JDK/export templates
+     now — those are heavyweight and belong to the actual port project;
+     just note in CLAUDE.md that they remain for port time.
+   Linux notes that bite later if forgotten: the filesystem is
+   case-sensitive — keep asset filenames lowercase-kebab to avoid case
+   mismatches; and if the Quest cannot reach the dev server over LAN,
+   check whether a firewall (ufw) is enabled and blocking the Vite port
+   before debugging anything else.
+2. MCP servers (check what is connected; e.g. `claude mcp list`):
+   - IWSDK's own MCP servers — the scaffold AUTO-GENERATES .mcp.json with
+     three servers (iwsdk-runtime, iwsdk-reference, metavr); no manual
+     wiring exists or is needed. After scaffolding: restart Claude Code
+     in the project directory so .mcp.json is picked up, then VERIFY by
+     taking a screenshot of the running emulator scene and simulating one
+     controller input. If a server doesn't respond, say so and give me
+     the manual troubleshooting steps instead of skipping it.
+   - chrome-devtools-mcp — if missing, set up with:
+     `claude mcp add chrome-devtools -- npx chrome-devtools-mcp@latest`
+   - context7 — if missing, set up with:
+     `claude mcp add context7 -- npx -y @upstash/context7-mcp`
+3. Record the outcome in CLAUDE.md (a "Toolchain & MCP" section with the
+   verified versions and the setup commands), so every future session can
+   re-run the same preflight quickly.
+
+## Git & GitHub
+
+- Remote repo (already created, empty, PUBLIC):
+  https://github.com/Steken3344/kubborama.git
+  Deploy target: GitHub Pages via GitHub Actions. No extra MCP is needed
+  for this — configure everything with the gh CLI:
+    1. Enable Pages with Actions as the source:
+       `gh api -X POST repos/Steken3344/kubborama/pages -f build_type=workflow`
+       (if Pages already exists, use -X PUT on the same endpoint)
+    2. Deploy workflow: build with Vite, then the standard chain
+       actions/configure-pages → actions/upload-pages-artifact →
+       actions/deploy-pages, triggered on push to main.
+    3. Vite base for project pages: the scaffold already sets
+       `base: './'` (relative — per DERISK), which likely works on the
+       /kubborama/ subpath as-is. Deploy FIRST and verify; only change to
+       `base: '/kubborama/'` (+ matching PWA manifest/scope) if assets
+       404. Verify the deployed URL
+       (https://steken3344.github.io/kubborama/) on desktop AND in the
+       Quest browser as part of M0's definition of done.
+- Claude Code owns the local git setup in M0: `git init`, a proper
+  .gitignore (node_modules, dist, .env, editor cruft, AND assets/raw/ —
+  raw asset downloads never enter the repo; only optimized runtime files
+  do), README, initial
+  commit, add the remote, push. Then the GitHub Actions workflow:
+  typecheck + lint + test + build on every push, and deploy to GitHub
+  Pages (public repo) or Netlify/Vercel (private repo) per the M0 deploy
+  requirement.
+- Trunk-based and simple: work on main with small conventional commits
+  (already required above); feature branches only for risky experiments.
+  Tag each completed milestone (v0.1-m0, v0.2-m1 ... v0.7-m6 — same
+  scheme as docs/MILESTONES.md) so we can always jump back to the last
+  good state.
+- **SECRET HYGIENE — the repo is PUBLIC and history is forever.** This
+  project has no secrets by design (no backend, no API keys, serverless
+  multiplayer) — keep it that way, and add guardrails in M0:
+    1. Enable GitHub secret scanning + push protection on the repo:
+       `gh api -X PATCH repos/Steken3344/kubborama \
+          -f 'security_and_analysis[secret_scanning][status]=enabled' \
+          -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled'`
+       (free on public repos; push protection BLOCKS a secret before it
+       enters history — rotating after a leak is far more painful).
+    2. Never commit: tokens/keys of any kind, .env files, MCP configs
+       containing API keys, or — later — TURN credentials and Meta app
+       secrets. If a future feature needs a secret, it goes in GitHub
+       Actions secrets / local .env (git-ignored), never in code or docs.
+    3. No personal data in committed files: committed golden-throw JSONs
+       and telemetry samples are SANITIZED (no profile names, no
+       userAgent strings, no IP addresses — pose/physics data only);
+       debug-report exports are pasted into chat, never committed;
+       docs/SESSION_LOG.md and QUESTIONS.md mention no emails, addresses
+       or credentials.
+    4. If a secret ever lands in history anyway: rotate it immediately,
+       then tell me — removal from history is a joint decision.
+- Never commit: large raw asset downloads (originals live in ASSETS.md
+  as source URLs; only the optimized files used at runtime are
+  committed).
+- **Out-of-scope findings become GitHub issues — never silent fixes,
+  never forgotten.** When you notice a problem or improvement that is
+  outside the current milestone's scope (a bug in earlier code, a missing
+  feature, a shortcut that will bite later, something to revisit), do NOT
+  drift off-scope fixing it: file an issue with `gh issue create` and
+  continue the milestone. Rules:
+    - Labels (create them during M0 with `gh label create`):
+        `bug`        (red)    — something behaves incorrectly
+        `feature`    (blue)   — new capability worth building
+        `tech-debt`  (orange) — works now, will hurt later; refactors,
+                                shortcuts, missing tests
+        `follow-up`  (purple) — deferred polish/decisions tied to a
+                                milestone ("tune X after headset test")
+      Every issue gets exactly ONE of these, plus optionally a milestone
+      reference (m1...m6) in the title, e.g. "[m2] Stick jitters at rest".
+    - Issue body must be self-contained: what/where (file + line or
+      module), how to reproduce or why it matters, and a suggested fix or
+      direction. Write it so a fresh session can pick it up cold.
+    - Check for duplicates first (`gh issue list --search "..."`) —
+      comment on an existing issue instead of opening a twin.
+    - Exception: a finding that BLOCKS the current milestone is in scope —
+      fix it now instead of filing it.
+    - At the end of each milestone, list the issues you opened in your
+      summary to me so I can reprioritize.
+
+Start with M0 now: run the preflight check above, then scaffold the
+project in a new `kubborama/` directory and get the emulator scene running.
