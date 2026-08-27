@@ -1,0 +1,58 @@
+{
+  "velocityTransferMultiplier": {
+    "label": "Velocity transfer",
+    "unit": "×",
+    "min": 0.5,
+    "max": 1.5,
+    "defaultPercent": 50
+  },
+  "angularMultiplier": {
+    "label": "Spin multiplier",
+    "unit": "×",
+    "min": 0.5,
+    "max": 1.5,
+    "defaultPercent": 50
+  },
+  "releaseSmoothingWindowFrames": {
+    "label": "Release smoothing",
+    "unit": "frames",
+    "min": 2,
+    "max": 8,
+    "defaultPercent": 50
+  },
+  "stickMassDensityKgM3": {
+    "label": "Stick mass (density)",
+    "unit": "kg/m³",
+    "min": 380,
+    "max": 900,
+    "defaultPercent": 50
+  },
+  "friction": {
+    "label": "Friction",
+    "unit": "",
+    "min": 0,
+    "max": 1,
+    "defaultPercent": 60
+  },
+  "restitution": {
+    "label": "Restitution",
+    "unit": "",
+    "min": 0,
+    "max": 0.6,
+    "defaultPercent": 25
+  },
+  "gravityMps2": {
+    "label": "Gravity",
+    "unit": "m/s²",
+    "min": 4.905,
+    "max": 14.715,
+    "defaultPercent": 50
+  },
+  "angularDampingInFlight": {
+    "label": "Angular damping (flight)",
+    "unit": "",
+    "min": 0,
+    "max": 0.5,
+    "defaultPercent": 0
+  }
+}
