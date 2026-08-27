@@ -31,5 +31,13 @@
     "groundRestitution": 0.05
   },
   "toppleAngleDeg": 60,
-  "visualSinkM": 0.0025
+  "visualSinkM": 0.0025,
+  "throw": {
+    "poseWindowSize": 5,
+    "restLinearThresholdMps": 0.05,
+    "restAngularThresholdRadS": 0.1,
+    "restDurationS": 0.5,
+    "impactThresholdMps": 2.5,
+    "impactMaxForceForFullHapticMps": 10
+  }
 }

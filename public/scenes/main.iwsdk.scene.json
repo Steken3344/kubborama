@@ -62,8 +62,14 @@
       "id": "ground",
       "name": "Ground",
       "framingRole": "support",
-      "content": { "type": "asset", "asset": "ground", "receiveShadow": true },
-      "transform": { "position": [0, 0, 0] },
+      "content": {
+        "type": "asset",
+        "asset": "ground",
+        "receiveShadow": true
+      },
+      "transform": {
+        "position": [0, 0, 0]
+      },
       "components": {
         "PhysicsShape": {
           "shape": "Box",
@@ -72,13 +78,18 @@
           "friction": 0.8,
           "restitution": 0.05
         },
-        "PhysicsBody": { "state": "STATIC" }
+        "PhysicsBody": {
+          "state": "STATIC"
+        }
       }
     },
     {
       "id": "sun",
       "name": "Sun",
-      "transform": { "position": [5, 8, 5], "rotationDeg": [55, -45, 0] },
+      "transform": {
+        "position": [5, 8, 5],
+        "rotationDeg": [55, -45, 0]
+      },
       "components": {
         "DirectionalLight": {
           "color": [1, 0.95, 0.85, 1],
@@ -103,8 +114,13 @@
     {
       "id": "corner-stake-near-left",
       "name": "Hompinne (near-left)",
-      "content": { "type": "asset", "asset": "stake" },
-      "transform": { "position": [-1.5, 0.15, 0] },
+      "content": {
+        "type": "asset",
+        "asset": "stake"
+      },
+      "transform": {
+        "position": [-1.5, 0.15, 0]
+      },
       "components": {
         "PhysicsShape": {
           "shape": "Cylinder",
@@ -113,14 +129,21 @@
           "friction": 0.6,
           "restitution": 0.15
         },
-        "PhysicsBody": { "state": "STATIC" }
+        "PhysicsBody": {
+          "state": "STATIC"
+        }
       }
     },
     {
       "id": "corner-stake-near-right",
       "name": "Hompinne (near-right)",
-      "content": { "type": "asset", "asset": "stake" },
-      "transform": { "position": [1.5, 0.15, 0] },
+      "content": {
+        "type": "asset",
+        "asset": "stake"
+      },
+      "transform": {
+        "position": [1.5, 0.15, 0]
+      },
       "components": {
         "PhysicsShape": {
           "shape": "Cylinder",
@@ -129,14 +152,21 @@
           "friction": 0.6,
           "restitution": 0.15
         },
-        "PhysicsBody": { "state": "STATIC" }
+        "PhysicsBody": {
+          "state": "STATIC"
+        }
       }
     },
     {
       "id": "corner-stake-far-left",
       "name": "Hompinne (far-left)",
-      "content": { "type": "asset", "asset": "stake" },
-      "transform": { "position": [-1.5, 0.15, -6] },
+      "content": {
+        "type": "asset",
+        "asset": "stake"
+      },
+      "transform": {
+        "position": [-1.5, 0.15, -6]
+      },
       "components": {
         "PhysicsShape": {
           "shape": "Cylinder",
@@ -145,14 +175,21 @@
           "friction": 0.6,
           "restitution": 0.15
         },
-        "PhysicsBody": { "state": "STATIC" }
+        "PhysicsBody": {
+          "state": "STATIC"
+        }
       }
     },
     {
       "id": "corner-stake-far-right",
       "name": "Hompinne (far-right)",
-      "content": { "type": "asset", "asset": "stake" },
-      "transform": { "position": [1.5, 0.15, -6] },
+      "content": {
+        "type": "asset",
+        "asset": "stake"
+      },
+      "transform": {
+        "position": [1.5, 0.15, -6]
+      },
       "components": {
         "PhysicsShape": {
           "shape": "Cylinder",
@@ -161,14 +198,22 @@
           "friction": 0.6,
           "restitution": 0.15
         },
-        "PhysicsBody": { "state": "STATIC" }
+        "PhysicsBody": {
+          "state": "STATIC"
+        }
       }
     },
     {
       "id": "king",
       "name": "Kung",
-      "content": { "type": "asset", "asset": "king", "castShadow": true },
-      "transform": { "position": [0, 0.15, -3] },
+      "content": {
+        "type": "asset",
+        "asset": "king",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [0, 0.15, -3]
+      },
       "components": {
         "PhysicsShape": {
           "shape": "Box",
@@ -187,8 +232,14 @@
     {
       "id": "kubb-0",
       "name": "Kubb 0",
-      "content": { "type": "asset", "asset": "kubb", "castShadow": true },
-      "transform": { "position": [-1.2, 0.075, -6] },
+      "content": {
+        "type": "asset",
+        "asset": "kubb",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [-1.2, 0.075, -6]
+      },
       "components": {
         "PhysicsShape": {
           "shape": "Box",
@@ -207,8 +258,14 @@
     {
       "id": "kubb-1",
       "name": "Kubb 1",
-      "content": { "type": "asset", "asset": "kubb", "castShadow": true },
-      "transform": { "position": [-0.6, 0.075, -6] },
+      "content": {
+        "type": "asset",
+        "asset": "kubb",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [-0.6, 0.075, -6]
+      },
       "components": {
         "PhysicsShape": {
           "shape": "Box",
@@ -227,8 +284,14 @@
     {
       "id": "kubb-2",
       "name": "Kubb 2",
-      "content": { "type": "asset", "asset": "kubb", "castShadow": true },
-      "transform": { "position": [0, 0.075, -6] },
+      "content": {
+        "type": "asset",
+        "asset": "kubb",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [0, 0.075, -6]
+      },
       "components": {
         "PhysicsShape": {
           "shape": "Box",
@@ -247,8 +310,14 @@
     {
       "id": "kubb-3",
       "name": "Kubb 3",
-      "content": { "type": "asset", "asset": "kubb", "castShadow": true },
-      "transform": { "position": [0.6, 0.075, -6] },
+      "content": {
+        "type": "asset",
+        "asset": "kubb",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [0.6, 0.075, -6]
+      },
       "components": {
         "PhysicsShape": {
           "shape": "Box",
@@ -267,8 +336,14 @@
     {
       "id": "kubb-4",
       "name": "Kubb 4",
-      "content": { "type": "asset", "asset": "kubb", "castShadow": true },
-      "transform": { "position": [1.2, 0.075, -6] },
+      "content": {
+        "type": "asset",
+        "asset": "kubb",
+        "castShadow": true
+      },
+      "transform": {
+        "position": [1.2, 0.075, -6]
+      },
       "components": {
         "PhysicsShape": {
           "shape": "Box",
@@ -287,7 +362,11 @@
     {
       "id": "stick-0",
       "name": "Kastpinne 0",
-      "content": { "type": "asset", "asset": "stick", "castShadow": true },
+      "content": {
+        "type": "asset",
+        "asset": "stick",
+        "castShadow": true
+      },
       "transform": {
         "position": [-0.852088, 0.022, -0.292492],
         "rotationDeg": [0, 291.769917, 90]
@@ -304,13 +383,28 @@
           "state": "DYNAMIC",
           "linearDamping": 0.05,
           "angularDamping": 0.05
+        },
+        "RayInteractable": {},
+        "OneHandGrabbable": {
+          "rotate": true,
+          "translate": true
+        },
+        "DistanceGrabbable": {
+          "returnToOrigin": false
+        },
+        "StickState": {
+          "phase": "RACKED"
         }
       }
     },
     {
       "id": "stick-1",
       "name": "Kastpinne 1",
-      "content": { "type": "asset", "asset": "stick", "castShadow": true },
+      "content": {
+        "type": "asset",
+        "asset": "stick",
+        "castShadow": true
+      },
       "transform": {
         "position": [0.388122, 0.022, -0.473081],
         "rotationDeg": [0, 137.176523, 90]
@@ -327,13 +421,28 @@
           "state": "DYNAMIC",
           "linearDamping": 0.05,
           "angularDamping": 0.05
+        },
+        "RayInteractable": {},
+        "OneHandGrabbable": {
+          "rotate": true,
+          "translate": true
+        },
+        "DistanceGrabbable": {
+          "returnToOrigin": false
+        },
+        "StickState": {
+          "phase": "RACKED"
         }
       }
     },
     {
       "id": "stick-2",
       "name": "Kastpinne 2",
-      "content": { "type": "asset", "asset": "stick", "castShadow": true },
+      "content": {
+        "type": "asset",
+        "asset": "stick",
+        "castShadow": true
+      },
       "transform": {
         "position": [0.071719, 0.022, -0.56144],
         "rotationDeg": [0, 195.841789, 90]
@@ -350,13 +459,28 @@
           "state": "DYNAMIC",
           "linearDamping": 0.05,
           "angularDamping": 0.05
+        },
+        "RayInteractable": {},
+        "OneHandGrabbable": {
+          "rotate": true,
+          "translate": true
+        },
+        "DistanceGrabbable": {
+          "returnToOrigin": false
+        },
+        "StickState": {
+          "phase": "RACKED"
         }
       }
     },
     {
       "id": "stick-3",
       "name": "Kastpinne 3",
-      "content": { "type": "asset", "asset": "stick", "castShadow": true },
+      "content": {
+        "type": "asset",
+        "asset": "stick",
+        "castShadow": true
+      },
       "transform": {
         "position": [0.117784, 0.022, -0.645408],
         "rotationDeg": [0, 68.649753, 90]
@@ -373,13 +497,28 @@
           "state": "DYNAMIC",
           "linearDamping": 0.05,
           "angularDamping": 0.05
+        },
+        "RayInteractable": {},
+        "OneHandGrabbable": {
+          "rotate": true,
+          "translate": true
+        },
+        "DistanceGrabbable": {
+          "returnToOrigin": false
+        },
+        "StickState": {
+          "phase": "RACKED"
         }
       }
     },
     {
       "id": "stick-4",
       "name": "Kastpinne 4",
-      "content": { "type": "asset", "asset": "stick", "castShadow": true },
+      "content": {
+        "type": "asset",
+        "asset": "stick",
+        "castShadow": true
+      },
       "transform": {
         "position": [-0.121153, 0.022, -0.446352],
         "rotationDeg": [0, 72.900239, 90]
@@ -396,13 +535,28 @@
           "state": "DYNAMIC",
           "linearDamping": 0.05,
           "angularDamping": 0.05
+        },
+        "RayInteractable": {},
+        "OneHandGrabbable": {
+          "rotate": true,
+          "translate": true
+        },
+        "DistanceGrabbable": {
+          "returnToOrigin": false
+        },
+        "StickState": {
+          "phase": "RACKED"
         }
       }
     },
     {
       "id": "stick-5",
       "name": "Kastpinne 5",
-      "content": { "type": "asset", "asset": "stick", "castShadow": true },
+      "content": {
+        "type": "asset",
+        "asset": "stick",
+        "castShadow": true
+      },
       "transform": {
         "position": [0.804969, 0.022, -0.573913],
         "rotationDeg": [0, 334.042397, 90]
@@ -419,6 +573,17 @@
           "state": "DYNAMIC",
           "linearDamping": 0.05,
           "angularDamping": 0.05
+        },
+        "RayInteractable": {},
+        "OneHandGrabbable": {
+          "rotate": true,
+          "translate": true
+        },
+        "DistanceGrabbable": {
+          "returnToOrigin": false
+        },
+        "StickState": {
+          "phase": "RACKED"
         }
       }
     },
@@ -446,7 +611,10 @@
         "asset": "tree-plateau",
         "castShadow": true
       },
-      "transform": { "position": [4, 0, -1], "rotationDeg": [0, 20, 0] }
+      "transform": {
+        "position": [4, 0, -1],
+        "rotationDeg": [0, 20, 0]
+      }
     },
     {
       "id": "tree-1",
@@ -456,7 +624,10 @@
         "asset": "tree-fat-fall",
         "castShadow": true
       },
-      "transform": { "position": [-4.5, 0, -3], "rotationDeg": [0, 200, 0] }
+      "transform": {
+        "position": [-4.5, 0, -3],
+        "rotationDeg": [0, 200, 0]
+      }
     },
     {
       "id": "tree-2",
@@ -466,7 +637,10 @@
         "asset": "tree-small-fall",
         "castShadow": true
       },
-      "transform": { "position": [3.5, 0, -5.5], "rotationDeg": [0, 80, 0] }
+      "transform": {
+        "position": [3.5, 0, -5.5],
+        "rotationDeg": [0, 80, 0]
+      }
     },
     {
       "id": "tree-3",
@@ -476,7 +650,10 @@
         "asset": "tree-cone-fall",
         "castShadow": true
       },
-      "transform": { "position": [-3.8, 0, -5], "rotationDeg": [0, 300, 0] }
+      "transform": {
+        "position": [-3.8, 0, -5],
+        "rotationDeg": [0, 300, 0]
+      }
     },
     {
       "id": "tree-4",
@@ -486,7 +663,10 @@
         "asset": "tree-thin-dark",
         "castShadow": true
       },
-      "transform": { "position": [4.2, 0, -4], "rotationDeg": [0, 150, 0] }
+      "transform": {
+        "position": [4.2, 0, -4],
+        "rotationDeg": [0, 150, 0]
+      }
     }
   ]
 }
