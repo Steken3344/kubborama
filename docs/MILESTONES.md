@@ -65,25 +65,48 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       Found and fixed two real bugs this way — see docs/DECISIONS.md.
 - Review gate → tag v0.2-m1
 
-## M2 — Throwing (THE milestone) `status: not started`
+## M2 — Throwing (THE milestone) `status: in progress — pending Erik's headset calibration gate`
 
-- [ ] core/throwRelease.ts (TDD): ring buffer, frame-averaged release,
-      lever-arm v_com = v_hand + ω×r — heavily unit-tested
-- [ ] End grip (handle offset, last ~8 cm); DistanceGrabbable pull
-      (returnToOrigin OFF!); direct grab by bending down
-- [ ] Stick state machine Racked→Held→Flying→Settled
-- [ ] Impact detector (|Δv| heuristic, pure core — no collision API
-      exists; M3 reuses its events)
-- [ ] Haptics library (grabTick, releaseClick, impactRumble(f), ...)
-- [ ] Throw telemetry logged per throw (speed, spin, flight, landing,
-      preset) — JSON, engine-neutral
-- [ ] Tuning lab: 0-100 params + live meters + ballistic target bands
-      (8 m ≈ 8.5 m/s, spin 3-13 rad/s) + presets A/B/C + JSON export/import
-- [ ] Underhand classifier + flip-quality meter + HUD badge
-- [ ] Both spin styles honest (flat AND backspin); angular damping tunable
-- [ ] Golden-throw regression scripted via MCP (xr_animate_to arc)
+- [x] core/throwRelease.ts (TDD): ring buffer, frame-averaged release,
+      lever-arm v_com = v_hand + ω×r — heavily unit-tested (8 tests,
+      incl. an explicit "classic VR throwing bug" regression test)
+- [x] End grip: emerges from the actual grab point (lever arm computed
+      live from current CoM/hand positions), not a hardcoded offset —
+      see docs/DECISIONS.md for why. DistanceGrabbable
+      (`returnToOrigin: false`); direct grab by bending down (both via
+      OneHandGrabbable/DistanceGrabbable + RayInteractable on sticks)
+- [x] Stick state machine Racked→Held→Flying→Settled
+- [x] Impact detector (|Δv| heuristic, pure core — applied to every
+      dynamic body; M3 will reuse its Impact events)
+- [x] Haptics library (grabTick, releaseClick, impactRumble(f),
+      kubbFelled/kingFelled/roundCleared/uiTick data ready for M3/M4)
+- [x] Throw telemetry logged per throw (speed, spin, flight, landing,
+      preset) — versioned zod schema, persisted to localStorage,
+      exportable as JSON from the tuning panel
+- [x] Tuning lab: 8 params as 0-100 + live meters with ballistic
+      target bands (backyard-preset row: ~7 m/s @ 6m, spin 3-13 rad/s) + presets A/B/C + JSON export/import — desktop tweakpane panel.
+      VR spatial panel NOT built (deferred — docs/PLAN.md §9d2 names
+      tweakpane as the primary tuning surface during development; the
+      in-headset panel is a fast-follow, not required for this gate)
+- [x] Underhand classifier + flip-quality meter (readable in the
+      tuning panel's "Style"/"Flip quality" fields). HUD badge
+      ("Underhand ✓" shown to the player mid-game) NOT built — that's
+      player-facing UI, out of scope until the HUD exists (M3+)
+- [x] Both spin styles honest by construction: no spin
+      assist/normalization anywhere in the pipeline, angular damping
+      in flight is a tunable (0-100, default 0). Not yet _verified_
+      with real flat vs. backspin throws — that's exactly what the
+      headset gate below is for
+- [~] Golden-throw regression scripted via MCP: attempted, hit a real
+  MCP-tooling limitation (documented in detail in
+  docs/DECISIONS.md, filed as
+  [gh#2](https://github.com/Steken3344/kubborama/issues/2)).
+  Pipeline correctness verified a different way instead: rigorous
+  unit tests on the math, live confirmation of the full grab→
+  release→settle state machine and event flow
 - **GATE (Erik, headset): feel calibration — 10-15 flat + 10-15 backspin
   throws recorded to JSON; structured feedback (words + numbers)** 🎧
+  — not yet done, blocks tagging v0.3-m2
 - Review gate → tag v0.3-m2
 
 ## M3 — Toppling, rounds & stats `status: not started`
