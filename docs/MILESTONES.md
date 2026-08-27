@@ -4,7 +4,7 @@ Update the checkboxes and status lines as work progresses. A milestone is
 DONE only after its review gate (see CLAUDE.md) and, where marked, Erik's
 headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
 
-## M0 — Setup `status: in progress — pending headset gate`
+## M0 — Setup `status: DONE`
 
 - [x] Preflight pass/fail table reported (Node 22, git, gh; adb/blender/
       godot optional)
@@ -14,16 +14,18 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       locomotion off (set directly via CLI flags, verified in the file)
 - [x] Emulator scene runs; verified via CLI (screenshot + simulated
       `xr enter`/`xr status`) — see docs/DECISIONS.md. IWSDK MCP servers
-      themselves still need Erik to restart Claude Code in this
-      directory before they're callable as tools in-session.
+      confirmed connected after Erik's Claude Code restart
+      (`iwsdk-runtime`, `iwsdk-reference`; `metavr` cannot connect on
+      Linux — see docs/DECISIONS.md).
 - [x] TS strict + eslint + prettier + vitest wired; CI: typecheck+lint+
       test+build on push (`.github/workflows/ci.yml`)
 - [x] GitHub Pages deploy via Actions (base './' — verify after first
       deploy) — `.github/workflows/deploy.yml`, Pages source set to
       "workflow" via `gh api`
-- [ ] Deployed URL verified on desktop (done — `HTTP 200`, assets load
-      via the `base: './'` relative path unchanged) AND Quest browser
-      (pending Erik's headset test)
+- [x] Deployed URL verified on desktop (`HTTP 200`, assets load via the
+      `base: './'` relative path unchanged) AND Quest browser (Erik
+      confirmed "Enter XR" works on the Quest 2 — renders the default
+      IWSDK demo room, expected since M1 hasn't built the garden yet)
 - [x] GitHub labels created (bug/feature/tech-debt/follow-up)
 - [x] Secret scanning + push protection enabled on the repo (public!);
       .gitignore covers .env and assets/raw/
@@ -33,7 +35,8 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       QUESTIONS.md, docs/SESSION_LOG.md, docs/sessions/ (from SESSION_KIT)
 - [x] README with headset testing steps (dynamic port via dev status)
 - **GATE (Erik, headset): open deployed URL in Quest browser, enter VR** 🎧
-  — pending: needs the first push + a completed Pages deploy
+  — ✅ PASSED 2026-08-27: "Enter XR" worked, entered the default IWSDK
+  demo room.
 
 ## M1 — Scene `status: not started`
 

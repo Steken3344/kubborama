@@ -321,3 +321,29 @@ after the check, never committed.
 Go/no-go: **GO**, presented to Erik. The one remaining item is the
 human headset gate (open the deployed URL on the Quest 2, confirm
 "Enter XR" works) — parked, cannot be self-approved.
+
+## 2026-08-27 — M0: headset gate passed; `metavr` MCP server cannot run on Linux
+
+Erik opened https://steken3344.github.io/kubborama/ on the Quest 2 and
+confirmed "Enter XR" works, landing in the default IWSDK demo room
+(expected — the actual garden/court doesn't exist until M1). **M0
+headset gate: PASSED.**
+
+After restarting Claude Code in this directory, `iwsdk-runtime` and
+`iwsdk-reference` connected successfully, but `metavr` failed with
+`CONNECTION_CLOSED`. Root cause found by running its binary directly:
+
+```
+Error: metavr could not locate its platform binary.
+metavr: unsupported platform "linux-x64" (supported: darwin-arm64, darwin-x64, win32-x64)
+```
+
+`@meta-quest/metavr` ships prebuilt native binaries for macOS and
+Windows only — there is no Linux build. This is a permanent limitation
+on this dev machine (Pop!_OS), not a misconfiguration; do not spend
+time retrying or reinstalling it in future sessions. Everything M0-M6
+need from Meta-specific tooling is covered by `iwsdk-runtime` (browser/
+scene/ECS/XR simulation) and `iwsdk-reference` (docs), plus `adb` for
+the real headset — `metavr`'s absence is not expected to block any
+milestone. If a future milestone turns out to need it specifically,
+that's a reason to revisit, not before.
