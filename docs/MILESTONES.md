@@ -21,8 +21,9 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
 - [x] GitHub Pages deploy via Actions (base './' — verify after first
       deploy) — `.github/workflows/deploy.yml`, Pages source set to
       "workflow" via `gh api`
-- [ ] Deployed URL verified on desktop AND Quest browser (pending first
-      push + Actions run)
+- [ ] Deployed URL verified on desktop (done — `HTTP 200`, assets load
+      via the `base: './'` relative path unchanged) AND Quest browser
+      (pending Erik's headset test)
 - [x] GitHub labels created (bug/feature/tech-debt/follow-up)
 - [x] Secret scanning + push protection enabled on the repo (public!);
       .gitignore covers .env and assets/raw/
