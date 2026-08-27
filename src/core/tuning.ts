@@ -70,3 +70,25 @@ export function decodePreset(json: string): TuningPreset | null {
   const result = presetSchema.safeParse(parsed);
   return result.success ? (result.data as TuningPreset) : null;
 }
+
+export type PresetId = 'A' | 'B' | 'C';
+
+/** The three switchable preset slots (A/B/C) plus which one is
+ * currently live — a small mutable singleton, same pattern as
+ * core/events.ts's gameEvents. The tuning-lab system reads/writes this
+ * directly; ThrowingSystem reads it every release. */
+export interface PresetBank {
+  presets: Record<PresetId, TuningPreset>;
+  activePresetId: PresetId;
+}
+
+export function createPresetBank(): PresetBank {
+  return {
+    presets: { A: defaultPreset(), B: defaultPreset(), C: defaultPreset() },
+    activePresetId: 'A',
+  };
+}
+
+export function activePreset(bank: PresetBank): TuningPreset {
+  return bank.presets[bank.activePresetId];
+}
