@@ -15,4 +15,19 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // CI-only Node scripts (not shipped app code) — plain JS, so
+    // no-undef stays on (TS files get their globals from tsc instead);
+    // needs both Node globals and the DOM globals used inside
+    // page.evaluate() browser callbacks.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        document: 'readonly',
+        window: 'readonly',
+      },
+    },
+  },
 );
