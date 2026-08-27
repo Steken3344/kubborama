@@ -952,3 +952,25 @@ re-lay-out the court to the new preset's actual dimensions (topple
 angle and wind change immediately; kubb/king/stake positions don't) —
 noted in docs/MILESTONES.md as a known gap, not silently shipped as if
 it worked.
+
+**Fresh-eyes review of this slice: no blockers.** Confirmed independently
+(not just trusted from the session's own notes): `WindSystem` only
+ever passes `{ force }` to `PhysicsManipulation`, never touching
+`linearVelocity`/`angularVelocity` (the catastrophic mistake that
+would have zeroed every flying stick's real velocity every frame);
+`SettingsSystem`'s registration-first ordering genuinely guarantees
+`settingsState`/`i18nState` are populated before any other system's
+`init()` reads them (elics runs `init()` synchronously per
+`registerSystem()` call, verified in `node_modules/elics`, not
+assumed); no system caches a stale `i18nState.t` reference across a
+language change. Two worth-fixing items, both fixed immediately:
+`WindSystem.update()` recomputed the wind force from scratch every
+frame regardless of whether it had changed (a real per-frame
+allocation — the same rule class M2 and M3's reviews already flagged
+elsewhere), now cached and only recomputed when the game mode
+actually changes; `config.ts`'s new `windVectorForMode`/`getGameMode`
+getters had no direct test coverage unlike every sibling getter in
+that file, now added. A third, nitpick-level item (the i18n
+diacritic-guard regex only matched precomposed NFC characters, not a
+decomposed NFD å) was also fixed — cheap, and it's a regression guard,
+so a gap in the guard itself seemed worth closing.

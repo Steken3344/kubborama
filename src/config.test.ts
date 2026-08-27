@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   courtLayout,
   defaultCourtPreset,
+  getGameMode,
   kingMassKg,
   kubbMassKg,
   stickMassKg,
+  windVectorForMode,
 } from './config.js';
 
 describe('piece masses (birch default, matches docs/PLAN.md §2)', () => {
@@ -36,5 +38,17 @@ describe('courtLayout (default backyard preset)', () => {
     for (const [, , z] of layout.kubbPositions.slice(5)) {
       expect(z).toBeLessThan(0);
     }
+  });
+});
+
+describe('game modes (docs/sessions/M4.md)', () => {
+  it('simple mode has no wind and the documented topple angle', () => {
+    expect(getGameMode('simple').toppleAngleDeg).toBe(50);
+    expect(windVectorForMode('simple')).toEqual([0, 0, 0]);
+  });
+
+  it('advanced mode has 1.5 m/s lateral wind and a steeper topple angle', () => {
+    expect(getGameMode('advanced').toppleAngleDeg).toBe(60);
+    expect(windVectorForMode('advanced')).toEqual([1.5, 0, 0]);
   });
 });

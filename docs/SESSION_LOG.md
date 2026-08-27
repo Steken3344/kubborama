@@ -322,11 +322,19 @@ rather than guessing at layout/wording alone at 1am. Full detail and
 the full cut list in docs/DECISIONS.md and docs/MILESTONES.md.
 
 Mechanical pass green throughout (tsc/eslint/prettier/vitest — 125
-tests now, up from 109 — /build/smoke).
+tests now, up from 109 — /build/smoke). Fresh-eyes review of this
+slice found no blockers — independently re-confirmed the one thing
+this session was most worried about (WindSystem never touches a
+flying stick's real velocity) and the settings/i18n singleton
+init-ordering. Two worth-fixing items (a per-frame allocation in
+WindSystem, missing test coverage for two config.ts getters) fixed
+immediately; full writeup in docs/DECISIONS.md.
 
-**Handover.** M4 is genuinely in progress, not done — no tag yet.
-Next session (or later tonight, if the instruction to keep going is
-still meant to hold): either finish M4's settings panel, or treat this
-as a natural stopping point and let Erik weigh in on the panel's
-design first. Everything built so far is committed, tested, and
-documented either way.
+**Handover.** M4 is genuinely in progress, not done — no tag yet, and
+this is a deliberate stopping point for this session. Next: either
+finish M4's settings panel (music/SFX sliders, haptics toggle control,
+profile-name prompt, stats tab, court-lines toggle+rendering), or
+address gh#5 (the åäö font-atlas root cause) properly, or move to a
+fresh milestone — whichever Erik prioritizes. Everything built so far
+(M2's feedback pass, M3 in full, M4's core slice) is committed,
+tested, reviewed, and documented; nothing is left half-applied.
