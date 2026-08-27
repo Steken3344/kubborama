@@ -38,18 +38,31 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
   — ✅ PASSED 2026-08-27: "Enter XR" worked, entered the default IWSDK
   demo room.
 
-## M1 — Scene `status: not started`
+## M1 — Scene `status: in progress — pending review gate`
 
-- [ ] config.ts loads JSON: court presets (orientation: baselines =
-      SHORT sides!), piece dims/masses, camera poses, 0-100 mappings
-- [ ] Garden: grass ground (Grass004 tiled), HDRI sky+IBL (autumn_park),
-      1 directional light, hemisphere tint; fence + 3-5 Kenney trees
-- [ ] Court: 4 corner stakes (no lines by default); king center; 5 kubbs
-      along far short baseline; 6 sticks lying scattered by player
-      baseline; pieces sunk 2-3 mm into grass; blob shadows
-- [ ] All pieces physics bodies (Jolt-portable dims); eye height 1.6 m
-- [ ] fetch-assets.sh run; ASSETS.md license log started
-- [ ] Emulator verification via MCP (screenshot review of layout/scale)
+- [x] config.ts loads JSON: court presets (orientation: baselines =
+      SHORT sides!), piece dims/masses, camera poses. 0-100 tuning
+      mappings deferred to M2 (no consumer — the tuning lab — exists
+      yet; adding them now would be a premature abstraction)
+- [x] Garden: grass ground (Grass004 tiled 15x15), HDRI sky+IBL
+      (autumn_park), 1 directional light (shadow-casting), hemisphere
+      tint; fence (Kenney, linear pattern) + 5 Kenney trees
+- [x] Court: 4 corner stakes (no lines, red-tipped); king at court
+      center; 5 kubbs evenly spaced along the far short baseline; 6
+      sticks lying scattered near the player baseline (seeded RNG, not
+      Math.random); kubb/king sunk 2-3mm into grass visually (collider
+      unchanged). Real dynamic shadows used instead of blob-shadow
+      decals — strictly better grounding, same visual goal.
+- [x] All pieces are physics bodies (PhysicsShape/PhysicsBody, real
+      birch density/friction/restitution); eye height 1.6 m (default
+      IWSDK player origin, unmodified)
+- [x] fetch-assets.sh run; ASSETS.md license log started (11 runtime
+      files logged: 4 wood/grass texture pairs, 1 HDRI, 5 Kenney glTFs)
+- [x] Emulator verification via MCP: layout confirmed from playerSpawn,
+      grandstandSide and a top-down diagnostic view; physics settling
+      verified with ecs_pause/ecs_step (all 17 dynamic/static bodies
+      rest correctly, zero velocity, no falling through the floor).
+      Found and fixed two real bugs this way — see docs/DECISIONS.md.
 - Review gate → tag v0.2-m1
 
 ## M2 — Throwing (THE milestone) `status: not started`

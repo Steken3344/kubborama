@@ -4,14 +4,18 @@ import { woodMaterial } from './materials.js';
 
 const { radiusM, lengthM } = pieces.stick;
 
-// Bake "lying flat" into the geometry (long axis along local X) so a
-// scene node's rotationDeg.y alone controls which way it points on the
-// ground — no combined-rotation math needed at placement time.
+// Canonical upright cylinder (height along local Y) — deliberately NOT
+// pre-rotated. PhysicsShapeType.Cylinder always assumes height-along-Y
+// too, so "lying flat" must be a node-transform rotation (applied to
+// both the mesh and the collider together), never baked into the
+// geometry alone — that desyncs the visual mesh from its collider.
 const geometry = new CylinderGeometry(radiusM, radiusM, lengthM, 12);
-geometry.rotateZ(Math.PI / 2);
 
 const stick = new Mesh(geometry, woodMaterial);
 stick.name = 'Kastpinne';
-stick.position.y = -pieces.visualSinkM;
+// No visual-sink offset here: the node applies a 90° tip (see scene
+// JSON) so a mesh-local Y offset would rotate into a horizontal
+// direction instead of sinking it — not worth the complexity for a
+// lying-flat piece with a horizontal contact footprint.
 
 export default stick;

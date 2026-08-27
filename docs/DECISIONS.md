@@ -347,3 +347,53 @@ scene/ECS/XR simulation) and `iwsdk-reference` (docs), plus `adb` for
 the real headset — `metavr`'s absence is not expected to block any
 milestone. If a future milestone turns out to need it specifically,
 that's a reason to revisit, not before.
+
+## 2026-08-27 — M1: `DomeTexture`/`IBLTexture` `src` needs the full `textures/` path
+
+Despite the component schema saying `subfolder: 'textures'`
+(`packages/core/src/environment/dome-texture.ts`), that metadata is
+**not** auto-prepended at runtime. Setting `src: "autumn-park-1k.hdr"`
+resolved to a literal `autumn-park-1k.hdr` request (404 → the HDR
+loader choked on the resulting HTML error page: "Bad File Format: bad
+initial token"). Fix: `src: "textures/autumn-park-1k.hdr"` — same
+convention as glTF asset URLs. Verified by console log diffing a
+before/after `scene_render_file` call. `subfolder` is editor-only
+metadata (asset-picker organization), not a resolution rule — treat it
+as such for any future `Types.FilePath` component field.
+
+## 2026-08-27 — M1: baked-in mesh rotation desyncs the physics collider
+
+The stick asset originally baked its "lying flat" 90° tilt into the
+`CylinderGeometry` itself (`geometry.rotateZ(...)`), keeping the scene
+node's `rotationDeg` as pure yaw. This looked correct in every
+`scene_render_file` screenshot (the **editor** doesn't run
+`PhysicsSystem`) but was wrong: `PhysicsShapeType.Cylinder` always
+assumes height-along-local-Y, using the node's transform — it knows
+nothing about vertices baked into the geometry. Verified with
+`ecs_pause` + `ecs_step` + `ecs_query_entity` on the **runtime**: sticks
+settled at `y≈0.16` (half of the 0.3 m height — an upright collider)
+while the visual mesh clearly lay flat on the ground, a ~14cm
+invisible mismatch between what you see and what you can throw at.
+
+Fix: never bake a "how it's oriented on the ground" rotation into an
+asset's geometry when that asset also has a physics shape — geometry
+stays canonical (cylinder height along Y), and the _node_ transform
+carries the full orientation (`rotationDeg: [0, yawDeg, 90]`) so the
+mesh and the collider rotate together. Lesson for M2+: any procedural
+asset that will get a `PhysicsShape` must keep its geometry in the
+shape's canonical local axes; all placement/orientation belongs in the
+scene node, not the asset module. Caught only because the runtime was
+checked with `ecs_step`, not just the editor screenshot — this is
+exactly the "editor doesn't run application systems" trap CLAUDE.md
+warns about, now with a concrete example.
+
+**Same-session near-miss, avoided:** the fence line's first placement
+(`rotationDeg: [0, 180, 0]` on a `pattern` node with `step: [1,0,0]`)
+put all 5 sections roughly 4-8m in the wrong direction, because a
+180° yaw flips which way positive local X points before the pattern's
+`step` is applied — not obvious without rendering it. Fixed by
+dropping the rotation entirely and placing the pattern's own position
+where the first section should start (`[-2, 0, 2.2]`, no rotation,
+`step: [1,0,0]`) — simpler and easier to reason about than rotating a
+repeated linear distribution. General rule adopted: prefer un-rotated
+pattern nodes and encode direction via `step`'s sign/axis instead.
