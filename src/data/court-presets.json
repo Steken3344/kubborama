@@ -1,0 +1,8 @@
+{
+  "default": "backyard",
+  "presets": {
+    "backyard": { "widthM": 3, "lengthM": 6 },
+    "tournament": { "widthM": 5, "lengthM": 8 },
+    "kids": { "widthM": 2, "lengthM": 5 }
+  }
+}

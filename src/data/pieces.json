@@ -1,0 +1,35 @@
+{
+  "defaultMaterial": "birch",
+  "materials": {
+    "pine": { "densityKgM3": 500 },
+    "birch": { "densityKgM3": 640 },
+    "rubberwood": { "densityKgM3": 750 }
+  },
+  "stick": {
+    "radiusM": 0.022,
+    "lengthM": 0.3
+  },
+  "kubb": {
+    "widthM": 0.07,
+    "heightM": 0.15,
+    "depthM": 0.07
+  },
+  "king": {
+    "widthM": 0.09,
+    "heightM": 0.3,
+    "depthM": 0.09,
+    "crownVolumeFactor": 0.93
+  },
+  "stake": {
+    "radiusM": 0.01,
+    "heightM": 0.3
+  },
+  "physics": {
+    "pieceFriction": 0.6,
+    "pieceRestitution": 0.15,
+    "groundFriction": 0.8,
+    "groundRestitution": 0.05
+  },
+  "toppleAngleDeg": 60,
+  "visualSinkM": 0.0025
+}
