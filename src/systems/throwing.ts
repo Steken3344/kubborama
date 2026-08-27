@@ -19,10 +19,12 @@ import {
   computeReleaseVelocity,
 } from '../core/throwRelease.js';
 import type { PoseSample } from '../core/throwRelease.js';
+import { activePreset, percentToReal, tuningParams } from '../core/tuning.js';
 import { classifyThrow } from '../core/underhandClassifier.js';
-import { length } from '../core/vec3.js';
+import { length, scale } from '../core/vec3.js';
 import type { HapticPulse } from '../core/haptics.js';
 import type { Vec3 } from '../core/vec3.js';
+import { presetBank } from '../tuningState.js';
 
 type Hand = 'left' | 'right';
 
@@ -33,7 +35,9 @@ type Hand = 'left' | 'right';
  * velocity + lever-arm math, applying the result via
  * PhysicsManipulation (one-shot). No velocity transfer happens
  * anywhere else — the grab system does not do this on its own (see
- * docs/DECISIONS.md).
+ * docs/DECISIONS.md). The release-smoothing window and velocity/spin
+ * multipliers come from the live tuning preset (src/tuningState.ts),
+ * not a fixed constant, so the tuning lab can change throw feel live.
  */
 export class ThrowingSystem extends createSystem({
   heldSticks: { required: [StickState, Grabbed] },
@@ -84,6 +88,16 @@ export class ThrowingSystem extends createSystem({
       : this.player.gripSpaces.right;
   }
 
+  private poseWindowSize(): number {
+    const preset = activePreset(presetBank);
+    return Math.round(
+      percentToReal(
+        tuningParams.releaseSmoothingWindowFrames,
+        preset.releaseSmoothingWindowFrames,
+      ),
+    );
+  }
+
   private samplePose(entity: Entity, timeS: number): void {
     const hand = this.grabSystem.getHolderHand(entity);
     if (hand === null) {
@@ -105,7 +119,8 @@ export class ThrowingSystem extends createSystem({
         this.tmpQuat.w,
       ],
     });
-    while (buffer.length > pieces.throw.poseWindowSize) {
+    const windowSize = this.poseWindowSize();
+    while (buffer.length > windowSize) {
       buffer.shift();
     }
     this.poseBuffers.set(entity.index, buffer);
@@ -128,9 +143,11 @@ export class ThrowingSystem extends createSystem({
 
     const lastSample = buffer[buffer.length - 1];
     let leverArm: Vec3 = [0, 0, 0];
+    let releasePosition: Vec3 = [0, 0, 0];
     const object3D = entity.object3D;
     if (object3D && lastSample) {
       object3D.getWorldPosition(this.tmpComPos);
+      releasePosition = [this.tmpComPos.x, this.tmpComPos.y, this.tmpComPos.z];
       leverArm = [
         this.tmpComPos.x - lastSample.position[0],
         this.tmpComPos.y - lastSample.position[1],
@@ -138,12 +155,26 @@ export class ThrowingSystem extends createSystem({
       ];
     }
 
-    const release = computeReleaseVelocity(handVelocity, leverArm);
+    const rawRelease = computeReleaseVelocity(handVelocity, leverArm);
+    const preset = activePreset(presetBank);
+    const velocityMultiplier = percentToReal(
+      tuningParams.velocityTransferMultiplier,
+      preset.velocityTransferMultiplier,
+    );
+    const angularMultiplier = percentToReal(
+      tuningParams.angularMultiplier,
+      preset.angularMultiplier,
+    );
+    const linearVelocity = scale(rawRelease.linearVelocity, velocityMultiplier);
+    const angularVelocity = scale(
+      rawRelease.angularVelocity,
+      angularMultiplier,
+    );
 
     entity.addComponent(PhysicsManipulation, {
       force: [0, 0, 0],
-      linearVelocity: release.linearVelocity,
-      angularVelocity: release.angularVelocity,
+      linearVelocity,
+      angularVelocity,
     });
     entity.setValue(StickState, 'phase', StickPhase.Flying);
 
@@ -153,24 +184,28 @@ export class ThrowingSystem extends createSystem({
 
     const classification = classifyThrow({
       poses: buffer,
-      releaseVelocity: release.linearVelocity,
-      angularVelocity: release.angularVelocity,
+      releaseVelocity: linearVelocity,
+      angularVelocity,
     });
-    const releaseSpeedMps = length(release.linearVelocity);
+    const releaseSpeedMps = length(linearVelocity);
 
     gameEvents.emit('Thrown', {
       stickId: String(entity.index),
       handId: hand,
       releaseSpeedMps,
-      releaseVelocity: release.linearVelocity,
-      angularVelocity: release.angularVelocity,
+      releaseVelocity: linearVelocity,
+      angularVelocity,
+      releasePosition,
+      style: classification.style,
+      flipQualityScore: classification.flipQualityScore,
+      presetId: presetBank.activePresetId,
       timeS: this.currentTimeS,
     });
     log('info', 'throw', 'release', {
       entityIndex: entity.index,
       hand,
       releaseSpeedMps,
-      angularVelocity: release.angularVelocity,
+      angularVelocity,
       style: classification.style,
       flipQualityScore: classification.flipQualityScore,
     });
@@ -211,6 +246,18 @@ export class ThrowingSystem extends createSystem({
       entity.setValue(StickState, 'phase', StickPhase.Settled);
       this.restTimerStartS.delete(entity.index);
       log('debug', 'state', 'stick settled', { entityIndex: entity.index });
+
+      let position: Vec3 = [0, 0, 0];
+      const object3D = entity.object3D;
+      if (object3D) {
+        object3D.getWorldPosition(this.tmpComPos);
+        position = [this.tmpComPos.x, this.tmpComPos.y, this.tmpComPos.z];
+      }
+      gameEvents.emit('Settled', {
+        stickId: String(entity.index),
+        position,
+        timeS,
+      });
     }
   }
 

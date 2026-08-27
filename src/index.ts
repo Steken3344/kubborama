@@ -2,6 +2,7 @@ import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 import { ImpactSystem } from './systems/impact.js';
 import { ThrowingSystem } from './systems/throwing.js';
+import { TuningLabSystem } from './systems/tuningLab.js';
 
 // NOT `await World.create(...)` at module top level — that breaks the
 // production build (Rollup's entry-chunk bundling hangs forever on it;
@@ -15,4 +16,8 @@ World.create(
   // velocities each frame.
   world.registerSystem(ThrowingSystem);
   world.registerSystem(ImpactSystem);
+  // Reads gameEvents emitted by ThrowingSystem/ImpactSystem — order
+  // doesn't matter for correctness (subscriptions, not query timing),
+  // but registering last keeps init order readable.
+  world.registerSystem(TuningLabSystem);
 });

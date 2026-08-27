@@ -1,4 +1,5 @@
 import type { Vec3 } from './vec3.js';
+import type { ThrowStyle } from './underhandClassifier.js';
 
 export type EventHandler<T> = (payload: T) => void;
 export type Unsubscribe = () => void;
@@ -52,6 +53,15 @@ export interface GameEvents {
     releaseSpeedMps: number;
     releaseVelocity: Vec3;
     angularVelocity: Vec3;
+    releasePosition: Vec3;
+    style: ThrowStyle;
+    flipQualityScore: number;
+    presetId: 'A' | 'B' | 'C';
+    timeS: number;
+  };
+  Settled: {
+    stickId: string;
+    position: Vec3;
     timeS: number;
   };
   Impact: {
