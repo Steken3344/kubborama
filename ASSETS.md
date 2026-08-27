@@ -6,19 +6,19 @@ optimized runtime files actually used in `public/` are committed.
 
 ## Runtime assets (committed, in `public/`)
 
-| File                                                  | Source                                           | License | Notes                                                      |
-| ----------------------------------------------------- | ------------------------------------------------ | ------- | ---------------------------------------------------------- |
-| `textures/ash-veneer-{diff,nor-gl}-1k.jpg`            | https://polyhaven.com/a/ash_veneer               | CC0     | Kubb/stick wood                                            |
-| `textures/japanese-cedar-planks-{diff,nor-gl}-1k.jpg` | https://polyhaven.com/a/japanese_cedar_planks    | CC0     | King wood (tinted darker in-material)                      |
-| `textures/brown-planks-03-{diff,nor-gl}-1k.jpg`       | https://polyhaven.com/a/brown_planks_03          | CC0     | Fence/rack wood                                            |
-| `textures/grass004-{diff,nor-gl}-1k.jpg`              | https://ambientcg.com/view?id=Grass004           | CC0     | Ground; AO/roughness/displacement maps dropped per plan §3 |
-| `hdri/autumn-park-1k.hdr`                             | https://polyhaven.com/a/autumn_park              | CC0     | Sky (DomeTexture) + IBL (IBLTexture), same file for both   |
-| `gltf/tree_plateau/tree_plateau.glb`                  | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden treeline                                            |
-| `gltf/tree_fat_fall/tree_fat_fall.glb`                | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden treeline (autumn variant)                           |
-| `gltf/tree_small_fall/tree_small_fall.glb`            | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden treeline (autumn variant)                           |
-| `gltf/tree_cone_fall/tree_cone_fall.glb`              | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden treeline (autumn variant)                           |
-| `gltf/tree_thin_dark/tree_thin_dark.glb`              | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden treeline                                            |
-| `gltf/fence_planks/fence_planks.glb`                  | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Boundary fence behind the player                           |
+| File                                                  | Source                                           | License | Notes                                                                                                         |
+| ----------------------------------------------------- | ------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------- |
+| `textures/ash-veneer-{diff,nor-gl}-1k.jpg`            | https://polyhaven.com/a/ash_veneer               | CC0     | Kubb/stick wood                                                                                               |
+| `textures/japanese-cedar-planks-{diff,nor-gl}-1k.jpg` | https://polyhaven.com/a/japanese_cedar_planks    | CC0     | King wood (tinted darker in-material)                                                                         |
+| `textures/brown-planks-03-{diff,nor-gl}-1k.jpg`       | https://polyhaven.com/a/brown_planks_03          | CC0     | Fence/rack wood                                                                                               |
+| `textures/grass004-{diff,nor-gl}-1k.jpg`              | https://ambientcg.com/view?id=Grass004           | CC0     | Ground; AO/roughness/displacement maps dropped per plan §3                                                    |
+| `textures/autumn-park-1k.hdr`                         | https://polyhaven.com/a/autumn_park              | CC0     | Sky (DomeTexture) + IBL (IBLTexture) — `subfolder: 'textures'` is required by both components' FilePath field |
+| `gltf/tree_plateau/tree_plateau.glb`                  | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden treeline                                                                                               |
+| `gltf/tree_fat_fall/tree_fat_fall.glb`                | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden treeline (autumn variant)                                                                              |
+| `gltf/tree_small_fall/tree_small_fall.glb`            | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden treeline (autumn variant)                                                                              |
+| `gltf/tree_cone_fall/tree_cone_fall.glb`              | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden treeline (autumn variant)                                                                              |
+| `gltf/tree_thin_dark/tree_thin_dark.glb`              | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Garden treeline                                                                                               |
+| `gltf/fence_planks/fence_planks.glb`                  | https://kenney.nl/assets/nature-kit (Nature Kit) | CC0     | Boundary fence behind the player                                                                              |
 
 ## Raw downloads (not committed — `assets/raw/`, fetched by `fetch-assets.sh`)
 
