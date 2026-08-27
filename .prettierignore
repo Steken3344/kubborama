@@ -1,0 +1,14 @@
+node_modules
+dist
+.iwsdk
+iwsdk.config.json
+.agents
+.claude
+.cursor
+.codex
+.github/instructions
+.github/copilot-instructions.md
+public/ui
+src/AGENTS.md
+public/ui/AGENTS.md
+package-lock.json
