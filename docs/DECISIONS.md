@@ -397,3 +397,38 @@ where the first section should start (`[-2, 0, 2.2]`, no rotation,
 `step: [1,0,0]`) — simpler and easier to reason about than rotating a
 repeated linear distribution. General rule adopted: prefer un-rotated
 pattern nodes and encode direction via `step`'s sign/axis instead.
+
+## 2026-08-27 — M1: milestone review gate
+
+Mechanical pass: green (typecheck, lint, format:check, 19 tests across
+4 files, build; CI green on push).
+
+Fresh-eyes review (separate subagent, no implementation context):
+independently verified the functional-core boundary (no three.js/
+IWSDK/Havok imports in `src/core/*`), TDD evidence in the `rng`/
+`court-layout` commit, DRY sourcing of dimensions/masses/poses, SI
+naming, the seeded-RNG-not-Math.random rule, and — critically —
+independently re-verified both bug fixes from the entries above by
+running the runtime itself (queried `stick-0`'s settled Y after
+`ecs_pause`, confirmed ~0.032 m not the old buggy ~0.16 m). One
+worth-fixing finding: scene JSON positions are undocumented/unguarded
+literal copies of `courtLayout()`'s output (inherent to the scene
+format — it can't call functions — but nothing would catch drift if
+`src/data/*.json` changed). Fixed immediately: added
+`src/scene-sync.test.ts`, a vitest that reads the scene file and
+asserts every king/kubb/stake/stick position matches `courtLayout()`.
+Flagged for M4 planning, not an M1 blocker: the baked-JSON position
+approach will need to become dynamic once Simple/Advanced game modes
+(different court presets) exist.
+
+Adversarial pass: (1) long-run physics stability — stepped ~800+ fixed
+frames (~11s simulated) past initial settling and re-queried king/
+kubb-4/stick-5: all still at zero velocity, no drift, no explosion;
+(2) stress-tested `computeCourtLayout()` across all 3 court presets
+(backyard/tournament/kids) × 200 seeds each (600 combinations):
+verified every kubb/stick stays within the court width, every stick
+stays between the two baselines, no duplicate stick positions, king
+always sits strictly between baselines, and no kubb lands within 8cm
+of a corner stake's x-position. Zero failures.
+
+Go/no-go: **GO**, presented to Erik. Tagging v0.2-m1.

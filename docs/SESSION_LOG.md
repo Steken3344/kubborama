@@ -71,15 +71,61 @@ pass on the CI gates themselves (confirmed lint/format/typecheck/test
 all genuinely fail on a violation, not no-ops). Full writeup in
 docs/DECISIONS.md.
 
-**Handover.** M0 is code-complete and self-verified; the only
-remaining item is the human headset gate — parked, needs Erik:
+**M0 headset gate: PASSED.** Erik opened the deployed URL on the Quest
+2, "Enter XR" worked, landed in the default IWSDK demo room (expected
+pre-M1). Restarted Claude Code in this directory afterward —
+`iwsdk-runtime`/`iwsdk-reference` connected; `metavr` cannot connect on
+Linux (no linux-x64 binary shipped — permanent, documented in
+docs/DECISIONS.md, not expected to block anything). Tagged `v0.1-m0`.
 
-1. Open https://steken3344.github.io/kubborama/ on the Quest 2, tap
-   "Enter XR", confirm it works (or note what breaks).
-2. Restart Claude Code in this directory (`/home/erikkalstrom/Proj/KubbOrama`)
-   so the three IWSDK MCP servers (`iwsdk-runtime`, `iwsdk-reference`,
-   `metavr`) load — needed before M1 can use them for scene
-   verification.
+## 2026-08-27 — M1 (Scene), same session, continued per Erik's request
 
-Once both are done, tag `v0.1-m0` and start M1 fresh per
-docs/sessions/M1.md.
+Erik asked to continue straight into M1 rather than start a fresh
+session — CLAUDE.md's "one milestone per session" is a memory-hygiene
+guideline, not a hard rule, and the full M0 context was already loaded,
+so this was the more efficient path here.
+
+Read `docs/sessions/M1.md`, `docs/PLAN.md` §§1-4, and the M1 checklist,
+then built M1 per plan:
+
+- `src/core/rng.ts` + `src/core/court-layout.ts` (TDD, tests first) —
+  pure court-geometry math: king at court center, 5 kubbs evenly spaced
+  along the far (short) baseline, 4 corner stakes, 6 sticks scattered
+  near the player baseline via a seeded RNG. The very first version of
+  this code had a real bug (king placed at the far baseline instead of
+  court center) that the tests caught before it ever reached a scene.
+- `src/config.ts` + `src/data/{court-presets,pieces,camera-poses}.json`
+  — court presets (backyard/tournament/kids), material-density-derived
+  piece masses (verified against the documented ~0.29/0.47/1.45 kg
+  figures), named camera poses.
+- Downloaded M1's CC0 assets via `fetch-assets.sh` plus a direct-URL
+  fetch for Kenney Nature Kit (found the real download link by reading
+  the kenney.nl page, verified with a HEAD request before trusting it);
+  logged everything in `ASSETS.md`.
+- `src/scene-assets/*.ts` — procedural ground/kubb/king/stick/stake
+  geometry sharing material instances, registered in `src/assets.ts`
+  alongside 5 Kenney tree glTFs and a fence section; stripped the
+  scaffold's robot/panel demo content entirely.
+- `public/scenes/main.iwsdk.scene.json` — the full garden composition,
+  authored per the `iwsdk-scene-composer` and `iwsdk-physics` skills
+  (both invoked per CLAUDE.md's routing rule before hand-authoring).
+- Found and fixed two real bugs via runtime verification (not just the
+  editor preview, which doesn't run `PhysicsSystem`) — full detail in
+  docs/DECISIONS.md: (1) `DomeTexture`/`IBLTexture` `src` needed the
+  full `textures/` relative path, not a bare filename; (2) the stick
+  asset's "lying flat" rotation was baked into its geometry, which
+  desynced the visual mesh from its physics collider (collider stood
+  upright while the mesh lay flat) — fixed by moving the full
+  orientation to the scene node's transform instead.
+- Milestone review gate run in full (mechanical, fresh-eyes subagent,
+  adversarial — long-run physics stability + a 600-combination layout
+  stress test across all 3 court presets). One fresh-eyes finding
+  (scene JSON has no automated guard against drifting from
+  `config.ts`) fixed immediately with `src/scene-sync.test.ts`. GO, no
+  blockers. Full writeup in docs/DECISIONS.md.
+
+**Handover.** M1 is code-complete, self-verified in the emulator via
+MCP (screenshots + `ecs_pause`/`ecs_step`/`ecs_query_entity` physics
+inspection), and CI is green. No headset gate required for M1 (that's
+M0/M2/M5 only). Tag `v0.2-m1` and start M2 (throwing — the big one)
+fresh per docs/sessions/M2.md.

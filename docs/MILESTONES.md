@@ -38,7 +38,7 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
   — ✅ PASSED 2026-08-27: "Enter XR" worked, entered the default IWSDK
   demo room.
 
-## M1 — Scene `status: in progress — pending review gate`
+## M1 — Scene `status: DONE`
 
 - [x] config.ts loads JSON: court presets (orientation: baselines =
       SHORT sides!), piece dims/masses, camera poses. 0-100 tuning
