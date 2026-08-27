@@ -432,3 +432,88 @@ always sits strictly between baselines, and no kubb lands within 8cm
 of a corner stake's x-position. Zero failures.
 
 Go/no-go: **GO**, presented to Erik. Tagging v0.2-m1.
+
+## 2026-08-27 — M2: end grip emerges from the actual grab point, not a configured offset
+
+DERISK's note "End grip is supported: grab Handles take
+`targetPosOffset`/`targetQuatOffset`" turned out to describe
+`DistanceGrabbable`'s `MoveTowardsTarget` mode only (positioning where
+a distance-pulled object snaps to relative to the pointer) —
+`OneHandGrabbable` has no offset field at all (verified by reading its
+full field list: `rotate`, `rotateMax/Min`, `translate`,
+`translateMax/Min`, nothing else). For a direct/proximity grab,
+`@pmndrs/handle`'s `HandleStore` preserves whatever relative transform
+existed between hand and object at grab time — there's no "anchor
+point" to configure.
+
+**Decision: don't fight this, use it.** `systems/throwing.ts` computes
+the lever arm (`p_com - p_hand`) fresh at release time from the
+entity's actual current world position and the last sampled hand pose
+— wherever the player actually grabbed the stick. This is more
+physically correct than a hardcoded end-grip offset would have been:
+a real player grabbing near the middle vs. near the end produces a
+correspondingly different (correct) lever-arm term, exactly matching
+reality. `DistanceGrabbable`'s `targetPositionOffset` is left at
+default (identity) for now — distance-grabbed sticks currently snap
+center-to-hand rather than end-to-hand, a visual-only gap (the release
+physics is unaffected) noted as a follow-up, not fixed now since it
+doesn't touch correctness.
+
+## 2026-08-27 — M2: MCP-scripted throw magnitude is unreliable; verified logic correctness a different way
+
+Tried to build the "golden-throw" harness DERISK anticipated (grip →
+`xr_animate_to` sweep → release → assert outcome) and hit a real
+tooling limitation, not an app bug:
+
+- `xr_animate_to` **blocks until the animation fully completes**, so
+  by the time a _separate_ release command executes, the controller
+  has already been stationary for the real time the tool round-trip
+  took. The 5-frame pose ring buffer correctly reflects "hand not
+  moving" — `releaseSpeedMps: 0` in that setup is the _correct_ output
+  for the _actual_ (bad) input, not a bug.
+- Switching to `ecs_pause` + `ecs_step(1)` per swing waypoint
+  (`xr_set_transform`, not `xr_animate_to`) fixed that: `samplePose`
+  ran exactly once per step, confirmed via a temporary diagnostic dump
+  of the full pose buffer. But the `time` value passed to
+  `system.update()` under `ecs_step` turned out to be **real elapsed
+  wall-clock time** (Three.js `Clock.elapsedTime`, which keeps
+  advancing during "pause" — only system _updates_ are skipped, not
+  rendering/the clock), not a synthetic fixed `1/72s` per step as the
+  tool's own description implies for physics substeps. Real MCP
+  round-trip latency between calls (1-3+ seconds) became the `dt` in
+  the velocity math, deflating the result by ~2 orders of magnitude
+  while preserving the _correct sign and direction_ (verified by hand:
+  the computed velocity's `+x/+y/-z` signs matched the swing's actual
+  `+x/+y/-z` displacement exactly).
+- A follow-up `ecs_query_entity` read-back of `PhysicsBody
+_linearVelocity` after resuming produced the same numeric value
+  (`[7.195, 7.863, -7.195]`) across two independently-scripted runs
+  with different logged release speeds — almost certainly the
+  managed window's editor/runtime tab split (`Runtime`/`Editor` toggle
+  visible in every screenshot) being queried inconsistently rather
+  than a real reading; not chased further given the cost already
+  sunk.
+
+**What's actually verified, and how:**
+
+- Pure math (`computeHandVelocity`, `computeReleaseVelocity`,
+  `angularVelocityBetween`): rigorous, deterministic unit tests
+  (`src/core/*.test.ts`) — this is the part correctness actually
+  depends on.
+- Live wiring: grab → `StickState` `HELD`, release → `FLYING` →
+  (after rest) `SETTLED`, `[grab]`/`[throw]`/`[state]` logs firing
+  with plausible content, `PhysicsManipulation` being added (confirmed
+  by the phase transition itself — `PhysicsSystem` wouldn't move a
+  static-until-then body without it) — all confirmed live in the
+  runtime across multiple grab/release cycles.
+- **Not** verified by this session: real-world throw _magnitude_ and
+  _feel_. That was never this session's job — it's explicitly reserved
+  for Erik's real headset throws at the M2 calibration gate, which is
+  why the milestone doc says not to tag M2 before that happens.
+
+Follow-up filed as tech-debt: a frame-accurate scripted golden-throw
+harness (for M2's CI regression goal) needs either a way to inject a
+synthetic fixed clock during `ecs_step`, or a different technique
+entirely (e.g. driving pose samples directly through a test-only
+seam in `ThrowingSystem` rather than through real XR device
+simulation). Out of scope to solve in this session.
