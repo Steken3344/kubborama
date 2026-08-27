@@ -704,3 +704,159 @@ around the garden perimeter alongside the existing trees. "Hills"
 specifically skipped — real terrain modeling is a bigger job than this
 feedback pass warranted; the larger rock variants (`rock_large_b/d`)
 stand in for now.
+
+## 2026-08-27 — M3: toppling, rounds & stats
+
+Built per docs/sessions/M3.md, continuing straight from M2 per Erik's
+explicit instruction to keep going through milestones without waiting
+for a check-in (he went to bed mid-session).
+
+**Core (TDD, all pure — zero three.js/IWSDK/Havok imports):**
+`core/topple.ts` derives tilt angle from a quaternion via the standard
+"rotate local up by q, take the Y component" identity, simplified to
+`1 - 2*(x² + z²)` for a unit quaternion — yaw-independent by
+construction, which is exactly the "how far off vertical" measure a
+topple check needs (no need for a generic vector-rotate helper).
+`core/restState.ts` extracts the rest-detection predicate that was
+inline in `ThrowingSystem.checkForSettling` — needed a second time for
+kubb/king toppling's "at rest, not just wobbling" requirement, so per
+CLAUDE.md's DRY rule it became a shared function instead of a second
+copy; `ThrowingSystem` was refactored to use it too. `core/scoring.ts`
+is a `(state, event) -> state` round reducer: `StickThrown` and
+`StickSettled` are tracked _separately_ — round completion
+(`isRoundComplete`) waits for the last stick to **settle** (so the
+auto-reset never fires mid-flight), while the king-felling stat wants
+how many sticks had been **thrown** at that moment (the felling stick
+itself may still be in flight when the king goes down). `core/stats.ts`
+follows M2's telemetry/tuning-preset pattern exactly: versioned zod
+schema, `encode/decode` that never throws on corrupt data, personal
+bests that only ever improve (`Math.max`/a null-aware `Math.min`
+helper, never blind overwrite).
+
+**Adapters:** `ToppleSystem` queries `Resettable` minus `StickState`
+(kubbs + king, never sticks — they're projectiles, not targets) and
+branches on a new `KingPiece` tag component to emit `KingFelled` vs
+`KubbFelled` separately, per docs/PLAN.md's "king separate event" line.
+Felled-tracking clears on the `Reset` event (the same one the menu's
+button and the round auto-reset both already fire), so a piece that's
+reset back upright can be re-detected next round. `RoundSystem` drives
+the reducer from events the throw pipeline already emits — no new
+detection logic — and attributes "longest felling throw" via a
+heuristic: whichever stick(s) are `Flying` when a felling event fires
+get credited once they settle. In this game's actual flow (one stick
+at a time) that's almost always the stick that hit the piece; documented
+as an approximation, not asserted as exact. `StatsSystem` records
+`RoundEnded` into localStorage. `HudSystem` repaints an always-visible
+scoreboard purely on `RoundEnded` (no per-frame polling) — reads
+`StatsSystem.stats` directly, which is why `src/index.ts` registers
+`StatsSystem` before `HudSystem` (commented in place; same-tick
+ordering, not a race, but worth flagging for anyone reordering those
+lines later). `MenuSystem`'s manual reset button and the round-end
+auto-reset now share one implementation, triggered two ways.
+
+No "result screen" was built as a separate blocking UI — the
+always-visible HUD updating immediately after each round serves that
+role, and a modal would fight with the immediate auto-reset design.
+
+**Verified live in the emulator**, not just unit-tested: a single
+real grabbed-stick swing (chained `xr_animate_to` segments building up
+real velocity, not a "release" throw) knocked over 3 near-baseline
+kubbs on the first attempt (`ToppleSystem` logged `kubb felled` for
+each, correctly, with zero false positives on the untouched kubbs).
+Finishing that round (throwing the remaining 5 sticks) produced
+`round ended {roundNumber: 1, kubbsFelled: 3, kingFelled: false,
+sticksThrownWhenKingFelled: null}`, followed by `stats recorded` and
+`reset` in the same tick, and the HUD updated to show the new state.
+A second, more aggressive swing reached across the full court and
+felled **all 10 kubbs and the king in one motion** — a good stress
+test of the maximum case (11/11), which the reducer and HUD both
+handled correctly (`Rekord: 11/11` rendered live). King-felling was
+deliberately tested separately, not just inferred from the shared code
+path, since docs/MILESTONES.md calls it out as a distinct event.
+
+**Interesting, honest edge case found via that same stress test:**
+`sticksThrownWhenKingFelled` came back `0` for the round that felled
+everything. Not a bug — the king and every kubb were physically struck
+while the stick was still **held and being swung**, before its
+`Thrown` event fired on release. The game's physics doesn't
+distinguish "hit while held" from "hit after being thrown" (nothing in
+docs/PLAN.md's design says it should — rule enforcement is explicitly
+out of scope for the POC, same reasoning as the underhand classifier
+being informational-only). Worth knowing about if a future milestone
+adds stricter rules: right now a wild swing can bonk pieces over
+without ever releasing the stick, and the scoring reducer faithfully
+records that as "felled the king in zero thrown sticks."
+
+Mechanical pass: `tsc`/`eslint`/`prettier`/`vitest` (109 tests, up
+from 77)/`build`/`smoke` all green. Fresh-eyes review dispatched before
+tagging `v0.4-m3` — M3 carries no headset gate (only M0/M2/M5 do), so
+it tags as soon as that review clears, unlike M2.
+
+**Fresh-eyes review — one blocker, fixed and re-verified live; two
+worth-fixing items fixed alongside it.**
+
+**Blocker (fixed now, per CLAUDE.md's "foundation-breaking findings
+are fixed NOW, never filed"):** `RoundSystem` never subscribed to
+`Reset`. `ToppleSystem` does (clears its felled-piece tracking so a
+manually-reset kubb can topple again), but `RoundSystem`'s own
+round-scoped state — `kubbsFelledThisRound`, `sticksThrownThisRound`,
+etc. — didn't, so a manual reset mid-round (the pre-existing "Ny
+runda" menu button, not a new path) left stale felled-kubb IDs
+sitting in the reducer state. Re-felling the _same_ kubb after that
+reset would then be silently swallowed by `scoringReducer`'s own
+dedup guard (`kubbsFelledThisRound.includes(entityId)` — the exact
+guard that's supposed to prevent double-counting, misfiring here
+because the state it was protecting was stale, not current), and
+`RoundEnded`/lifetime stats could pick up a mix of pre- and
+post-reset data.
+
+**Design decision (autonomous — reversible, not a human gate — logged
+here rather than paged to Erik who was asleep):** a manual reset
+_abandons_ the in-progress round and restarts at the _same_ round
+number, rather than banking partial progress or advancing the
+counter. The button's own label is literally "Ny runda" (new round),
+and abandon-not-bank avoids a way to farm partial credit by resetting
+repeatedly. Implemented as `RoundSystem.abandonRound()`, subscribed to
+`Reset` alongside the existing gameplay-event subscriptions.
+
+One subtlety the fix had to account for: `RoundSystem`'s own
+round-completion path (`maybeEndRound`) emits `RoundEnded`, which
+`MenuSystem` handles by auto-resetting — which emits `Reset` —
+which now _also_ re-enters `RoundSystem`'s new handler, synchronously,
+nested inside the original `emit('RoundEnded')` call. `maybeEndRound`
+now advances `roundState` to the next round _before_ emitting
+`RoundEnded` (previously: after), so that nested re-entrant call
+re-derives from the already-advanced round number — a harmless
+no-op — instead of abandoning the round that just legitimately
+completed. Verified live: felled 9 kubbs with one swing, manually
+reset mid-round via the menu button, confirmed kubbs stood back up
+_and_ the reducer's tracking was truly cleared (the same kubb IDs
+fired `KubbFelled` again on a second attempt, not silently dropped),
+then completed that round for real — `RoundEnded` correctly reported
+`roundNumber: 1` (never advanced by the abandoned attempt) and
+`kubbsFelled: 3` (only the post-reset attempt's count, no leakage from
+the wiped 9), and `stats recorded {roundsPlayed: 1, ...}` confirms the
+abandoned attempt was never counted as a played round.
+
+**Worth-fixing, done:** `ToppleSystem.checkOne` built a fresh 4-element
+array literal every frame per toppleable entity to adapt `Transform`'s
+vector-view read into `core/topple.ts`'s plain-array `Quat` type —
+exactly the per-frame-allocation class CLAUDE.md flags, and the same
+class M2's fresh-eyes review already caught once in `ImpactSystem`.
+Fixed with a persisted `tmpQuat` mutated in place, same pattern as
+`ImpactSystem.tmpCurr`. Also extracted `src/systems/bodySpeed.ts`
+(`readBodySpeed`, an out-parameter style — fills a persisted
+`[number, number]` tuple, allocates nothing) since the exact same
+"read `_linearVelocity`/`_angularVelocity`, `Math.hypot` each"
+four-line block was duplicated verbatim in both `ThrowingSystem` and
+`ToppleSystem`; both now call the shared helper.
+
+**Accepted as-is (not blockers):** the "longest felling throw"
+attribution heuristic's documented failure direction (over- vs.
+under-crediting) wasn't independently re-verified against real
+settle-timing — flagged as worth double-checking empirically, not
+worth blocking on for a personal-best stat that degrades gracefully
+either way. `HudSystem`'s dependency on `StatsSystem` being registered
+first in `src/index.ts` is real, commented, but unenforced by code —
+acceptable for now, a candidate for a `StatsUpdated` event later if it
+ever bites someone.

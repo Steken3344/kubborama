@@ -125,17 +125,36 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
   — not yet done, blocks tagging v0.3-m2
 - Review gate → tag v0.3-m2
 
-## M3 — Toppling, rounds & stats `status: not started`
+## M3 — Toppling, rounds & stats `status: DONE`
 
-- [ ] core/topple.ts: tilt >threshold + at-rest; king separate event
-      (consumes the M2 impact detector's events)
-- [ ] Round loop: 6 sticks, result screen, auto-reset; core/scoring.ts
-      reducer (TDD with event sequences)
-- [ ] core/stats.ts: PBs (fewest sticks, most felled, streak, longest
-      throw, longest felling throw), lifetime totals (incl. play time,
-      accuracy), versioned zod schema (+ reserved userId/matches)
-- [ ] HUD: round counts + relevant PB
-- Review gate → tag v0.4-m3
+- [x] core/topple.ts: tilt >threshold (60°, config.ts) + at-rest (reused
+      core/restState.ts, extracted from ThrowingSystem's inline check —
+      DRY); king separate event via a new `KingPiece` tag component
+      (`ToppleSystem` queries Resettable minus StickState — kubbs+king,
+      not sticks — and branches on `hasComponent(KingPiece)`)
+- [x] Round loop: 6 sticks, auto-reset (through the exact same path as
+      the manual reset-menu button — both trigger off events on the one
+      project-wide bus); core/scoring.ts reducer (TDD with event
+      sequences, per docs/sessions/M3.md). No separate "result screen" —
+      the always-visible HUD (below) serves that role instead of a
+      blocking modal, since the round auto-resets immediately
+- [x] core/stats.ts: PBs (fewest sticks to fell the king, most felled in
+      a round, longest king-fell streak, longest throw, longest felling
+      throw), lifetime totals (rounds/sticks/kubbs/kings/play time),
+      accuracy as a derived helper (not stored, avoids drift); versioned
+      zod schema with reserved userId/matches fields, persisted to
+      localStorage (same never-throws-on-corrupt-data pattern as M2's
+      telemetry/tuning-preset stores)
+- [x] HUD (`public/ui/hud.uikitml` + `HudSystem`): always-visible small
+      panel — round number, last round's felled count, personal-best
+      most-felled. Purely event-driven (updates only on RoundEnded, no
+      per-frame polling)
+- Review gate: fresh-eyes found one blocker (manual reset mid-round
+  didn't clear `RoundSystem`'s round-scoped state — fixed as
+  "abandon and retry the same round number," verified live) plus two
+  worth-fixing items (a per-frame allocation and a duplicated
+  velocity-read block, both fixed). Full writeup in docs/DECISIONS.md.
+  Tagged `v0.4-m3` — no headset gate for this milestone.
 
 ## M4 — Wind, tunables & settings `status: not started`
 

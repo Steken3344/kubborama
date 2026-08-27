@@ -3,7 +3,6 @@ import {
   eq,
   Grabbed,
   GrabSystem,
-  PhysicsBody,
   PhysicsManipulation,
   Quaternion,
   Vector3,
@@ -15,6 +14,7 @@ import { gameEvents } from '../core/events.js';
 import { grabTick, releaseClick } from '../core/haptics.js';
 import { log } from '../core/log.js';
 import { isResting } from '../core/restState.js';
+import { readBodySpeed } from './bodySpeed.js';
 import {
   computeHandVelocity,
   computeReleaseVelocity,
@@ -56,6 +56,7 @@ export class ThrowingSystem extends createSystem({
   private tmpPos = new Vector3();
   private tmpQuat = new Quaternion();
   private tmpComPos = new Vector3();
+  private tmpSpeed: [number, number] = [0, 0];
 
   init(): void {
     const grabSystem = this.world.getSystem(GrabSystem);
@@ -216,19 +217,8 @@ export class ThrowingSystem extends createSystem({
   }
 
   private checkForSettling(entity: Entity, timeS: number): void {
-    const linVel = entity.getVectorView(PhysicsBody, '_linearVelocity');
-    const angVel = entity.getVectorView(PhysicsBody, '_angularVelocity');
-    const linSpeedMps = Math.hypot(
-      linVel[0] ?? 0,
-      linVel[1] ?? 0,
-      linVel[2] ?? 0,
-    );
-    const angSpeedRadS = Math.hypot(
-      angVel[0] ?? 0,
-      angVel[1] ?? 0,
-      angVel[2] ?? 0,
-    );
-    const resting = isResting(linSpeedMps, angSpeedRadS, pieces.throw);
+    readBodySpeed(entity, this.tmpSpeed);
+    const resting = isResting(this.tmpSpeed[0], this.tmpSpeed[1], pieces.throw);
 
     if (!resting) {
       this.restTimerStartS.delete(entity.index);

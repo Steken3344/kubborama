@@ -6,8 +6,10 @@ import { StickState } from '../components/stick-state.js';
 import { pieces } from '../config.js';
 import { gameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
+import type { Quat } from '../core/quat.js';
 import { isResting } from '../core/restState.js';
 import { isToppled } from '../core/topple.js';
+import { readBodySpeed } from './bodySpeed.js';
 
 /**
  * Kubbs/king only (Resettable minus StickState — sticks are
@@ -27,6 +29,8 @@ export class ToppleSystem extends createSystem({
   private restTimerStartS = new Map<number, number>();
   private felledReported = new Set<number>();
   private unsubscribeReset?: () => void;
+  private tmpQuat: Quat = [0, 0, 0, 1];
+  private tmpSpeed: [number, number] = [0, 0];
 
   init(): void {
     this.unsubscribeReset = gameEvents.on('Reset', () => {
@@ -51,33 +55,17 @@ export class ToppleSystem extends createSystem({
     }
 
     const orientation = entity.getVectorView(Transform, 'orientation');
-    const toppled = isToppled(
-      [
-        orientation[0] ?? 0,
-        orientation[1] ?? 0,
-        orientation[2] ?? 0,
-        orientation[3] ?? 1,
-      ],
-      pieces.toppleAngleDeg,
-    );
-    if (!toppled) {
+    this.tmpQuat[0] = orientation[0] ?? 0;
+    this.tmpQuat[1] = orientation[1] ?? 0;
+    this.tmpQuat[2] = orientation[2] ?? 0;
+    this.tmpQuat[3] = orientation[3] ?? 1;
+    if (!isToppled(this.tmpQuat, pieces.toppleAngleDeg)) {
       this.restTimerStartS.delete(entity.index);
       return;
     }
 
-    const linVel = entity.getVectorView(PhysicsBody, '_linearVelocity');
-    const angVel = entity.getVectorView(PhysicsBody, '_angularVelocity');
-    const linSpeedMps = Math.hypot(
-      linVel[0] ?? 0,
-      linVel[1] ?? 0,
-      linVel[2] ?? 0,
-    );
-    const angSpeedRadS = Math.hypot(
-      angVel[0] ?? 0,
-      angVel[1] ?? 0,
-      angVel[2] ?? 0,
-    );
-    if (!isResting(linSpeedMps, angSpeedRadS, pieces.throw)) {
+    readBodySpeed(entity, this.tmpSpeed);
+    if (!isResting(this.tmpSpeed[0], this.tmpSpeed[1], pieces.throw)) {
       this.restTimerStartS.delete(entity.index);
       return;
     }

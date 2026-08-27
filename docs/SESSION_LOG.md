@@ -212,3 +212,69 @@ real headset calibration gate (10-15 flat + 10-15 backspin throws,
 recorded feedback) — a human gate, never self-approved even
 autonomously. Next: continue straight into M3 (toppling, rounds &
 stats) per Erik's explicit instruction, without waiting for that gate.
+
+## 2026-08-27 — M3 (Toppling, rounds & stats), same session, continued per Erik's instruction
+
+Erik sent one more round of feedback (both-hands grab, a stick-clash
+"klonk" request, and wanting a livelier garden) then said to keep going
+through the milestones without checking in further, and went to bed.
+Handled that feedback first (folded into the M2 writeup above and
+docs/QUESTIONS.md/gh#3/gh#4), then started M3 per docs/sessions/M3.md.
+
+Built per plan, TDD throughout: `core/topple.ts` (tilt angle from a
+quaternion, yaw-independent by construction), `core/restState.ts`
+(extracted the rest-detection predicate that was inline in
+`ThrowingSystem` — needed a second time, so DRY says share it, and
+`ThrowingSystem` was refactored to match), `core/scoring.ts` (a 6-stick
+round reducer driven by synthetic event sequences, exactly as
+docs/sessions/M3.md asked), `core/stats.ts` (personal bests + lifetime
+totals, versioned zod schema persisted to localStorage — same pattern
+as M2's telemetry store). Adapters: `ToppleSystem` (kubbs+king only,
+emits `KubbFelled`/`KingFelled` once each via a new `KingPiece` tag
+component), `RoundSystem` (drives the reducer from events the throw
+pipeline already emits, emits `RoundEnded`), `StatsSystem` (records
+it), `HudSystem` (an always-visible scoreboard panel — round number,
+last round's felled count, personal best — updated purely by events,
+no polling). The menu's manual reset button and the round-end
+auto-reset now share one implementation, triggered two ways through
+the event bus.
+
+Verified live in the emulator, not just unit tests: a single real
+stick swing (built via chained `xr_animate_to` calls, not a "release"
+throw) knocked over 3 kubbs — `ToppleSystem` correctly fired
+`KubbFelled` for each with zero false positives. Finishing that round
+produced a correct `RoundEnded`, recorded stats, and an auto-reset, all
+visible on the HUD. A second, more aggressive swing reached across the
+whole court and felled all 10 kubbs _and_ the king in one motion — the
+maximum-possible round (11/11) — which the reducer, stats, and HUD all
+handled correctly (`Rekord: 11/11` rendered live). Found one honest,
+non-bug edge case along the way: pieces can be knocked over by a stick
+that's still _held_ (mid-swing, before its `Thrown` event fires), which
+the reducer faithfully records as "felled in zero thrown sticks" — not
+a bug, just something worth knowing about if a later milestone adds
+stricter rules. Full detail in docs/DECISIONS.md.
+
+Mechanical pass green (tsc/eslint/prettier — 109 tests now, up from
+77 — /build/smoke). Fresh-eyes review found one real blocker: a manual
+reset mid-round (the pre-existing menu button) never cleared
+`RoundSystem`'s round-scoped state, so a kubb felled before that
+reset could be silently swallowed by the reducer's own double-count
+guard when felled again, and stale data could leak into the next
+`RoundEnded`. Fixed now, per CLAUDE.md's "foundation-breaking findings
+are fixed NOW, never filed" — a manual reset abandons the in-progress
+round and restarts at the same round number (decided autonomously,
+logged in docs/DECISIONS.md, since Erik was asleep). Re-verified live:
+felled 9 kubbs, reset mid-round, confirmed they stood back up and
+could be re-felled without being dropped, then completed that round
+for real and got a clean, uncorrupted result. Two smaller worth-fixing
+items (a per-frame allocation, a duplicated velocity-read block) fixed
+alongside it. Full writeup in docs/DECISIONS.md.
+
+**Handover.** M3 is DONE — tagged `v0.4-m3` (no headset gate for this
+milestone). Both M2 (`v0.3-m2`, still pending Erik's headset
+calibration) and M3 are now complete-or-gated as far as this session
+can take them. Next: M4 (wind, tunables & settings) per
+docs/sessions/M4.md, or pause here — Erik is asleep and gave a broad
+"keep going" instruction with no explicit ceiling, so the call on how
+much further to push in one unattended stretch is judgment, not a rule
+already settled.
