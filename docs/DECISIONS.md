@@ -1511,3 +1511,103 @@ stick or kubb's actual height) and not worth 13 more node-splits for
 static garden dressing. Re-verified live after the fix: 3 more clean
 reloads, `ground-collider`'s components confirmed present in the
 running world.
+
+## 2026-08-28 — M5: GC/pooling pass
+
+Erik asked to move on to the next milestone; separately investigated
+(but did not conclusively resolve) his report that picking up a stick
+always grabs at its middle rather than wherever you reach — see below.
+Then dispatched a dedicated review pass across all 17 `src/systems/*`
+files for per-frame allocation, per CLAUDE.md's "never allocate in
+update()" rule.
+
+**Two real per-frame allocations found and fixed, one "worth a
+decision" flagged and resolved:**
+
+- `ImpactSystem.update()` calls `detectImpact()` for every dynamic
+  body (kubbs, king, sticks — essentially everything not currently
+  held) every single frame, unconditionally, for the whole session —
+  not gated to throws or impacts. `detectImpact` computed
+  `length(sub(currentVelocity, previousVelocity))`, and `sub()`
+  allocates a fresh 3-element array on every call: ~17 dynamic bodies
+  × 90fps ≈ 1,500 array allocations/sec continuously, the highest-
+  frequency finding by far. Added `core/vec3.ts`'s `distance(a, b)` —
+  `Math.hypot` of the three componentwise differences, mathematically
+  identical to `length(sub(a, b))` (verified with a test asserting
+  exactly that equivalence) but with no intermediate array. `sub`/
+  `length` themselves are untouched — they're correct, appropriately-
+  allocating pure functions for their other (one-shot, release-time)
+  callers in `core/throwRelease.ts`; only the per-frame caller needed
+  the allocation-free variant.
+- `ThrowingSystem.samplePose()` allocated a new `PoseSample` object
+  plus two new arrays (position, orientation) every frame for every
+  held stick — i.e. for the entire aiming window before a throw, not
+  a one-shot event. Fixed by reusing the sample object being evicted
+  from the pose-smoothing ring buffer (mutating its fields in place)
+  instead of allocating fresh; only the first `windowSize` frames of a
+  brand-new grab still allocate, since there's nothing to evict yet —
+  a small, per-throw-bounded cost rather than a per-frame one. Kept
+  the buffer itself a plain ordered array (push/shift) rather than a
+  true circular buffer — `core/throwRelease.ts`'s `computeHandVelocity`
+  expects chronological order and is untouched, and shifting a 2-8
+  element array (the tuned window size range) has no meaningful cost;
+  only the element allocations mattered.
+- `WindSystem.update()` called `entity.addComponent(PhysicsManipulation,
+{ force })` for every flying stick every frame in Advanced mode —
+  a new wrapper object each call, even though the `force` array inside
+  it was already correctly shared (confirmed safe in an earlier
+  review: elics copies Vec3 data into per-entity storage on
+  `addComponent`, never retains the reference). Extended that same
+  reasoning to the wrapper object itself — precomputed one options
+  object per game mode (`MANIPULATION_OPTIONS_BY_MODE`) alongside the
+  existing `FORCE_BY_MODE`, so `update()` now only ever looks one up.
+
+Mechanical pass green throughout (tsc/eslint/prettier/vitest — 151
+tests, up from 149 — /build/smoke). Live-verified clean boot and no
+new console errors; did not manage to reproduce a full grab-swing-
+throw cycle live this session (the emulator's synthetic controller
+positioning stopped registering grabs partway through testing, for
+reasons unrelated to this pass's changes — see the grab-offset
+investigation below) so the throw-release math itself (unchanged,
+already TDD-covered in `throwRelease.test.ts`) wasn't re-exercised
+end-to-end live; the refactor is behavior-preserving by construction
+(same values, same order, just reused storage) and covered by
+`vec3.test.ts`'s new equivalence assertion.
+
+**Investigated, not resolved: "I always grab the stick in the middle,
+didn't used to."** Read through `@pmndrs/handle`'s actual grab-capture
+code (`onPointerDown` stores `event.point`, the real sphere-vs-mesh-
+bounding-box intersection point, not the object's origin) — the
+underlying mechanism is built to preserve wherever you actually
+grabbed, not snap to center, so this isn't an obvious library
+default or a config regression (`OneHandGrabbable`'s `rotate`/
+`translate` config on sticks is unchanged in git history). Found one
+concrete, well-evidenced candidate cause instead: sticks carry BOTH
+`OneHandGrabbable` (close-range squeeze, offset-preserving per the
+above) and `DistanceGrabbable` (ray/trigger, for reaching a stick too
+far to touch) — and `DistanceGrabbable`'s `targetPositionOffset`/
+`targetQuaternionOffset` default to `[0,0,0]`/identity, meaning a
+ray-grab ALWAYS snaps the object's origin to a fixed spot relative to
+the hand, by design, regardless of where the ray hit. If Erik is
+triggering the ray-grab (trigger) rather than the close-range squeeze
+grab, "always centers" is exactly the expected, working-as-designed
+behavior of that path — not a bug in either path individually.
+Attempted to confirm live by grabbing at various offsets from a
+stick's center via `ecs_set_component`-driven controller positioning;
+also discovered the underlying grab pointer's default detection
+radius is 7cm (`@pmndrs/pointer-events`'s `createGrabPointer`,
+`options.radius ?? 0.07`) — a real, useful number, but every offset
+attempt (even within that tolerance, positioned exactly on the
+stick's own rotated length axis, verified against Three.js's own
+`applyQuaternion` for the direction math) still failed to register
+via the CLI's synthetic controller-transform injection. Given even a
+dead-center grab worked reliably throughout, while every off-center
+attempt failed regardless of distance, this looks like an emulator/
+CLI testing-methodology limitation (the synthetic controller pose
+likely isn't feeding the actual grip-space tracking the same way
+real hand/controller pose data would), not a finding about the real
+behavior — flagged as unresolved rather than guessed at further.
+Asked Erik whether the "always centers" behavior happens even when
+physically reaching out and touching the stick (close grab) versus
+only when grabbing from further away (ray grab), to confirm or rule
+out the DistanceGrabbable hypothesis before changing anything.

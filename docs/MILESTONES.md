@@ -270,7 +270,14 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       the king's row); added static collision to all 5 trees and 8
       rocks (previously pure decoration, nothing rolling stopped for
       them)
-- [ ] GC/pooling pass (no per-frame allocations); optional king-cam slow-mo
+- [x] GC/pooling pass: found and fixed 3 real per-frame allocations
+      across all 17 systems (`ImpactSystem`'s velocity-delta check ran
+      unconditionally every frame for every dynamic body — the highest-
+      impact one; `ThrowingSystem`'s pose-sampling ring buffer; a
+      `WindSystem` options-object literal). Full detail and the
+      remaining 14 systems confirmed clean in docs/DECISIONS.md.
+      Optional king-cam slow-mo not attempted (low priority, cut)
+- [ ] 72 Hz verified ON QUEST 2 (chrome-devtools via adb — needs USB card)
 - [ ] 72 Hz verified ON QUEST 2 (chrome-devtools via adb — needs USB card)
 - **GATE (Erik, headset): perf + comfort + full experience pass** 🎧
 - Review gate → tag v0.6-m5 once the rest of M5 closes out

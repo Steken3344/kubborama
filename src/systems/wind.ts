@@ -22,6 +22,19 @@ const FORCE_BY_MODE: Record<GameModeName, Vec3> = Object.fromEntries(
   ]),
 ) as Record<GameModeName, Vec3>;
 
+// The addComponent options object, like FORCE_BY_MODE's arrays, is
+// safe to share across every entity and frame — elics reads `force`
+// synchronously during addComponent, it doesn't retain this wrapper.
+// Precomputed per mode so update() never allocates one (see
+// docs/DECISIONS.md, M5 GC pass).
+const MANIPULATION_OPTIONS_BY_MODE: Record<GameModeName, { force: Vec3 }> =
+  Object.fromEntries(
+    (Object.keys(FORCE_BY_MODE) as GameModeName[]).map((name) => [
+      name,
+      { force: FORCE_BY_MODE[name] },
+    ]),
+  ) as Record<GameModeName, { force: Vec3 }>;
+
 /**
  * Constant force on sticks in the Flying state only (docs/PLAN.md §1)
  * — PhysicsManipulation is one-shot, so the force is re-added every
@@ -39,15 +52,17 @@ export class WindSystem extends createSystem({
   },
 }) {
   update(): void {
-    const force = FORCE_BY_MODE[settingsState.current.gameMode];
+    const gameMode = settingsState.current.gameMode;
+    const force = FORCE_BY_MODE[gameMode];
     if (force[0] === 0 && force[1] === 0 && force[2] === 0) {
       return;
     }
+    const options = MANIPULATION_OPTIONS_BY_MODE[gameMode];
     for (const entity of this.queries.flyingSticks.entities) {
       if (entity.hasComponent(PhysicsManipulation)) {
         continue;
       }
-      entity.addComponent(PhysicsManipulation, { force });
+      entity.addComponent(PhysicsManipulation, options);
     }
   }
 }

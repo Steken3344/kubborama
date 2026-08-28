@@ -561,3 +561,37 @@ Remaining in M5: GC/pooling pass, the Quest 2 72Hz check. Next real
 step is Erik re-testing all of this on the headset — throw feel,
 rolling, the new collisions, and the floating fix — since none of it
 can be fully confirmed from this side.
+
+## 2026-08-28 — Erik reports one more issue, then the M5 GC/pooling pass
+
+Erik's headset re-test: much better overall, but picking up a stick
+now always grabs it dead-center, where before he could choose the
+grip point. Dug into the actual `@pmndrs/handle` grab-capture source
+rather than guessing — the real mechanism does preserve the actual
+grab point, and the stick's grab config hasn't changed in git history,
+so this isn't an obvious regression in either. Found a strong
+candidate instead: sticks have both a close-range squeeze grab
+(offset-preserving) and a ray-based "grab from a distance" trigger
+grab, and the ray grab's snap-target defaults to a fixed zero offset
+by design — always centers, on purpose, for that specific interaction.
+Couldn't confirm live (the emulator's synthetic controller positioning
+stopped registering off-center grabs during testing, for reasons that
+look like a testing-methodology limit rather than a real finding), so
+asked Erik whether it happens on a close physical reach too, or only
+when grabbing from further away — rather than guess-fix something I
+couldn't reproduce.
+
+Erik said to move on to the next milestone piece; did the GC/pooling
+pass from M5's checklist next (dispatched a fresh-eyes review across
+all 17 systems files). Found and fixed 3 real per-frame allocations —
+the worst one was `ImpactSystem` allocating a fresh array every frame
+for every dynamic body in the scene, unconditionally, the entire
+session (not gated to actual impacts) — plus confirmed the other 14
+systems already follow the project's own scratch-field convention
+correctly. Mechanical pass green (151 tests, up from 149).
+
+**Handover.** M5's checklist is now down to one item: the Quest 2 72Hz
+verification, which needs Erik's headset connected via adb and can't
+be done from here. Also still open: his grab-point report (waiting on
+his answer to narrow down close-grab vs. ray-grab) and the usual
+feel-confirmation asks (throw, rolling) from the previous entry.

@@ -1,4 +1,4 @@
-import { length, sub } from './vec3.js';
+import { distance } from './vec3.js';
 import type { Vec3 } from './vec3.js';
 
 export interface ImpactResult {
@@ -18,6 +18,6 @@ export function detectImpact(
   currentVelocity: Vec3,
   thresholdMps: number,
 ): ImpactResult {
-  const deltaVMps = length(sub(currentVelocity, previousVelocity));
+  const deltaVMps = distance(currentVelocity, previousVelocity);
   return { isImpact: deltaVMps >= thresholdMps, deltaVMps };
 }

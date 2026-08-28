@@ -117,17 +117,26 @@ export class ThrowingSystem extends createSystem({
     gripSpace.getWorldQuaternion(this.tmpQuat);
 
     const buffer = this.poseBuffers.get(entity.index) ?? [];
-    buffer.push({
-      timeS,
-      position: [this.tmpPos.x, this.tmpPos.y, this.tmpPos.z],
-      orientation: [
-        this.tmpQuat.x,
-        this.tmpQuat.y,
-        this.tmpQuat.z,
-        this.tmpQuat.w,
-      ],
-    });
     const windowSize = this.poseWindowSize();
+    // Reuse the sample about to be evicted (mutate in place) instead of
+    // allocating a fresh object + two arrays every frame — this runs
+    // for as long as a stick is held, i.e. the whole aiming window, not
+    // a one-shot event (see docs/DECISIONS.md, M5 GC pass). Only the
+    // first `windowSize` frames of a fresh grab (buffer still growing)
+    // allocate — a bounded, per-throw cost, not a per-frame one.
+    let sample = buffer.length >= windowSize ? buffer.shift() : undefined;
+    if (sample === undefined) {
+      sample = { timeS, position: [0, 0, 0], orientation: [0, 0, 0, 1] };
+    }
+    sample.timeS = timeS;
+    sample.position[0] = this.tmpPos.x;
+    sample.position[1] = this.tmpPos.y;
+    sample.position[2] = this.tmpPos.z;
+    sample.orientation[0] = this.tmpQuat.x;
+    sample.orientation[1] = this.tmpQuat.y;
+    sample.orientation[2] = this.tmpQuat.z;
+    sample.orientation[3] = this.tmpQuat.w;
+    buffer.push(sample);
     while (buffer.length > windowSize) {
       buffer.shift();
     }
