@@ -500,3 +500,64 @@ and reviewed. Still open in M5: the GC/pooling pass and the Quest 2
 72Hz check (needs Erik's headset + adb). The stick-rolling fix and the
 two-press handoff both want Erik's real-headset judgment before being
 called fully settled — flagged, not silently assumed correct.
+
+## 2026-08-28 — Erik edits the scene himself, then real-headset feedback
+
+Started the dev server with `--open` so Erik could use the managed
+scene editor directly. He repositioned the fence/HUD/menu panel,
+adjusted the sun, and added two rocks — then asked me to test his
+save and push it. Diffing an editor-saved scene file against git
+requires normalizing both sides first (`jq -S`) since the editor
+reformats the whole ~1600-line file on every save; the real diff
+underneath was small. Found and reverted two accidental changes
+before pushing: the ground had jumped up 0.49m (visibly a floating
+platform, and it buried every kubb — confirmed accidental since only
+`ground` and one single kubb had moved, not all ten), and the sun's
+color/intensity had reset to generic defaults while its position
+moved for real. Kept everything else, including a call I made without
+asking: restoring the sun's tuned color while keeping the new
+position, on the read that a flat grey light isn't a plausible
+deliberate choice.
+
+Then Erik tested the deployed build on his actual Quest 2 — the first
+real-headset session since M2 — and sent five pieces of feedback.
+Addressed four of them (the fifth, "ljudet är bra", needed no action):
+
+- Throw feel had regressed to "sluggish" since M1/M2. This was my own
+  fault from earlier this session — I'd raised angular damping to fix
+  ground-rolling, not realizing that value governs a stick's rotation
+  for its ENTIRE lifetime, in flight and on the ground alike, with no
+  existing way to tell those two apart. Reverted the regression and
+  rebuilt the rolling fix properly: a new system now checks each
+  stick's height and vertical speed every frame and only boosts
+  damping once it reads as actually landed.
+- Court lines: added the missing center line (the king's row), which
+  needed zero new code since the existing toggle system already
+  queries generically by tag.
+- Trees and rocks had no collision at all — added static colliders to
+  all 13 of them.
+- The big one: Erik reported that the ground _feeling_ right (setting
+  its height to 0) made every kubb fall over at boot, and correctly
+  guessed these were connected. They were: the ground's visual plane
+  and its physics collider had disagreed by 0.49m since an M2 fix that
+  only checked the physics side. Split them into two nodes — one
+  purely visual, one purely physical — so both can be correct at the
+  same time. This is exactly the kind of bug an embodied headset view
+  reveals immediately and a flat screenshot review never would have
+  caught; logged plainly as something this project's mostly-emulator
+  verification loop structurally can't substitute for.
+
+Mechanical pass green throughout (149 tests — tsc/eslint/prettier/
+vitest/build/smoke). Live-verified in the emulator: clean boot across
+several reloads, the ground/kubb resting alignment, the grounded-
+damping branch reading back correctly, and the new center line's
+placement via a forced-visible screenshot.
+
+**Handover.** All five of Erik's feedback items from this real-headset
+session are addressed (four fixed, one — audio — already good). The
+ground/visual-physics split in particular was a genuine, previously-
+invisible bug that's now fixed at the root rather than papered over.
+Remaining in M5: GC/pooling pass, the Quest 2 72Hz check. Next real
+step is Erik re-testing all of this on the headset — throw feel,
+rolling, the new collisions, and the floating fix — since none of it
+can be fully confirmed from this side.

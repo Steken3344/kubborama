@@ -34,6 +34,10 @@
     "restDurationS": 0.5,
     "impactThresholdMps": 2.5,
     "impactMaxForceForFullHapticMps": 10,
-    "startupGraceS": 4
+    "startupGraceS": 4,
+    "groundHeightM": 0.06,
+    "groundLinearSpeedMps": 1.5,
+    "groundAngularSpeedRadS": 3,
+    "groundAngularDamping": 0.45
   }
 }

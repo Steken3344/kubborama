@@ -1357,3 +1357,157 @@ tests — /build/smoke). Also caught, again, the scene-editor
 auto-resave quirk from the previous entry — this time the diff was
 correctly just the one intentional `scale` line, confirmed via `git
 diff` before treating it as clean.
+
+## 2026-08-28 — Erik's own editor session, then a real headset feedback round
+
+Erik used the managed scene editor himself for the first time this
+session: repositioned the fence, HUD, and reset-menu panel, nudged the
+sun, and added two rocks. Diffed his save against HEAD with `jq -S`
+on both sides before trusting it (the raw diff is ~1600 lines of pure
+reformatting noise every time the editor touches this file — see the
+process note two entries up). Two real, clearly-accidental changes
+surfaced this way and were reverted before push: the ground plane had
+jumped up 0.49m (a hard floating-platform edge, and it buried every
+kubb below the new surface — only `ground` and `kubb-0` had moved,
+the other 9 kubbs hadn't, which is what made it obviously an isolated
+drag rather than an intentional edit), and the sun's color/intensity
+had reset to generic component defaults (flat grey, intensity 1) while
+its position moved to real, non-round numbers — kept the position
+(a real drag) and restored the tuned color/intensity (a component
+default, not a plausible deliberate choice, especially not one that
+would quietly undo M1's whole "garden feeling" pass).
+
+**Then Erik tested the deployed build on his actual Quest 2** and sent
+back the first real-headset feedback since M2's playtest. Five items:
+
+**1) Throw feel regressed — "sluggish", was "nästan helt naturligt" in
+M1/M2.** Traced to my own change two entries back: raising
+`angularDampingInFlight` to 45% to fight ground-rolling also damps
+in-flight spin, because that one value governs a stick's rotation for
+its ENTIRE lifetime with no notion of "landed" vs "still flying" (see
+that entry). Reverted the default back to 25% — restoring the feel
+Erik confirmed was right — and rebuilt the ground-rolling fix as its
+own thing instead: new `StickGroundDampingSystem` checks every Flying
+stick's height and vertical speed each frame
+(`pieces.throw.groundHeightM`/`groundVerticalSpeedMps`) and swaps in a
+much higher `groundAngularDamping` (0.45) only once a stick reads as
+landed-and-settling, leaving genuinely airborne sticks on the tuned
+flight value. Verified the mechanism directly: forced a stick into
+`Flying` phase at rest height via `ecs_set_component` and confirmed
+`PhysicsBody.angularDamping` read back as 0.45 (not the flight
+default) — the in-flight branch is plain `percentToReal` math already
+exercised elsewhere, not independently re-verified live.
+
+**2) Court lines: wants the center line too ("that's where the king
+stands").** Added `court-line-center` (same `court-line-short` asset
+as near/far, at z=-3) — the existing `CourtLinesSystem` already
+queries by the `CourtLine` tag generically, so this needed zero code
+changes, just the scene node. Verified visually (all 5 lines forced
+visible via `ecs_set_component`, screenshot confirms correct
+placement across the king's row).
+
+**3) Trees and rocks have no collision — pieces roll straight through
+them.** True: these were pure visual asset placements with no
+`PhysicsBody`/`PhysicsShape` at all. Added a static collider to each
+of the 5 trees (`Cylinder`, trunk-radius-ish, 0.4m tall — tall enough
+for a rolling stick/kubb, not modeling full tree height) and 8 rocks
+(`Box`, sized small/large/tall to roughly match each rock's name) —
+13 individual additions, matching the same STATIC
+`PhysicsBody`+`PhysicsShape` pattern the corner stakes already use
+successfully in this scene. Approximate boxes/cylinders, not
+mesh-accurate — reasonable for static garden dressing per the physics
+skill's own guidance, and consistent with the "no per-mesh colliders
+for decoration" performance posture. Not extended to the fence
+(Erik's report named trees and rocks specifically; the fence is a
+repeated pattern/prefab, a separate small task if he wants it too).
+
+**4) The floating feeling ("man svävar") — a real, previously-hidden
+geometry bug, root-caused and fixed properly this time.** Erik's own
+diagnosis was exactly right and pointed straight at the bug: setting
+the ground's Y to 0 "feels right" but topples every kubb at boot.
+Root cause: `ground`'s VISUAL mesh is a zero-thickness `PlaneGeometry`
+(`ground.scene-asset.ts`) — its surface renders exactly at the node's
+`position.y`, no implicit offset. Its `PhysicsShape`, though, is a
+`Box` of height 1, which every physics engine centers on the node
+transform — so its top surface sits at `position.y + 0.5`, half a
+metre above the visual surface. The M2 entry that set `position.y =
+-0.49` explicitly optimized for the PHYSICS top landing near 0
+("position adjusted to keep the same top surface at y=0.01") without
+registering that the VISIBLE plane would then render 0.49m below
+that — invisible in every screenshot and editor render this whole
+project has taken, because a flat, texture-repeating plane doesn't
+visually betray a vertical offset the way an embodied, stereoscopic
+view immediately does. That's the floating sensation: the player's
+feet (and every piece) rest on a physically-correct but 0.49m-too-low
+INVISIBLE floor, while the grass you actually see is half a metre
+under your feet. Raising `ground.position.y` to 0 fixes the visual at
+the cost of moving the physics box's top to +0.5 — 0.49m above where
+every piece is placed, hence Erik's reproducible toppling.
+
+Fixed by decoupling the two: `ground` is now visual-only (no physics
+components, `position.y = 0`, matching the plane's true surface), and
+a new sibling node `ground-collider` (`content: {"type": "group"}` —
+no visible surface, confirmed valid per the scene-format reference)
+carries the SAME 1m-thick `PhysicsShape` at `position.y = -0.5`, so
+its top lands at exactly y=0 too — both surfaces now agree, and the
+tunneling-prevention thickness from the M2 fix is untouched. Verified
+live: 6 total clean reloads post-fix (no false-felled events), the
+king reads back at its designed resting height (`y=0.15`) after
+settling, and a `scene_render_file` screenshot shows the ground/grass
+boundary as a single continuous surface with no visible step (the
+earlier, broken version had an obvious hard edge — see the screenshot
+taken mid-investigation).
+
+**5) "Ljudet är bra"** — no action, first positive confirmation on the
+M5 audio slice.
+
+Mechanical pass green throughout (tsc/eslint/prettier/vitest — 149
+tests — /build/smoke). Live-verified: clean boot (6 reloads), the
+grounded/flight damping branch, the center line's placement, and the
+ground visual/physics alignment. Not independently live-verified:
+the in-flight (non-grounded) damping branch specifically, and the new
+tree/rock colliders under an actual thrown-object impact (both use
+patterns already proven correct elsewhere in this same scene/session,
+and time was prioritized toward the newly-discovered ground bug).
+
+**Fresh-eyes review of this slice found one real bug before it
+shipped**: `StickGroundDampingSystem`'s "grounded" check only looked
+at height and VERTICAL velocity — a flat, fast throw crossing near
+zero vertical velocity at the low point of its arc (release height
+under `groundHeightM`, or just a shallow trajectory) would read
+"grounded" and get the high damping slap on while still very much in
+play, horizontally fast and spinning — reintroducing Erik's exact
+"sluggish" complaint for that throw shape specifically instead of
+fixing it universally. Root cause was also a DRY miss: the fix
+hand-rolled a weaker heuristic instead of reusing
+`core/restState.ts`'s existing `readBodySpeed`+full-3D-speed pattern,
+already shared by `ThrowingSystem`/`ToppleSystem` for exactly this
+"has this body actually stopped" question (with a comment there
+explicitly warning that linear speed alone misses an in-place spin).
+Fixed by switching to `readBodySpeed`'s combined linear + angular
+magnitude, gated by new `groundLinearSpeedMps`/`groundAngularSpeedRadS`
+thresholds looser than `isResting`'s (this needs to catch "landed but
+still visibly rolling," not "already basically stopped," which
+`isResting`'s tight thresholds would only satisfy right at the very
+end of a natural stop anyway). Also switched the height read to
+`getWorldPosition()` for consistency with every sibling read in
+`ThrowingSystem`, per the same review. Two smaller review findings
+addressed: a stale "four line nodes" comment in `courtLines.ts` (now
+five with the center line); confirmed live via `ecs_find_entities`
+that the `ground-collider` group node's `PhysicsBody`/`PhysicsShape`
+actually registered as real runtime components, not just valid JSON
+(the review correctly pointed out the earlier verification — a
+`scene_render_file` screenshot — couldn't have caught a physics-only
+node failing to attach, since it has no visual surface to render).
+
+One review finding accepted as-is, not changed: the 13 new tree/rock
+colliders are centered on the same position as their visual asset
+(matching where kubbs/king/stakes already assume the ground sits), so
+half of each collider's height sits below the now-corrected ground
+surface — geometrically the same category of visual/physics mismatch
+as the ground bug, but functionally harmless here (the exposed upper
+half, ~0.2m for the tree cylinders, comfortably exceeds a resting
+stick or kubb's actual height) and not worth 13 more node-splits for
+static garden dressing. Re-verified live after the fix: 3 more clean
+reloads, `ground-collider`'s components confirmed present in the
+running world.

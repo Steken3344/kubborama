@@ -10,6 +10,7 @@ import { RoundSystem } from './systems/round.js';
 import { SettingsSystem } from './systems/settings.js';
 import { SfxSystem } from './systems/sfx.js';
 import { StatsSystem } from './systems/stats.js';
+import { StickGroundDampingSystem } from './systems/stickGroundDamping.js';
 import { ThrowingSystem } from './systems/throwing.js';
 import { ToppleSystem } from './systems/topple.js';
 import { TuningLabSystem } from './systems/tuningLab.js';
@@ -40,6 +41,9 @@ World.create(
   // (-2), so both systems read up-to-date grab state and post-physics
   // velocities each frame.
   world.registerSystem(ThrowingSystem);
+  // M5 feedback: keeps in-flight spin feel untouched while still
+  // killing post-landing rolling — see stickGroundDamping.ts.
+  world.registerSystem(StickGroundDampingSystem);
   world.registerSystem(ImpactSystem);
   world.registerSystem(WindSystem);
   // M5: sound + the kubbFelled/kingFelled/roundCleared haptic sequences

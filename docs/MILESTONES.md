@@ -255,10 +255,21 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       the settings menu (`git describe` baked in at build time); a
       cross-hand stick handoff (`HandoffSystem`) — real fix, but two
       presses not one seamless motion (framework constraint, see
-      docs/DECISIONS.md); reduced ground-rolling by raising the
-      angular-damping tuning default (a felt-physics change, wants
-      Erik's real-headset confirmation); settings panel scaled down
-      1.15→0.85
+      docs/DECISIONS.md); settings panel scaled down 1.15→0.85. The
+      ground-rolling fix from this round (a blanket angular-damping
+      bump) turned out to hurt throw feel and was superseded — see the
+      next entry
+- [x] Erik's first real-headset test of M5 (2026-08-28): fixed a
+      genuine, previously-hidden bug where the ground's visual surface
+      and its physics collider disagreed by 0.49m (felt like floating
+      — full root cause in docs/DECISIONS.md); reverted the angular-
+      damping regression from the previous bullet and replaced it with
+      a phase-aware fix (`StickGroundDampingSystem`) that only damps a
+      stick once it's actually landed, restoring the M1/M2 throw feel
+      Erik confirmed was right; added the court's center line (marks
+      the king's row); added static collision to all 5 trees and 8
+      rocks (previously pure decoration, nothing rolling stopped for
+      them)
 - [ ] GC/pooling pass (no per-frame allocations); optional king-cam slow-mo
 - [ ] 72 Hz verified ON QUEST 2 (chrome-devtools via adb — needs USB card)
 - **GATE (Erik, headset): perf + comfort + full experience pass** 🎧
