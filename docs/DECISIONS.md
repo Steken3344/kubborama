@@ -1854,3 +1854,48 @@ entities (7.9, 4.2, 2.5 m/s deltas), zero console errors, confirming
 `init()`. Mechanical pass green throughout (tsc/eslint/prettier/
 vitest — still 151 tests, no new pure-core logic — /build/smoke).
 gh#1 and gh#4 both closed.
+
+## 2026-08-28 — Environment scale pass: trees/tent/campfire were all too small
+
+Erik's feedback: comparing the environment pass's assets against a
+0.15m kubb and his own 1.8m height, the trees, tent, and campfire read
+as toy-sized, not real-world scale. Measured this directly rather than
+eyeballing it: read each affected glTF's accessor min/max (a five-line
+script, same technique the fbc9c77 post-hoc review used) to get real
+modeled heights. Every "_fall"/plateau/pine tree in the scene is only
+1.1-1.7m tall as modeled — literally shorter than Erik — and the tent
+is 0.875×0.561×0.666m, dollhouse-sized next to a 0.3m king piece.
+
+Fixed via each node's `transform.scale` (uniform scalar), not by
+re-authoring the source geometry — Kenney's kit is meant to be scaled
+per scene, this isn't a broken asset. Picked per-tree multipliers to
+land in a plausible real-tree range (3.4-5.6x, landing at roughly
+3.8-8.6m final height depending on species — "small" stays smaller
+than "tall"/oak/pine, preserving the intended relative variety) and
+2.5x/1.8x for the tent/campfire (tent → ~2.2×1.4×1.7m, a real small
+tent's footprint; campfire → ~0.97×0.14×0.93m, appropriately low but
+no longer tiny).
+
+**Also fixed two of gh#7's flagged mismatches as a side effect**: since
+`PhysicsShape.dimensions` is never auto-scaled by `object3D.scale`
+(confirmed by reading `@iwsdk/core`'s `createBoxShape`/`createHavok
+Shapes` — they take the raw dimensions value with no scale-factor
+multiply), leaving the 9 tree colliders and the tent/campfire boxes at
+their old dimensions while scaling the visuals up 3-5x would have
+made the mismatch from gh#7 dramatically worse (colliders staying
+tiny under now-huge trees). Scaled every affected collider by the same
+factor as its node's visual scale — correct, not just convenient,
+since a uniform `object3D.scale` really does grow the trunk's on-mesh
+width by that same factor, not just the canopy. For the tent and
+campfire specifically, replaced the old hand-guessed box dimensions
+with the real measured bounding box × the new scale factor, which
+incidentally resolves those 2 of gh#7's ~8 flagged mismatches (rocks/
+cliffs are unaffected by this pass and remain open in gh#7).
+
+Verified via `scene_render_file` at the `playerSpawn` and
+`grandstandSide` views: trees now visibly tower over the corner stakes
+and kubb line as they should; the tent reads as a real small tent next
+to the fence, not a toy. Live-reloaded the running app too — no new
+console errors/warnings beyond the pre-existing unrelated UIKitML
+editor-preview one. Mechanical pass green (tsc/eslint/prettier/vitest
+— 151 tests, unaffected — /build/smoke).

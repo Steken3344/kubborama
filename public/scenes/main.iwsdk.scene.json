@@ -859,7 +859,7 @@
         },
         "PhysicsShape": {
           "shape": "Cylinder",
-          "dimensions": [0.15, 0.4, 0],
+          "dimensions": [0.6, 1.6, 0],
           "friction": 0.6,
           "restitution": 0.1
         }
@@ -873,7 +873,8 @@
       "name": "Tree (plateau)",
       "transform": {
         "position": [4, 0, -1],
-        "rotationDeg": [0, 20, 0]
+        "rotationDeg": [0, 20, 0],
+        "scale": 4.0
       }
     },
     {
@@ -883,7 +884,7 @@
         },
         "PhysicsShape": {
           "shape": "Cylinder",
-          "dimensions": [0.15, 0.4, 0],
+          "dimensions": [0.645, 1.72, 0],
           "friction": 0.6,
           "restitution": 0.1
         }
@@ -897,7 +898,8 @@
       "name": "Tree (fat, autumn)",
       "transform": {
         "position": [-4.5, 0, -3],
-        "rotationDeg": [0, 200, 0]
+        "rotationDeg": [0, 200, 0],
+        "scale": 4.3
       }
     },
     {
@@ -907,7 +909,7 @@
         },
         "PhysicsShape": {
           "shape": "Cylinder",
-          "dimensions": [0.12, 0.4, 0],
+          "dimensions": [0.408, 1.36, 0],
           "friction": 0.6,
           "restitution": 0.1
         }
@@ -921,7 +923,8 @@
       "name": "Tree (small, autumn)",
       "transform": {
         "position": [3.5, 0, -5.5],
-        "rotationDeg": [0, 80, 0]
+        "rotationDeg": [0, 80, 0],
+        "scale": 3.4
       }
     },
     {
@@ -931,7 +934,7 @@
         },
         "PhysicsShape": {
           "shape": "Cylinder",
-          "dimensions": [0.15, 0.4, 0],
+          "dimensions": [0.57, 1.52, 0],
           "friction": 0.6,
           "restitution": 0.1
         }
@@ -945,7 +948,8 @@
       "name": "Tree (conical, autumn)",
       "transform": {
         "position": [-3.8, 0, -5],
-        "rotationDeg": [0, 300, 0]
+        "rotationDeg": [0, 300, 0],
+        "scale": 3.8
       }
     },
     {
@@ -955,7 +959,7 @@
         },
         "PhysicsShape": {
           "shape": "Cylinder",
-          "dimensions": [0.1, 0.4, 0],
+          "dimensions": [0.44, 1.76, 0],
           "friction": 0.6,
           "restitution": 0.1
         }
@@ -969,7 +973,8 @@
       "name": "Tree (thin, dark)",
       "transform": {
         "position": [4.2, 0, -4],
-        "rotationDeg": [0, 150, 0]
+        "rotationDeg": [0, 150, 0],
+        "scale": 4.4
       }
     },
     {
@@ -1433,7 +1438,7 @@
         },
         "PhysicsShape": {
           "shape": "Cylinder",
-          "dimensions": [0.16, 0.4, 0],
+          "dimensions": [0.848, 2.12, 0],
           "friction": 0.6,
           "restitution": 0.1
         }
@@ -1447,7 +1452,8 @@
       "name": "Tree (oak, autumn)",
       "transform": {
         "position": [6.5, 0, -3.5],
-        "rotationDeg": [0, 45, 0]
+        "rotationDeg": [0, 45, 0],
+        "scale": 5.3
       }
     },
     {
@@ -1457,7 +1463,7 @@
         },
         "PhysicsShape": {
           "shape": "Cylinder",
-          "dimensions": [0.16, 0.4, 0],
+          "dimensions": [0.704, 1.76, 0],
           "friction": 0.6,
           "restitution": 0.1
         }
@@ -1471,7 +1477,8 @@
       "name": "Tree (tall, autumn)",
       "transform": {
         "position": [-6.0, 0, -4.5],
-        "rotationDeg": [0, 300, 0]
+        "rotationDeg": [0, 300, 0],
+        "scale": 4.4
       }
     },
     {
@@ -1481,7 +1488,7 @@
         },
         "PhysicsShape": {
           "shape": "Cylinder",
-          "dimensions": [0.18, 0.4, 0],
+          "dimensions": [1.008, 2.24, 0],
           "friction": 0.6,
           "restitution": 0.1
         }
@@ -1495,7 +1502,8 @@
       "name": "Tree (pine)",
       "transform": {
         "position": [-6.8, 0, 5.5],
-        "rotationDeg": [0, 100, 0]
+        "rotationDeg": [0, 100, 0],
+        "scale": 5.6
       }
     },
     {
@@ -1505,7 +1513,7 @@
         },
         "PhysicsShape": {
           "shape": "Cylinder",
-          "dimensions": [0.18, 0.4, 0],
+          "dimensions": [1.008, 2.24, 0],
           "friction": 0.6,
           "restitution": 0.1
         }
@@ -1519,7 +1527,8 @@
       "name": "Tree (pine)",
       "transform": {
         "position": [7.0, 0, 4.0],
-        "rotationDeg": [0, 200, 0]
+        "rotationDeg": [0, 200, 0],
+        "scale": 5.6
       }
     },
     {
@@ -1601,7 +1610,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [1.4, 1.0, 1.0],
+          "dimensions": [2.1875, 1.4025, 1.665],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1615,7 +1624,8 @@
       "name": "Campsite tent",
       "transform": {
         "position": [-7.3, 0, 2.0],
-        "rotationDeg": [0, 60, 0]
+        "rotationDeg": [0, 60, 0],
+        "scale": 2.5
       }
     },
     {
@@ -1625,7 +1635,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [0.6, 0.3, 0.6],
+          "dimensions": [0.9738, 0.1404, 0.9288],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1639,7 +1649,8 @@
       "name": "Campsite campfire",
       "transform": {
         "position": [-6.2, 0, 2.8],
-        "rotationDeg": [0, 0, 0]
+        "rotationDeg": [0, 0, 0],
+        "scale": 1.8
       }
     },
     {

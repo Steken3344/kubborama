@@ -710,3 +710,26 @@ gh#3 (cyan autumn foliage, cosmetic), gh#5 (å/ä/ö font glyphs), gh#7
 (new decorative colliders, filed this session). None urgent. Still
 open from before: the Quest 2 72Hz check, and Erik's in-headset
 reaction to the M5 grab fix + environment pass.
+
+## 2026-08-28 — Environment scale fix, then working the issue backlog solo
+
+Erik: the new trees/tent/campfire looked toy-sized next to a kubb and
+his own height. Measured the actual glTF heights instead of guessing
+again (same technique the fbc9c77 review used) — every tree was really
+only 1.1-1.7m tall, shorter than Erik. Scaled each tree 3.4-5.6x (final
+heights ~3.8-8.6m, keeping "small" trees smaller than "tall"/oak/pine
+ones) and the tent/campfire 2.5x/1.8x via `transform.scale`, and scaled
+their colliders by the same factor since `PhysicsShape.dimensions`
+isn't auto-scaled by the engine — confirmed by reading the physics
+source, not assumed. That collider fix also incidentally closes 2 of
+gh#7's ~8 flagged mismatches (tent, campfire) as a side effect.
+Verified via rendered views (trees now tower over the court as
+intended) and a live reload (no new console errors). Mechanical pass
+green throughout.
+
+Erik then asked me to work through the rest of the open-issue backlog
+one at a time, in whatever order, and went AFK. Continuing
+autonomously per this project's own rule for unattended work: keep
+making the calls, log decisions here and in docs/DECISIONS.md, batch
+anything genuinely open for him in docs/QUESTIONS.md rather than
+blocking.
