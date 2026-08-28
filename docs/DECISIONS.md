@@ -2059,3 +2059,54 @@ expects. Flagged for Erik to visually confirm "Bästa fallkast"/
 Mechanical pass green (tsc/eslint/prettier — 150 tests, one down from
 151 since the now-backwards guard test was removed — /build/smoke).
 gh#5 closed.
+
+## 2026-08-28 — gh#2 closed: a CI-testable release seam instead of a fixed MCP clock
+
+gh#2's own suggested fix #2 ("a test-only seam feeding a `PoseSample[]`
+array directly into the release-velocity pipeline") was the right
+call — its option #1 (a synthetic fixed clock inside `ecs_step`) isn't
+something this project can implement; it'd be a request against
+IWSDK's own MCP tooling, out of reach here.
+
+Extracted `ThrowingSystem.onRelease`'s full release computation
+(pose buffer → hand velocity → lever-arm correction → tuning-multiplier
+scaling → release speed) into a new pure function, `core/throwRelease
+.ts`'s `computeThrowRelease()` — everything `onRelease` does except
+the ECS writes, haptics, and audio/event side effects. This is exactly
+the "adapters are thin, logic lives in core" shape CLAUDE.md's
+architecture rule already calls for; the computation had just been
+sitting inline in the system instead of extracted, since nothing
+before now needed to call it standalone.
+
+Wrote a genuine "golden throw" regression suite (`throwRelease.test
+.ts`) against `core/ballisticBands.ts` — the same physics-computed
+target bands (`releaseSpeedMps: 6.9-7.7`, `spinRadS: 3-13`) the tuning
+lab already uses, imported directly rather than re-declared, so this
+test and the tuning lab can never silently drift apart. A synthetic
+72Hz pose sweep (constant velocity + constant flip spin, no MCP
+device simulation, no real-clock timing at all) feeds `compute
+ThrowRelease` and asserts the release speed/spin land inside those
+bands — replacing the abandoned MCP-scripted approach with something
+that actually runs in CI, deterministically, in milliseconds. Also
+added multiplier-scaling and lever-arm-isolation tests (the latter
+initially failed for an interesting, worth-recording reason: the first
+attempt offset the synthetic CoM _parallel_ to the spin axis, and
+`ω × leverArm` is exactly zero for parallel vectors by construction —
+fixed by offsetting perpendicular to the spin axis instead, matching
+how a real stick's length actually extends away from a flip axis).
+
+Refactored `ThrowingSystem.onRelease` to call the new pure function
+instead of duplicating its logic inline — behavior-preserving by
+construction (same formula, same order, same multiplier values), and
+confirmed live in the emulator: grabbed and swung a stick, `[throw]
+release`/`[throw] telemetry recorded` fired cleanly with the correctly-
+shaped event payload and no runtime errors. `releaseSpeedMps: 0` in
+that specific live check is the same known MCP round-trip-latency
+artifact this very issue is about (a single `xr_animate_to` call
+doesn't produce real-cadence pose samples) — not a regression; the
+real magnitude-correctness check now lives in the new unit tests,
+which don't have that problem at all.
+
+Mechanical pass green (tsc/eslint/prettier/vitest — 154 tests, up from
+150 — /build/smoke). gh#2 closed — the open-issue backlog Erik asked
+to be worked through while AFK is now empty.

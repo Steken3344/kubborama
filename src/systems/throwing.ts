@@ -20,14 +20,10 @@ import { readBodySpeed } from './bodySpeed.js';
 import type { Hand } from './hapticPlayer.js';
 import { pulseHaptic } from './hapticPlayer.js';
 import { playSfxVariant } from './playSfx.js';
-import {
-  computeHandVelocity,
-  computeReleaseVelocity,
-} from '../core/throwRelease.js';
+import { computeThrowRelease } from '../core/throwRelease.js';
 import type { PoseSample } from '../core/throwRelease.js';
 import { activePreset, percentToReal, tuningParams } from '../core/tuning.js';
 import { classifyThrow } from '../core/underhandClassifier.js';
-import { length, scale } from '../core/vec3.js';
 import type { Vec3 } from '../core/vec3.js';
 import { presetBank } from '../tuningState.js';
 
@@ -156,23 +152,14 @@ export class ThrowingSystem extends createSystem({
 
   private onRelease(entity: Entity): void {
     const buffer = this.poseBuffers.get(entity.index) ?? [];
-    const handVelocity = computeHandVelocity(buffer);
 
-    const lastSample = buffer[buffer.length - 1];
-    let leverArm: Vec3 = [0, 0, 0];
     let releasePosition: Vec3 = [0, 0, 0];
     const object3D = entity.object3D;
-    if (object3D && lastSample) {
+    if (object3D) {
       object3D.getWorldPosition(this.tmpComPos);
       releasePosition = [this.tmpComPos.x, this.tmpComPos.y, this.tmpComPos.z];
-      leverArm = [
-        this.tmpComPos.x - lastSample.position[0],
-        this.tmpComPos.y - lastSample.position[1],
-        this.tmpComPos.z - lastSample.position[2],
-      ];
     }
 
-    const rawRelease = computeReleaseVelocity(handVelocity, leverArm);
     const preset = activePreset(presetBank);
     const velocityMultiplier = percentToReal(
       tuningParams.velocityTransferMultiplier,
@@ -182,11 +169,13 @@ export class ThrowingSystem extends createSystem({
       tuningParams.angularMultiplier,
       preset.angularMultiplier,
     );
-    const linearVelocity = scale(rawRelease.linearVelocity, velocityMultiplier);
-    const angularVelocity = scale(
-      rawRelease.angularVelocity,
-      angularMultiplier,
-    );
+    const { linearVelocity, angularVelocity, releaseSpeedMps } =
+      computeThrowRelease({
+        poses: buffer,
+        releasePosition,
+        velocityMultiplier,
+        angularMultiplier,
+      });
 
     entity.addComponent(PhysicsManipulation, {
       force: [0, 0, 0],
@@ -204,7 +193,6 @@ export class ThrowingSystem extends createSystem({
       releaseVelocity: linearVelocity,
       angularVelocity,
     });
-    const releaseSpeedMps = length(linearVelocity);
 
     gameEvents.emit('Thrown', {
       stickId: String(entity.index),

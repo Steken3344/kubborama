@@ -100,13 +100,13 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       playtest — see below). Not yet _verified_ with real flat vs.
       backspin throws — that's exactly what the headset gate below is
       for
-- [~] Golden-throw regression scripted via MCP: attempted, hit a real
-  MCP-tooling limitation (documented in detail in
-  docs/DECISIONS.md, filed as
-  [gh#2](https://github.com/Steken3344/kubborama/issues/2)).
-  Pipeline correctness verified a different way instead: rigorous
-  unit tests on the math, live confirmation of the full grab→
-  release→settle state machine and event flow
+- [x] Golden-throw regression: the original MCP-scripted approach hit a
+      real tooling limitation (documented in docs/DECISIONS.md, filed as
+      [gh#2](https://github.com/Steken3344/kubborama/issues/2)) — fixed
+      2026-08-28 by extracting the release computation into a pure
+      `computeThrowRelease()` and testing it with a synthetic 72Hz pose
+      sweep against the same physics target bands the tuning lab uses, no
+      MCP/emulator involved. gh#2 closed
 - [x] Erik's first playtest feedback (2026-08-27, full writeup in
       docs/DECISIONS.md): kubbs on both baselines (10 total, mirroring
       docs/PLAN.md's always-deferred full set); gravity -10%; B-button

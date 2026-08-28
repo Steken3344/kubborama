@@ -788,3 +788,26 @@ library source directly, not from a screenshot. Asked Erik to eyeball
 "Bästa fallkast" next time he's on headset. Mechanical pass green (150
 tests). gh#5 closed — only gh#2 (golden-throw test harness) remains
 open.
+
+**gh#2 closed — the last issue in the backlog.** The abandoned
+MCP-scripted approach was never fixable from this side (it needed a
+synthetic fixed clock inside the MCP tooling itself), so went with
+gh#2's own alternative suggestion instead: extracted `ThrowingSystem
+.onRelease`'s release-velocity computation into a new pure function
+(`computeThrowRelease`) and wrote a real golden-throw regression test
+against it — a synthetic 72Hz pose sweep, no MCP/emulator involved at
+all, asserting release speed and spin land inside the same physics
+target bands the tuning lab already uses. Refactored `onRelease` to
+call the new function instead of duplicating the logic, then live-
+confirmed in the emulator that a real throw still fires cleanly
+end-to-end. Mechanical pass green (154 tests, up from 150).
+
+**Handover.** The open-issue backlog Erik asked me to work through
+while AFK is now fully empty (gh#1, #3, #4, #5, #6, #7, #2 all
+closed this session; a new gh#7 was filed and closed in the same
+session). Still open from before, unrelated to the backlog: the
+Quest 2 72Hz check, and Erik's in-headset reaction to everything
+built today (M5 grab fix, environment pass + rescale, and now the
+font/haptics/collider/test fixes). Also floated but not started:
+swapping in a more detailed/varied asset pack (Quaternius suggested)
+per Erik's separate request — he'll say if/when to start that.

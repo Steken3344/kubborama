@@ -1,6 +1,6 @@
 import { angularVelocityBetween } from './quat.js';
 import type { Quat } from './quat.js';
-import { add, cross, scale } from './vec3.js';
+import { add, cross, length, scale, sub } from './vec3.js';
 import type { Vec3 } from './vec3.js';
 
 export interface PoseSample {
@@ -100,5 +100,50 @@ export function computeReleaseVelocity(
       cross(handVelocity.angularVelocity, leverArm),
     ),
     angularVelocity: handVelocity.angularVelocity,
+  };
+}
+
+export interface ThrowReleaseInputs {
+  /** Held-hand pose samples, oldest to newest — see computeHandVelocity. */
+  poses: PoseSample[];
+  /** The stick's actual CoM position at the instant of release. */
+  releasePosition: Vec3;
+  velocityMultiplier: number;
+  angularMultiplier: number;
+}
+
+export interface ThrowReleaseOutput {
+  linearVelocity: Vec3;
+  angularVelocity: Vec3;
+  releaseSpeedMps: number;
+}
+
+/**
+ * The full release pipeline (gh#2's CI-testable seam): pose samples in,
+ * tuned release velocity out — everything ThrowingSystem.onRelease
+ * does except the ECS/haptics/audio side effects. Exists so this can
+ * be exercised with synthetic pose data in a fast, deterministic unit
+ * test instead of a real MCP-scripted throw (see docs/DECISIONS.md —
+ * MCP round-trip latency makes a scripted throw's frame-averaged
+ * velocity math unreliable by ~2 orders of magnitude).
+ */
+export function computeThrowRelease({
+  poses,
+  releasePosition,
+  velocityMultiplier,
+  angularMultiplier,
+}: ThrowReleaseInputs): ThrowReleaseOutput {
+  const handVelocity = computeHandVelocity(poses);
+  const lastSample = poses[poses.length - 1];
+  const leverArm: Vec3 = lastSample
+    ? sub(releasePosition, lastSample.position)
+    : ZERO;
+  const rawRelease = computeReleaseVelocity(handVelocity, leverArm);
+  const linearVelocity = scale(rawRelease.linearVelocity, velocityMultiplier);
+  const angularVelocity = scale(rawRelease.angularVelocity, angularMultiplier);
+  return {
+    linearVelocity,
+    angularVelocity,
+    releaseSpeedMps: length(linearVelocity),
   };
 }
