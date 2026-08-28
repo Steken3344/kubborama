@@ -1174,7 +1174,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [1, 1, 1],
+          "dimensions": [1.0, 1.0, 0.4185],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1198,7 +1198,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [1, 1, 1],
+          "dimensions": [1.0, 1.0, 1.0],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1222,7 +1222,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [1, 1, 1],
+          "dimensions": [1.1685, 1.0, 1.1685],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1246,7 +1246,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [1, 1, 1],
+          "dimensions": [1.0, 1.0, 0.2685],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1270,7 +1270,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [1, 1, 1],
+          "dimensions": [1.0, 0.5, 0.4185],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1294,7 +1294,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [1, 1, 1],
+          "dimensions": [0.1685, 1.0, 0.1685],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1318,7 +1318,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [1, 1, 1],
+          "dimensions": [1.0, 1.0, 0.4185],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1342,7 +1342,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [1, 1, 1],
+          "dimensions": [1.0, 1.0, 1.0],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1366,7 +1366,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [1, 1, 1],
+          "dimensions": [1.1685, 1.0, 1.1685],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1390,7 +1390,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [1, 1, 1],
+          "dimensions": [1.0, 1.0, 0.2685],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1414,7 +1414,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [1, 1, 1],
+          "dimensions": [1.0, 0.5, 0.4185],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1538,7 +1538,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [0.5, 0.4, 0.5],
+          "dimensions": [1.0955, 0.2922, 0.9199],
           "friction": 0.6,
           "restitution": 0.1
         }
@@ -1562,7 +1562,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [0.3, 0.5, 0.3],
+          "dimensions": [0.575, 0.711, 0.664],
           "friction": 0.6,
           "restitution": 0.1
         }
@@ -1586,7 +1586,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [0.3, 0.2, 0.3],
+          "dimensions": [0.4958, 0.0649, 0.4296],
           "friction": 0.6,
           "restitution": 0.1
         }
@@ -1660,7 +1660,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [1.2, 0.3, 0.3],
+          "dimensions": [0.234, 0.1732, 0.71],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1684,7 +1684,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [0.4, 0.4, 0.4],
+          "dimensions": [0.3213, 0.2065, 0.371],
           "friction": 0.7,
           "restitution": 0.05
         }
@@ -1708,7 +1708,7 @@
         },
         "PhysicsShape": {
           "shape": "Box",
-          "dimensions": [0.6, 0.5, 0.6],
+          "dimensions": [0.4247, 0.3464, 0.71],
           "friction": 0.7,
           "restitution": 0.05
         }

@@ -1971,3 +1971,27 @@ committed binary assets). Live-verified all three originally-reported
 trees individually (direct camera aim at each, `Visibility`-isolated
 where two trees' canopies overlapped in frame) — all three now show
 correct warm autumn color. gh#3 closed.
+
+## 2026-08-28 — gh#7 closed: remeasured every flagged decorative collider
+
+Same technique as gh#3's investigation and the earlier scale pass:
+read each affected glTF's accessor min/max directly rather than
+re-guessing. Fixed all 17 remaining nodes gh#7 flagged (2 of its ~19
+— the tent and campfire — were already fixed as a side effect of the
+tree/tent/campfire scale pass earlier this session): all 11 cliff
+nodes, `campsite-bench`/`campsite-stump`/`campsite-logs`, and
+`rock-6`/`rock-7`/`rock-8`. `rock-7` (`rock_tall_h`) wasn't explicitly
+named in gh#7's spot-check but was equally wrong (declared `[0.3,0.5,
+0.3]` vs real `[0.575,0.711,0.664]`, roughly half-size) — fixed too
+since the real measurement was already in hand.
+
+None of these nodes have a non-1 `transform.scale`, so this was a
+straight swap to the measured bounding box, no scale-factor
+multiplication needed (unlike the tent/campfire fix, which did need
+one). Mechanical pass green throughout (tsc/eslint/prettier/vitest —
+151 tests, unaffected/build/smoke). Live-reloaded and checked console
+— no new errors beyond the pre-existing unrelated UIKitML warning;
+these are pure collider-dimension changes (invisible geometry), so a
+visual render wouldn't show a difference — the correctness check here
+is the measurement matching the source mesh, not a screenshot. gh#7
+closed.

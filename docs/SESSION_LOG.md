@@ -755,3 +755,10 @@ Erik also asked, separately: why does this project use low-poly
 assets instead of more realistic ones? Answered directly (Quest 2
 performance budget, free CC0 licensing, one consistent art style) —
 not something to act on without a real ask.
+
+**gh#7 closed.** Remeasured every remaining flagged collider (11
+cliffs, 3 campsite props, 3 rocks) against its real glTF bounding box
+and swapped the dimensions in directly — same read-the-accessor-min/
+max technique as gh#3. Also fixed `rock-7`, which was equally wrong
+but not in the review's original spot-check sample. Mechanical pass
+green; pure collider-dimension changes, nothing visual to screenshot.
