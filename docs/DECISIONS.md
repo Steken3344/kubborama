@@ -974,3 +974,28 @@ that file, now added. A third, nitpick-level item (the i18n
 diacritic-guard regex only matched precomposed NFC characters, not a
 decomposed NFD å) was also fixed — cheap, and it's a regression guard,
 so a gap in the guard itself seemed worth closing.
+
+**A second, independent `/code-review` pass (Erik's own, run the
+morning after) found the WindSystem fix above was itself still
+imperfect** — cache-on-change still allocates on the (rare) frame
+where the mode actually changes, contradicting the fix's own "never
+allocate in update()" claim; the manual cache (instance fields +
+per-frame inequality check) was more machinery than the problem
+needed; and it introduced an asymmetry with `ToppleSystem`'s plain,
+uncached `getGameMode(...).toppleAngleDeg` lookup with no comment
+explaining why one path needed caching and the other didn't. All
+correct findings, no correctness bug. Fixed properly this time:
+`WindSystem` precomputes **both** modes' forces once
+(`FORCE_BY_MODE`, a `Record<GameModeName, Vec3>` built from
+`Object.keys(gameModes)` so it doesn't hardcode "simple"/"advanced"
+and stays correct if a mode is ever added) and just indexes into it
+in `update()` — genuinely zero allocation ever, no cache-invalidation
+logic to get out of sync, and now exactly as simple a lookup as
+`ToppleSystem`'s. The review also independently verified (by reading
+`node_modules/elics/lib/types.js`/`component.js`) that reusing the
+same `Vec3` array across every entity and frame is safe: elics copies
+Vec3 field values into per-entity storage on `addComponent`, it never
+holds the reference — so a single shared, never-mutated array is the
+correct shape here, not a shortcut. Re-verified live: zero console
+errors through a full grab→swing→release→settle cycle in Advanced
+mode with the new lookup active.
