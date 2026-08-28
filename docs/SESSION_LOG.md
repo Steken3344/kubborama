@@ -678,3 +678,35 @@ scale (renders look right, but VR depth perception differs from a flat
 screenshot), and does the campsite placement feel natural to glance at
 mid-game rather than in the way. Still open from before: the Quest 2
 72Hz check.
+
+A post-hoc review of that environment commit (Erik ran
+`/superpowers:requesting-code-review`) found the new decorative
+colliders' hand-estimated dimensions don't match their actual glTF
+footprints in several cases — worst one 6× oversized. Filed as gh#7
+rather than fixed immediately, since the player never walks
+(`locomotion: false`) and can't reach any of them.
+
+## 2026-08-28 — Two open issues closed: CI/deploy dedup, held-stick klonk haptics
+
+Erik picked gh#1 and gh#4 off the open-issues list to knock out.
+Merged the CI and Pages-deploy workflows into one file so the project
+only builds once per push instead of twice, with deploy now properly
+gated on the build/test job succeeding (gh#1). For gh#4 (klonk when
+two held sticks are struck together), the audio side turned out to
+already work with zero changes needed — the existing impact heuristic
+runs on any dynamic body regardless of held/flying phase, exactly as
+the issue's own write-up predicted. The real gap was haptics: the
+holding hand(s) never felt a pulse for anything but a mid-flight
+stick. Fixed by extending the haptic hand-lookup to use
+`GrabSystem.getHolderHand()` for a held (not flying) stick — the same
+public API `HandoffSystem` already uses. Verified live: grabbed a
+stick in each hand, swung them together, saw three separate impact
+events fire across both entities with real force numbers, no console
+errors. Mechanical pass green (151 tests, tsc/eslint/prettier/build/
+smoke). Both issues closed.
+
+**Handover.** Remaining open issues: gh#2 (golden-throw test harness),
+gh#3 (cyan autumn foliage, cosmetic), gh#5 (å/ä/ö font glyphs), gh#7
+(new decorative colliders, filed this session). None urgent. Still
+open from before: the Quest 2 72Hz check, and Erik's in-headset
+reaction to the M5 grab fix + environment pass.

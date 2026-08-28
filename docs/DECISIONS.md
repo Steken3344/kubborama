@@ -1772,3 +1772,85 @@ for this pass — unlike the grab-logic fix earlier in this session,
 there's no algorithmic logic here to get subtly wrong, just placement
 and asset wiring, and that was checked directly (JSON validity, the
 distance-collision script above, four rendered angles, live console).
+
+**Post-hoc review, filed as follow-up rather than fixed now**: a
+`general-purpose` code-reviewer dispatched after this commit was
+already pushed (Erik's own `/superpowers:requesting-code-review`)
+measured the new decorative nodes' actual glTF bounding boxes against
+their hand-estimated `PhysicsShape` dimensions and found real
+mismatches — worst case, `cliff-5` (`cliff_corner_rock`)'s visible
+mesh is a 0.168×1.0×0.168 sliver under a full `[1,1,1]` collision box,
+~6× oversized in both horizontal axes; several campsite props are 2-4×
+off in one dimension; one rock (`rock-6`) is undersized, leaving part
+of its visible mesh with no collision at all. Not fixed immediately —
+`iwsdk.config.json` has `locomotion: false`, so the stationary player
+can never physically reach any of these (cliff ring at 6.5-11m, not
+6.5-9.7m as this entry originally said — also caught by the same
+review), and only a wild stray throw could ever touch them. Filed as
+[gh#7](https://github.com/Steken3344/kubborama/issues/7) per this
+project's own "out-of-scope findings become issues" rule, rather than
+silently left or blocked on.
+
+## 2026-08-28 — Two follow-up issues closed out: CI/deploy dedup, held-stick klonk haptics
+
+Erik asked to knock out gh#1 and gh#4 from the open-issues list.
+
+**gh#1 (CI and Pages-deploy both build the project on every push).**
+Merged `.github/workflows/ci.yml` and `deploy.yml` into one workflow
+(kept the `ci.yml` filename, renamed the workflow itself to "CI &
+Deploy"): a `verify` job runs the existing typecheck/lint/format/test/
+build/smoke steps once, then (skipped entirely on `pull_request`
+events, via `if: github.event_name != 'pull_request'`) configures
+Pages and uploads `dist/` as a Pages artifact in that same job; a
+`deploy` job (`needs: verify`) consumes it. This eliminates the
+duplicate `npm run build` — the project is now built exactly once per
+push, not twice — and, as a side effect, deploy is now genuinely gated
+on verify succeeding (previously the two workflows ran in parallel, so
+a broken build could deploy while its own CI check was still failing
+or had already failed). `pages`/`id-token` permissions scoped to just
+the `deploy` job (least privilege — `verify` never needs them, and
+previously ran with GitHub's default read-only token anyway).
+`workflow_dispatch` added so either job can still be triggered
+manually, matching `deploy.yml`'s old capability. No branch-protection
+rules exist on this repo (`branches/main/protection` → 404), so
+renaming/merging the workflow couldn't break a required-status-check
+name.
+
+**gh#4 (klonk sound when two held sticks are struck together).** The
+issue's own suggested approach turned out to be exactly right, and
+mostly already true: `ImpactSystem`'s `|Δv|`-per-tick heuristic runs
+over every `PhysicsBody` in `DYNAMIC` state with no phase filter, and
+a held stick's body stays `DYNAMIC` the whole time it's grabbed
+(confirmed by reading `@iwsdk/core`'s `PhysicsSystem.update()` —
+`Grabbed` drives the body via `HP_Body_SetTargetQTransform`, a
+target-transform-tracking technique that still lets Havok compute a
+real velocity every step, it doesn't switch the body to a Kinematic
+motion type). So `playImpactSfx` already fired the stick-impact klonk
+for two held sticks knocked together, unchanged, no new code needed —
+verified live by grabbing a stick in each hand and swinging them
+together (console showed `[physics] impact` for both stick entities,
+force deltas up to 7.9 m/s).
+
+What was genuinely missing: **haptics**. `pulseIfFlyingStick` (the old
+name) early-returned for anything not in `StickPhase.Flying`, so a
+held-stick klonk played its sound but the holding hand(s) never felt a
+thing. Renamed to `pulseHapticForStick` and extended it: for a Flying
+stick, hand comes from `StickState.lastThrowerHand` as before (a
+held-but-never-thrown stick has this empty, so it wouldn't resolve
+correctly anyway); for anything else, if the entity `hasComponent
+(Grabbed)`, hand comes from `GrabSystem.getHolderHand(entity)` — the
+project's own established public-API pattern for "which hand holds
+this" (`.claude/rules/ecs-api.md`; `HandoffSystem` already uses the
+identical `this.world.getSystem(GrabSystem)` init pattern). Since both
+sticks in a two-handed klonk are independently in the `dynamicBodies`
+query, each one's own impact independently resolves and pulses its
+own holding hand — no shared/paired detection logic needed, matching
+the rest of this heuristic's per-body, not per-collision-pair, design.
+
+Live-verified: grabbed two sticks (one per hand) in the emulator and
+swung them together — three separate impacts logged across both stick
+entities (7.9, 4.2, 2.5 m/s deltas), zero console errors, confirming
+`GrabSystem.getHolderHand` resolves cleanly from `ImpactSystem`'s new
+`init()`. Mechanical pass green throughout (tsc/eslint/prettier/
+vitest — still 151 tests, no new pure-core logic — /build/smoke).
+gh#1 and gh#4 both closed.

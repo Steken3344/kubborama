@@ -1,6 +1,8 @@
 import {
   createSystem,
   eq,
+  GrabSystem,
+  Grabbed,
   PhysicsBody,
   PhysicsState,
   Vector3,
@@ -29,7 +31,9 @@ const IMPACT_SFX_SEED = 7331;
  * No public collision-event API exists (see docs/DECISIONS.md): this
  * is the |delta v|-per-tick heuristic applied to every dynamic body.
  * Emits Impact for M3's future topple logic to consume, fires
- * impactRumble haptics on a flying stick's last-thrower hand, and
+ * impactRumble haptics on whichever hand is responsible for a stick's
+ * motion (the thrower mid-flight, or the holder if it's being knocked
+ * around while held — gh#4, "klonk two held sticks together"), and
  * plays an impact sound classified from the impacting entity's own
  * type + force (never the contact partner — the heuristic has no way
  * to know what a piece hit, see docs/DECISIONS.md, M5).
@@ -48,6 +52,17 @@ export class ImpactSystem extends createSystem({
   private tmpPos = new Vector3();
   private sfxRng = createRng(IMPACT_SFX_SEED);
   private isPastStartupGrace = createStartupGate(pieces.throw.startupGraceS);
+  private grabSystem!: GrabSystem;
+
+  init(): void {
+    const grabSystem = this.world.getSystem(GrabSystem);
+    if (!grabSystem) {
+      throw new Error(
+        'ImpactSystem requires GrabSystem — enable the "grabbing" world feature in iwsdk.config.json',
+      );
+    }
+    this.grabSystem = grabSystem;
+  }
 
   update(_delta: number, time: number): void {
     // Velocity bookkeeping always runs (skipping it would make the
@@ -96,19 +111,21 @@ export class ImpactSystem extends createSystem({
         deltaVMps,
       });
 
-      this.pulseIfFlyingStick(entity, deltaVMps);
+      this.pulseHapticForStick(entity, deltaVMps);
       this.playImpactSfx(entity, deltaVMps);
     }
   }
 
-  private pulseIfFlyingStick(entity: Entity, deltaVMps: number): void {
+  private pulseHapticForStick(entity: Entity, deltaVMps: number): void {
     if (!entity.hasComponent(StickState)) {
       return;
     }
-    if (entity.getValue(StickState, 'phase') !== StickPhase.Flying) {
-      return;
-    }
-    const hand = entity.getValue(StickState, 'lastThrowerHand');
+    const hand =
+      entity.getValue(StickState, 'phase') === StickPhase.Flying
+        ? entity.getValue(StickState, 'lastThrowerHand')
+        : entity.hasComponent(Grabbed)
+          ? this.grabSystem.getHolderHand(entity)
+          : null;
     if (!isHand(hand)) {
       return;
     }
