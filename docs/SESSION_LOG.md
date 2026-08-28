@@ -762,3 +762,29 @@ and swapped the dimensions in directly — same read-the-accessor-min/
 max technique as gh#3. Also fixed `rock-7`, which was equally wrong
 but not in the review's original spot-check sample. Mechanical pass
 green; pure collider-dimension changes, nothing visual to screenshot.
+
+Erik separately asked whether there's a more interesting/detailed
+asset pack we could swap in — pointed him at Quaternius (free CC0,
+more textured/varied than Kenney) as the best fit, offered to make it
+the next thing after the issue backlog since it's a bigger, separate
+task from a one-line bug fix.
+
+**gh#5 fixed.** The root cause was already correctly diagnosed back in
+M4 (`@drawcall/uikitml`'s font loader never forwards a `charset`
+option to the underlying `TTFLoader`, so the MSDF bake always used its
+hardcoded ASCII-only default) — just never fixed. Patched the loader
+via `patch-package` (added as a new devDependency, with a `postinstall`
+hook so the patch survives a fresh `npm ci`) to pass an extended
+charset including å/ä/ö/Å/Ä/Ö. Verified the patch reapplies correctly
+from a clean reinstall. Updated the three sv.json strings that had
+been spelling around the bug, and removed the now-backwards regression
+test that asserted those letters could never appear.
+
+Could not get a live screenshot of the fixed text actually rendering —
+the settings/stats tabs where it lives are the same panel edge buttons
+M4 already documented as unreliable to ray-click in this emulator.
+Disclosed rather than hidden; confidence comes from reading the
+library source directly, not from a screenshot. Asked Erik to eyeball
+"Bästa fallkast" next time he's on headset. Mechanical pass green (150
+tests). gh#5 closed — only gh#2 (golden-throw test harness) remains
+open.

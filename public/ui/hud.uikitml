@@ -4,10 +4,9 @@
   src/systems/hud.ts, which listens for RoundEnded — no per-frame
   polling needed, only updates when a round actually finishes.
 
-  Text avoids å/ä/ö throughout on purpose — confirmed root cause in
-  public/ui/reset-menu.uikitml and docs/DECISIONS.md (gh#5). Labels
-  driven by src/i18nState.ts, refreshed by HudSystem on language
-  change.
+  å/ä/ö now render correctly (gh#5, see public/ui/reset-menu.uikitml
+  and docs/DECISIONS.md for the fix). Labels driven by
+  src/i18nState.ts, refreshed by HudSystem on language change.
 -->
 <style>
   @font-face {

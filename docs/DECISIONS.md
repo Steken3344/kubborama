@@ -1995,3 +1995,67 @@ these are pure collider-dimension changes (invisible geometry), so a
 visual render wouldn't show a difference — the correctness check here
 is the measurement matching the source mesh, not a screenshot. gh#7
 closed.
+
+## 2026-08-28 — gh#5 fixed: å/ä/ö now render, via a patch-package patch
+
+gh#5's own root-cause writeup (from M4) was already exactly right and
+didn't need re-investigation: `@drawcall/uikitml`'s `loadTTF(src)`
+(`node_modules/@drawcall/uikitml/dist/fonts.js`) always called
+`new TTFLoader().loadAsync(src)` with a bare URL string, never an
+options object — so a custom `@font-face`'s MSDF bake always fell
+back to `@pmndrs/uikit`'s `TTFLoader`'s hardcoded ASCII-only default
+charset, silently dropping å/ä/ö/Å/Ä/Ö regardless of what the source
+`.ttf` actually contains.
+
+Confirmed (reading `packages/.../loaders/ttf.js`, i.e. `@pmndrs/uikit`'s
+own `TTFLoader.loadAsync`/`_generate`) that `TTFLoader` itself already
+fully supports a per-font `charset` override via `{url, charset}` —
+the bug was purely that `@drawcall/uikitml` never threaded one
+through. Also checked gh#5's "real fix option 2" (switch to one of the
+17 pre-baked `@pmndrs/msdfonts` bundled families instead of a custom
+`@font-face`) — dead end: every bundled family's pre-baked atlas
+(`node_modules/@pmndrs/msdfonts/dist/*.js`) was generated with that
+exact same ASCII-only default charset, confirmed by grepping for the
+å/ä/ö/Å/Ä/Ö Unicode codepoints in `inter.js` — none present. So gh#5's
+"option 1" (patch the loader) was the only viable path, not option 2.
+
+**Fix**: added `patch-package` as a devDependency, patched `loadTTF`
+to call `TTFLoader().loadAsync({ url: src, charset: <ASCII default +
+åäöÅÄÖ> })`, generated `patches/@drawcall+uikitml+0.1.8.patch`, and
+added `"postinstall": "patch-package"` to `package.json` so the patch
+reapplies automatically after every `npm install`/`npm ci` (verified
+by reinstalling a clean copy of the package and confirming `npx
+patch-package` reproduces the exact patched file — this is essential
+since `node_modules` isn't committed, so without a postinstall hook
+the fix would silently vanish on the next `npm ci`, including in CI).
+
+Updated `src/data/i18n/sv.json`'s three strings that had been spelling
+around the bug (`"Pa"` → `"På"` ×2, `"Basta"` → `"Bästa"`) — did NOT
+touch `resetButton: "Ny runda"`, which was never a workaround (an
+earlier M3 entry already establishes "Ny runda" is the _correct_ label
+for what that button does, not a substitute for "Återställ"). Removed
+`src/i18nState.test.ts`'s now-backwards guard test (it asserted no
+dictionary value contains å/ä/ö — exactly what we now want to allow)
+and updated the two UIKitML files' inline comments that documented the
+old workaround.
+
+**Live-verification gap, disclosed rather than glossed over**: could
+not get a click-through screenshot of the "Alternativ"/"Statistik"
+tabs (where the three fixed strings actually render) — `ui_render_
+preview`'s isolated composer preview hit the same pre-existing
+"transparent after a WebGL context interruption" quirk noted
+elsewhere this session, and live ray-aimed clicks at those exact tab
+buttons missed repeatedly, closing the menu instead of switching tabs.
+This exact difficulty was already documented in M4's own entry above
+("both sit at panel edges where ray-aiming repeatedly missed" — code-
+pattern verification was accepted there instead of a live click) —
+same panel, same known limitation, not a new problem. Confidence in
+the fix itself comes from reading the actual library source
+end-to-end (not guessing): `TTFLoader` demonstrably honors a passed
+`charset`, and the exact object shape now passed matches what it
+expects. Flagged for Erik to visually confirm "Bästa fallkast"/
+"Haptik: På" next time he opens those tabs on headset.
+
+Mechanical pass green (tsc/eslint/prettier — 150 tests, one down from
+151 since the now-backwards guard test was removed — /build/smoke).
+gh#5 closed.

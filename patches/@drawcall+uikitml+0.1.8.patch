@@ -1,0 +1,20 @@
+diff --git a/node_modules/@drawcall/uikitml/dist/fonts.js b/node_modules/@drawcall/uikitml/dist/fonts.js
+index f40048f..658e7dc 100644
+--- a/node_modules/@drawcall/uikitml/dist/fonts.js
++++ b/node_modules/@drawcall/uikitml/dist/fonts.js
+@@ -245,7 +245,14 @@ function loadTTF(src) {
+     if (existing != null) {
+         return existing;
+     }
+-    const loaded = new TTFLoader().loadAsync(src);
++    // KubbOrama patch (see docs/DECISIONS.md, gh#5): loadTTF never
++    // forwarded a charset option to TTFLoader, so its MSDF bake always
++    // used TTFLoader's hardcoded ASCII-only default and silently
++    // dropped å/ä/ö/Å/Ä/Ö. TTFLoader.loadAsync itself already supports
++    // a per-font charset override ({url, charset}) — just needed to
++    // actually be passed one.
++    const charset = ' \tABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?.,;:\'"()-[]{}@#$%&*+=/\\<>åäöÅÄÖ';
++    const loaded = new TTFLoader().loadAsync({ url: src, charset });
+     ttfLoads.set(src, loaded);
+     return loaded;
+ }

@@ -13,12 +13,9 @@
   built, and the button pattern was already proven reliable across
   every earlier control in this project.
 
-  Text avoids å/ä/ö throughout on purpose (confirmed root cause, not a
-  workaround guess — see docs/DECISIONS.md and gh#5): UIKitML's custom
-  @font-face path always bakes its MSDF atlas from a hardcoded
-  ASCII-only charset (@pmndrs/uikit's TTFLoader), regardless of what
-  glyphs the source .ttf actually contains — there is currently no way
-  to pass a wider charset through from UIKitML. Text driven by
+  å/ä/ö now render correctly (gh#5, fixed via a patch-package patch on
+  @drawcall/uikitml — see docs/DECISIONS.md for the root cause and
+  patches/@drawcall+uikitml+0.1.8.patch). Text driven by
   src/i18nState.ts (core/i18n.ts's translator over
   src/data/i18n/{sv,en}.json) — see src/systems/menu.ts.
 -->
