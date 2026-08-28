@@ -26,3 +26,40 @@ grab-range highlight (new this session — see docs/DECISIONS.md) shows
 up on the left hand at all when reaching for a stick. If it does show
 but squeeze still doesn't grab, that narrows it to input mapping rather
 than proximity detection.
+
+## Future feature idea: baseline foul warning ("don't step over the line")
+
+Erik's idea (2026-08-28), for a future version — not scoped to any
+current milestone: a real kubb rule is that you must throw from behind
+the baseline. Warn the player when their feet cross it — e.g. tint the
+held stick red — rather than silently allowing an illegal throw.
+
+**The hard part, per Erik's own framing:** foot position is what
+matters, not head position, and Quest 2 has no leg/foot tracking. His
+proposed approximation: head position minus ~30cm forward, to account
+for leaning in to throw. Discussed refinement: a fixed world-space
+`-30cm` on one axis only works if the player always faces the same
+direction, but this court has kastare throwing from both baselines
+(facing opposite ways) — so the offset needs to follow the head's own
+forward direction instead: take the head's forward vector, flatten it
+onto the ground plane (drop the up/down tilt component), normalize,
+and subtract ~30cm along _that_ flattened direction from the head's
+XZ position. That gives a lean-corrected foot estimate regardless of
+which end of the court the player is standing at. This is the standard
+practical substitute for real foot tracking in headset-only VR.
+
+**Open sub-questions for whenever this gets scoped:**
+
+- Which baseline is "behind" depends on whose throw it is / which end
+  of the court is active — ties into `config.ts`'s existing court/
+  baseline data, not a new concept.
+- When should the warning be live — only while a stick is held and the
+  player is aiming/about to throw, or continuously? Continuous is
+  probably too noisy (flags "wrong" foot position even when just
+  walking around, not throwing).
+- Warning-only (red stick tint) vs. an actual rule enforcement (e.g.
+  invalidating/voiding a throw released from an illegal position) —
+  Erik only asked for a warning so far, not enforcement.
+
+Not investigated or prototyped yet — logged per Erik's request so it
+isn't lost, to be picked up in a later session.
