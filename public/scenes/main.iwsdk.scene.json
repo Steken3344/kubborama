@@ -1,996 +1,1030 @@
 {
-  "version": "iwsdk.scene.v1",
-  "units": "meters",
-  "components": {
-    "DomeTexture": {
-      "src": "textures/autumn-park-1k.hdr",
-      "intensity": 1,
-      "blurriness": 0
-    },
-    "IBLTexture": {
-      "src": "textures/autumn-park-1k.hdr",
-      "intensity": 1
-    }
-  },
-  "metadata": {},
   "authoring": {
     "views": [
       {
+        "fov": 60,
         "id": "playerSpawn",
-        "role": "hero",
-        "projection": "perspective",
         "position": [0, 1.6, 0],
-        "target": [0, 1.3, -3],
-        "fov": 60
-      },
-      {
-        "id": "grandstandSide",
-        "role": "diagnostic",
         "projection": "perspective",
-        "position": [4.5, 2.5, -3],
-        "target": [0, 0.4, -3],
-        "fov": 50
+        "role": "hero",
+        "target": [0, 1.3, -3]
       },
       {
-        "id": "top",
+        "fov": 50,
+        "id": "grandstandSide",
+        "position": [4.5, 2.5, -3],
+        "projection": "perspective",
         "role": "diagnostic",
-        "projection": "orthographic",
+        "target": [0, 0.4, -3]
+      },
+      {
+        "height": 10,
+        "id": "top",
         "position": [0, 10, -3],
-        "target": [0, 0, -3],
-        "height": 10
+        "projection": "orthographic",
+        "role": "diagnostic",
+        "target": [0, 0, -3]
       }
     ]
   },
-  "resources": {
-    "prefabs": [
-      {
-        "id": "fence-section",
-        "root": {
-          "id": "fence-section-root",
-          "content": {
-            "type": "asset",
-            "asset": "fence-planks",
-            "castShadow": true
-          }
-        }
-      }
-    ]
+  "components": {
+    "DomeTexture": {
+      "blurriness": 0,
+      "intensity": 1,
+      "src": "textures/autumn-park-1k.hdr"
+    },
+    "IBLTexture": {
+      "intensity": 1,
+      "src": "textures/autumn-park-1k.hdr"
+    }
   },
   "environment": {},
+  "metadata": {},
   "nodes": [
     {
-      "id": "ground",
-      "name": "Ground",
-      "framingRole": "support",
-      "content": {
-        "type": "asset",
-        "asset": "ground",
-        "receiveShadow": true
-      },
-      "transform": {
-        "position": [0, -0.49, 0]
-      },
       "components": {
-        "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [30, 1, 30],
-          "density": 640,
-          "friction": 0.8,
-          "restitution": 0.1
-        },
         "PhysicsBody": {
           "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [30, 1, 30],
+          "friction": 0.8,
+          "restitution": 0.1,
+          "shape": "Box"
         }
+      },
+      "content": {
+        "asset": "ground",
+        "receiveShadow": true,
+        "type": "asset"
+      },
+      "framingRole": "support",
+      "id": "ground",
+      "name": "Ground",
+      "transform": {
+        "position": [0, -0.49, 0],
+        "rotationDeg": [0, 0, 0],
+        "scale": 1
       }
     },
     {
+      "components": {
+        "DirectionalLight": {
+          "castShadow": true,
+          "color": [1, 0.95, 0.85, 1],
+          "intensity": 2.2,
+          "shadowCameraSize": 16,
+          "shadowMapSize": "1024"
+        }
+      },
       "id": "sun",
       "name": "Sun",
       "transform": {
-        "position": [5, 8, 5],
-        "rotationDeg": [55, -45, 0]
-      },
-      "components": {
-        "DirectionalLight": {
-          "color": [1, 0.95, 0.85, 1],
-          "intensity": 2.2,
-          "castShadow": true,
-          "shadowMapSize": "1024",
-          "shadowCameraSize": 16
-        }
+        "position": [5, 9.3571, 6.9381],
+        "rotationDeg": [55, -45, 0],
+        "scale": 1
       }
     },
     {
-      "id": "sky-fill",
-      "name": "Sky fill",
       "components": {
         "HemisphereLight": {
-          "skyColor": [0.65, 0.75, 0.85, 1],
           "groundColor": [0.35, 0.42, 0.25, 1],
-          "intensity": 0.6
+          "intensity": 0.6,
+          "skyColor": [0.65, 0.75, 0.85, 1]
         }
-      }
+      },
+      "id": "sky-fill",
+      "name": "Sky fill"
     },
     {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.01, 0.3, 0],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Cylinder"
+        }
+      },
+      "content": {
+        "asset": "stake",
+        "type": "asset"
+      },
       "id": "corner-stake-near-left",
       "name": "Hompinne (near-left)",
-      "content": {
-        "type": "asset",
-        "asset": "stake"
-      },
       "transform": {
         "position": [-1.5, 0.15, 0]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Cylinder",
-          "dimensions": [0.01, 0.3, 0],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "STATIC"
-        }
       }
     },
     {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.01, 0.3, 0],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Cylinder"
+        }
+      },
+      "content": {
+        "asset": "stake",
+        "type": "asset"
+      },
       "id": "corner-stake-near-right",
       "name": "Hompinne (near-right)",
-      "content": {
-        "type": "asset",
-        "asset": "stake"
-      },
       "transform": {
         "position": [1.5, 0.15, 0]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Cylinder",
-          "dimensions": [0.01, 0.3, 0],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "STATIC"
-        }
       }
     },
     {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.01, 0.3, 0],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Cylinder"
+        }
+      },
+      "content": {
+        "asset": "stake",
+        "type": "asset"
+      },
       "id": "corner-stake-far-left",
       "name": "Hompinne (far-left)",
-      "content": {
-        "type": "asset",
-        "asset": "stake"
-      },
       "transform": {
         "position": [-1.5, 0.15, -6]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Cylinder",
-          "dimensions": [0.01, 0.3, 0],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "STATIC"
-        }
       }
     },
     {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.01, 0.3, 0],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Cylinder"
+        }
+      },
+      "content": {
+        "asset": "stake",
+        "type": "asset"
+      },
       "id": "corner-stake-far-right",
       "name": "Hompinne (far-right)",
-      "content": {
-        "type": "asset",
-        "asset": "stake"
-      },
       "transform": {
         "position": [1.5, 0.15, -6]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Cylinder",
-          "dimensions": [0.01, 0.3, 0],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "STATIC"
-        }
       }
     },
     {
+      "components": {
+        "CourtLine": {},
+        "Visibility": {
+          "isVisible": false
+        }
+      },
+      "content": {
+        "asset": "court-line-long",
+        "type": "asset"
+      },
       "id": "court-line-left",
       "name": "Court line (left)",
       "transform": {
         "position": [-1.5, 0.003, -3]
-      },
-      "content": {
-        "type": "asset",
-        "asset": "court-line-long"
-      },
+      }
+    },
+    {
       "components": {
         "CourtLine": {},
         "Visibility": {
           "isVisible": false
         }
-      }
-    },
-    {
+      },
+      "content": {
+        "asset": "court-line-long",
+        "type": "asset"
+      },
       "id": "court-line-right",
       "name": "Court line (right)",
       "transform": {
         "position": [1.5, 0.003, -3]
-      },
-      "content": {
-        "type": "asset",
-        "asset": "court-line-long"
-      },
+      }
+    },
+    {
       "components": {
         "CourtLine": {},
         "Visibility": {
           "isVisible": false
         }
-      }
-    },
-    {
+      },
+      "content": {
+        "asset": "court-line-short",
+        "type": "asset"
+      },
       "id": "court-line-near",
       "name": "Court line (near)",
       "transform": {
         "position": [0, 0.003, 0],
         "rotationDeg": [0, 90, 0]
-      },
-      "content": {
-        "type": "asset",
-        "asset": "court-line-short"
-      },
+      }
+    },
+    {
       "components": {
         "CourtLine": {},
         "Visibility": {
           "isVisible": false
         }
-      }
-    },
-    {
+      },
+      "content": {
+        "asset": "court-line-short",
+        "type": "asset"
+      },
       "id": "court-line-far",
       "name": "Court line (far)",
       "transform": {
         "position": [0, 0.003, -6],
         "rotationDeg": [0, 90, 0]
-      },
-      "content": {
-        "type": "asset",
-        "asset": "court-line-short"
-      },
-      "components": {
-        "CourtLine": {},
-        "Visibility": {
-          "isVisible": false
-        }
       }
     },
     {
+      "components": {
+        "KingPiece": {},
+        "PhysicsBody": {
+          "angularDamping": 0.1,
+          "linearDamping": 0.1,
+          "state": "DYNAMIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.09, 0.3, 0.09],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Box"
+        },
+        "Resettable": {}
+      },
+      "content": {
+        "asset": "king",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "king",
       "name": "Kung",
-      "content": {
-        "type": "asset",
-        "asset": "king",
-        "castShadow": true
-      },
       "transform": {
-        "position": [0, 0.15, -3]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [0.09, 0.3, 0.09],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.1,
-          "angularDamping": 0.1
-        },
-        "Resettable": {},
-        "KingPiece": {}
+        "position": [0, 0.15, -3],
+        "rotationDeg": [0, 0, 0],
+        "scale": 1
       }
     },
     {
+      "components": {
+        "PhysicsBody": {
+          "angularDamping": 0.1,
+          "linearDamping": 0.1,
+          "state": "DYNAMIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.07, 0.15, 0.07],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Box"
+        },
+        "Resettable": {}
+      },
+      "content": {
+        "asset": "kubb",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "kubb-0",
       "name": "Kubb 0",
-      "content": {
-        "type": "asset",
-        "asset": "kubb",
-        "castShadow": true
-      },
       "transform": {
-        "position": [-1.2, 0.075, -6]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [0.07, 0.15, 0.07],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.1,
-          "angularDamping": 0.1
-        },
-        "Resettable": {}
+        "position": [-1.2, 0.075, -6],
+        "rotationDeg": [0, 0, 0],
+        "scale": 1
       }
     },
     {
+      "components": {
+        "PhysicsBody": {
+          "angularDamping": 0.1,
+          "linearDamping": 0.1,
+          "state": "DYNAMIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.07, 0.15, 0.07],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Box"
+        },
+        "Resettable": {}
+      },
+      "content": {
+        "asset": "kubb",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "kubb-1",
       "name": "Kubb 1",
-      "content": {
-        "type": "asset",
-        "asset": "kubb",
-        "castShadow": true
-      },
       "transform": {
         "position": [-0.6, 0.075, -6]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [0.07, 0.15, 0.07],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.1,
-          "angularDamping": 0.1
-        },
-        "Resettable": {}
       }
     },
     {
+      "components": {
+        "PhysicsBody": {
+          "angularDamping": 0.1,
+          "linearDamping": 0.1,
+          "state": "DYNAMIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.07, 0.15, 0.07],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Box"
+        },
+        "Resettable": {}
+      },
+      "content": {
+        "asset": "kubb",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "kubb-2",
       "name": "Kubb 2",
-      "content": {
-        "type": "asset",
-        "asset": "kubb",
-        "castShadow": true
-      },
       "transform": {
         "position": [0, 0.075, -6]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [0.07, 0.15, 0.07],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.1,
-          "angularDamping": 0.1
-        },
-        "Resettable": {}
       }
     },
     {
+      "components": {
+        "PhysicsBody": {
+          "angularDamping": 0.1,
+          "linearDamping": 0.1,
+          "state": "DYNAMIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.07, 0.15, 0.07],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Box"
+        },
+        "Resettable": {}
+      },
+      "content": {
+        "asset": "kubb",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "kubb-3",
       "name": "Kubb 3",
-      "content": {
-        "type": "asset",
-        "asset": "kubb",
-        "castShadow": true
-      },
       "transform": {
         "position": [0.6, 0.075, -6]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [0.07, 0.15, 0.07],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.1,
-          "angularDamping": 0.1
-        },
-        "Resettable": {}
       }
     },
     {
+      "components": {
+        "PhysicsBody": {
+          "angularDamping": 0.1,
+          "linearDamping": 0.1,
+          "state": "DYNAMIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.07, 0.15, 0.07],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Box"
+        },
+        "Resettable": {}
+      },
+      "content": {
+        "asset": "kubb",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "kubb-4",
       "name": "Kubb 4",
-      "content": {
-        "type": "asset",
-        "asset": "kubb",
-        "castShadow": true
-      },
       "transform": {
         "position": [1.2, 0.075, -6]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [0.07, 0.15, 0.07],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.1,
-          "angularDamping": 0.1
-        },
-        "Resettable": {}
       }
     },
     {
+      "components": {
+        "PhysicsBody": {
+          "angularDamping": 0.1,
+          "linearDamping": 0.1,
+          "state": "DYNAMIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.07, 0.15, 0.07],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Box"
+        },
+        "Resettable": {}
+      },
+      "content": {
+        "asset": "kubb",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "kubb-5",
       "name": "Kubb 5",
-      "content": {
-        "type": "asset",
-        "asset": "kubb",
-        "castShadow": true
-      },
       "transform": {
         "position": [-1.2, 0.075, -0.05]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [0.07, 0.15, 0.07],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.1,
-          "angularDamping": 0.1
-        },
-        "Resettable": {}
       }
     },
     {
+      "components": {
+        "PhysicsBody": {
+          "angularDamping": 0.1,
+          "linearDamping": 0.1,
+          "state": "DYNAMIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.07, 0.15, 0.07],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Box"
+        },
+        "Resettable": {}
+      },
+      "content": {
+        "asset": "kubb",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "kubb-6",
       "name": "Kubb 6",
-      "content": {
-        "type": "asset",
-        "asset": "kubb",
-        "castShadow": true
-      },
       "transform": {
         "position": [-0.6, 0.075, -0.05]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [0.07, 0.15, 0.07],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.1,
-          "angularDamping": 0.1
-        },
-        "Resettable": {}
       }
     },
     {
+      "components": {
+        "PhysicsBody": {
+          "angularDamping": 0.1,
+          "linearDamping": 0.1,
+          "state": "DYNAMIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.07, 0.15, 0.07],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Box"
+        },
+        "Resettable": {}
+      },
+      "content": {
+        "asset": "kubb",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "kubb-7",
       "name": "Kubb 7",
-      "content": {
-        "type": "asset",
-        "asset": "kubb",
-        "castShadow": true
-      },
       "transform": {
         "position": [0, 0.075, -0.05]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [0.07, 0.15, 0.07],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.1,
-          "angularDamping": 0.1
-        },
-        "Resettable": {}
       }
     },
     {
+      "components": {
+        "PhysicsBody": {
+          "angularDamping": 0.1,
+          "linearDamping": 0.1,
+          "state": "DYNAMIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.07, 0.15, 0.07],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Box"
+        },
+        "Resettable": {}
+      },
+      "content": {
+        "asset": "kubb",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "kubb-8",
       "name": "Kubb 8",
-      "content": {
-        "type": "asset",
-        "asset": "kubb",
-        "castShadow": true
-      },
       "transform": {
         "position": [0.6, 0.075, -0.05]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [0.07, 0.15, 0.07],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.1,
-          "angularDamping": 0.1
-        },
-        "Resettable": {}
       }
     },
     {
+      "components": {
+        "PhysicsBody": {
+          "angularDamping": 0.1,
+          "linearDamping": 0.1,
+          "state": "DYNAMIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.07, 0.15, 0.07],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Box"
+        },
+        "Resettable": {}
+      },
+      "content": {
+        "asset": "kubb",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "kubb-9",
       "name": "Kubb 9",
-      "content": {
-        "type": "asset",
-        "asset": "kubb",
-        "castShadow": true
-      },
       "transform": {
         "position": [1.2, 0.075, -0.05]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [0.07, 0.15, 0.07],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.1,
-          "angularDamping": 0.1
-        },
-        "Resettable": {}
       }
     },
     {
+      "components": {
+        "DistanceGrabbable": {
+          "returnToOrigin": false
+        },
+        "OneHandGrabbable": {
+          "rotate": true,
+          "translate": true
+        },
+        "PhysicsBody": {
+          "angularDamping": 0.05,
+          "linearDamping": 0.05,
+          "state": "DYNAMIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.022, 0.3, 0],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Cylinder"
+        },
+        "RayInteractable": {},
+        "Resettable": {},
+        "StickState": {
+          "phase": "RACKED"
+        }
+      },
+      "content": {
+        "asset": "stick",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "stick-0",
       "name": "Kastpinne 0",
-      "content": {
-        "type": "asset",
-        "asset": "stick",
-        "castShadow": true
-      },
       "transform": {
         "position": [-0.852088, 0.022, -0.292492],
         "rotationDeg": [0, 291.769917, 90]
-      },
+      }
+    },
+    {
       "components": {
-        "PhysicsShape": {
-          "shape": "Cylinder",
-          "dimensions": [0.022, 0.3, 0],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
+        "DistanceGrabbable": {
+          "returnToOrigin": false
         },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.05,
-          "angularDamping": 0.05
-        },
-        "RayInteractable": {},
         "OneHandGrabbable": {
           "rotate": true,
           "translate": true
         },
-        "DistanceGrabbable": {
-          "returnToOrigin": false
+        "PhysicsBody": {
+          "angularDamping": 0.05,
+          "linearDamping": 0.05,
+          "state": "DYNAMIC"
         },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.022, 0.3, 0],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Cylinder"
+        },
+        "RayInteractable": {},
+        "Resettable": {},
         "StickState": {
           "phase": "RACKED"
-        },
-        "Resettable": {}
-      }
-    },
-    {
+        }
+      },
+      "content": {
+        "asset": "stick",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "stick-1",
       "name": "Kastpinne 1",
-      "content": {
-        "type": "asset",
-        "asset": "stick",
-        "castShadow": true
-      },
       "transform": {
         "position": [0.388122, 0.022, -0.473081],
         "rotationDeg": [0, 137.176523, 90]
-      },
+      }
+    },
+    {
       "components": {
-        "PhysicsShape": {
-          "shape": "Cylinder",
-          "dimensions": [0.022, 0.3, 0],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
+        "DistanceGrabbable": {
+          "returnToOrigin": false
         },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.05,
-          "angularDamping": 0.05
-        },
-        "RayInteractable": {},
         "OneHandGrabbable": {
           "rotate": true,
           "translate": true
         },
-        "DistanceGrabbable": {
-          "returnToOrigin": false
+        "PhysicsBody": {
+          "angularDamping": 0.05,
+          "linearDamping": 0.05,
+          "state": "DYNAMIC"
         },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.022, 0.3, 0],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Cylinder"
+        },
+        "RayInteractable": {},
+        "Resettable": {},
         "StickState": {
           "phase": "RACKED"
-        },
-        "Resettable": {}
-      }
-    },
-    {
+        }
+      },
+      "content": {
+        "asset": "stick",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "stick-2",
       "name": "Kastpinne 2",
-      "content": {
-        "type": "asset",
-        "asset": "stick",
-        "castShadow": true
-      },
       "transform": {
         "position": [0.071719, 0.022, -0.56144],
         "rotationDeg": [0, 195.841789, 90]
-      },
+      }
+    },
+    {
       "components": {
-        "PhysicsShape": {
-          "shape": "Cylinder",
-          "dimensions": [0.022, 0.3, 0],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
+        "DistanceGrabbable": {
+          "returnToOrigin": false
         },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.05,
-          "angularDamping": 0.05
-        },
-        "RayInteractable": {},
         "OneHandGrabbable": {
           "rotate": true,
           "translate": true
         },
-        "DistanceGrabbable": {
-          "returnToOrigin": false
+        "PhysicsBody": {
+          "angularDamping": 0.05,
+          "linearDamping": 0.05,
+          "state": "DYNAMIC"
         },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.022, 0.3, 0],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Cylinder"
+        },
+        "RayInteractable": {},
+        "Resettable": {},
         "StickState": {
           "phase": "RACKED"
-        },
-        "Resettable": {}
-      }
-    },
-    {
+        }
+      },
+      "content": {
+        "asset": "stick",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "stick-3",
       "name": "Kastpinne 3",
-      "content": {
-        "type": "asset",
-        "asset": "stick",
-        "castShadow": true
-      },
       "transform": {
         "position": [0.117784, 0.022, -0.645408],
         "rotationDeg": [0, 68.649753, 90]
-      },
+      }
+    },
+    {
       "components": {
-        "PhysicsShape": {
-          "shape": "Cylinder",
-          "dimensions": [0.022, 0.3, 0],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
+        "DistanceGrabbable": {
+          "returnToOrigin": false
         },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.05,
-          "angularDamping": 0.05
-        },
-        "RayInteractable": {},
         "OneHandGrabbable": {
           "rotate": true,
           "translate": true
         },
-        "DistanceGrabbable": {
-          "returnToOrigin": false
+        "PhysicsBody": {
+          "angularDamping": 0.05,
+          "linearDamping": 0.05,
+          "state": "DYNAMIC"
         },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.022, 0.3, 0],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Cylinder"
+        },
+        "RayInteractable": {},
+        "Resettable": {},
         "StickState": {
           "phase": "RACKED"
-        },
-        "Resettable": {}
-      }
-    },
-    {
+        }
+      },
+      "content": {
+        "asset": "stick",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "stick-4",
       "name": "Kastpinne 4",
-      "content": {
-        "type": "asset",
-        "asset": "stick",
-        "castShadow": true
-      },
       "transform": {
         "position": [-0.121153, 0.022, -0.446352],
         "rotationDeg": [0, 72.900239, 90]
-      },
+      }
+    },
+    {
       "components": {
-        "PhysicsShape": {
-          "shape": "Cylinder",
-          "dimensions": [0.022, 0.3, 0],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
+        "DistanceGrabbable": {
+          "returnToOrigin": false
         },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.05,
-          "angularDamping": 0.05
-        },
-        "RayInteractable": {},
         "OneHandGrabbable": {
           "rotate": true,
           "translate": true
         },
-        "DistanceGrabbable": {
-          "returnToOrigin": false
+        "PhysicsBody": {
+          "angularDamping": 0.05,
+          "linearDamping": 0.05,
+          "state": "DYNAMIC"
         },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.022, 0.3, 0],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Cylinder"
+        },
+        "RayInteractable": {},
+        "Resettable": {},
         "StickState": {
           "phase": "RACKED"
-        },
-        "Resettable": {}
-      }
-    },
-    {
+        }
+      },
+      "content": {
+        "asset": "stick",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "stick-5",
       "name": "Kastpinne 5",
-      "content": {
-        "type": "asset",
-        "asset": "stick",
-        "castShadow": true
-      },
       "transform": {
         "position": [0.804969, 0.022, -0.573913],
         "rotationDeg": [0, 334.042397, 90]
-      },
-      "components": {
-        "PhysicsShape": {
-          "shape": "Cylinder",
-          "dimensions": [0.022, 0.3, 0],
-          "density": 640,
-          "friction": 0.6,
-          "restitution": 0.15
-        },
-        "PhysicsBody": {
-          "state": "DYNAMIC",
-          "linearDamping": 0.05,
-          "angularDamping": 0.05
-        },
-        "RayInteractable": {},
-        "OneHandGrabbable": {
-          "rotate": true,
-          "translate": true
-        },
-        "DistanceGrabbable": {
-          "returnToOrigin": false
-        },
-        "StickState": {
-          "phase": "RACKED"
-        },
-        "Resettable": {}
       }
     },
     {
+      "content": {
+        "asset": "hud",
+        "type": "asset"
+      },
       "id": "hud-panel",
       "name": "HUD",
-      "content": {
-        "type": "asset",
-        "asset": "hud"
-      },
       "transform": {
-        "position": [1.4, 1.6, -1.4],
-        "rotationDeg": [0, -45, 0],
+        "position": [2.6406, 1.6, -2.6406],
+        "rotationDeg": [0, -90, 0],
         "scale": 1.3
       }
     },
     {
-      "id": "reset-menu-panel",
-      "name": "Reset menu",
-      "content": {
-        "type": "asset",
-        "asset": "reset-menu"
-      },
-      "transform": {
-        "position": [0, 1.4, -1.1],
-        "scale": 0.85
-      },
       "components": {
         "RayInteractable": {}
+      },
+      "content": {
+        "asset": "reset-menu",
+        "type": "asset"
+      },
+      "id": "reset-menu-panel",
+      "name": "Reset menu",
+      "transform": {
+        "position": [0, 1.4, -2.9163],
+        "rotationDeg": [0, 0, 0],
+        "scale": 0.85
       }
     },
     {
+      "content": {
+        "distribution": {
+          "count": 5,
+          "step": [1, 0, 0],
+          "type": "linear"
+        },
+        "prefab": "fence-section",
+        "type": "pattern"
+      },
       "id": "fence-line",
       "name": "Fence",
-      "content": {
-        "type": "pattern",
-        "prefab": "fence-section",
-        "distribution": {
-          "type": "linear",
-          "count": 5,
-          "step": [1, 0, 0]
-        }
-      },
       "transform": {
-        "position": [-2, 0, 2.2]
+        "position": [-3.7184, 0.0048, -5.2617],
+        "rotationDeg": [0, -90, 0],
+        "scale": 1
       }
     },
     {
+      "content": {
+        "asset": "tree-plateau",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "tree-0",
       "name": "Tree (plateau)",
-      "content": {
-        "type": "asset",
-        "asset": "tree-plateau",
-        "castShadow": true
-      },
       "transform": {
         "position": [4, 0, -1],
         "rotationDeg": [0, 20, 0]
       }
     },
     {
+      "content": {
+        "asset": "tree-fat-fall",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "tree-1",
       "name": "Tree (fat, autumn)",
-      "content": {
-        "type": "asset",
-        "asset": "tree-fat-fall",
-        "castShadow": true
-      },
       "transform": {
         "position": [-4.5, 0, -3],
         "rotationDeg": [0, 200, 0]
       }
     },
     {
+      "content": {
+        "asset": "tree-small-fall",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "tree-2",
       "name": "Tree (small, autumn)",
-      "content": {
-        "type": "asset",
-        "asset": "tree-small-fall",
-        "castShadow": true
-      },
       "transform": {
         "position": [3.5, 0, -5.5],
         "rotationDeg": [0, 80, 0]
       }
     },
     {
+      "content": {
+        "asset": "tree-cone-fall",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "tree-3",
       "name": "Tree (conical, autumn)",
-      "content": {
-        "type": "asset",
-        "asset": "tree-cone-fall",
-        "castShadow": true
-      },
       "transform": {
         "position": [-3.8, 0, -5],
         "rotationDeg": [0, 300, 0]
       }
     },
     {
+      "content": {
+        "asset": "tree-thin-dark",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "tree-4",
       "name": "Tree (thin, dark)",
-      "content": {
-        "type": "asset",
-        "asset": "tree-thin-dark",
-        "castShadow": true
-      },
       "transform": {
         "position": [4.2, 0, -4],
         "rotationDeg": [0, 150, 0]
       }
     },
     {
+      "content": {
+        "asset": "rock-large-d",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "rock-0",
       "name": "Rock (large)",
-      "content": {
-        "type": "asset",
-        "asset": "rock-large-d",
-        "castShadow": true
-      },
       "transform": {
         "position": [5, 0, -2],
         "rotationDeg": [0, 45, 0]
       }
     },
     {
+      "content": {
+        "asset": "rock-small-c",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "rock-1",
       "name": "Rock (small)",
-      "content": {
-        "type": "asset",
-        "asset": "rock-small-c",
-        "castShadow": true
-      },
       "transform": {
         "position": [2.2, 0, -6.7],
         "rotationDeg": [0, 10, 0]
       }
     },
     {
+      "content": {
+        "asset": "rock-tall-g",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "rock-2",
       "name": "Rock (tall)",
-      "content": {
-        "type": "asset",
-        "asset": "rock-tall-g",
-        "castShadow": true
-      },
       "transform": {
         "position": [-2, 0, 0.8],
         "rotationDeg": [0, 200, 0]
       }
     },
     {
+      "content": {
+        "asset": "rock-small-g",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "rock-3",
       "name": "Rock (small)",
-      "content": {
-        "type": "asset",
-        "asset": "rock-small-g",
-        "castShadow": true
-      },
       "transform": {
         "position": [4.5, 0, -0.5],
         "rotationDeg": [0, 300, 0]
       }
     },
     {
+      "content": {
+        "asset": "rock-large-b",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "rock-4",
       "name": "Rock (large)",
-      "content": {
-        "type": "asset",
-        "asset": "rock-large-b",
-        "castShadow": true
-      },
       "transform": {
         "position": [-4.8, 0, -1.8],
         "rotationDeg": [0, 120, 0]
       }
     },
     {
+      "content": {
+        "asset": "rock-small-c",
+        "castShadow": true,
+        "type": "asset"
+      },
       "id": "rock-5",
       "name": "Rock (small)",
-      "content": {
-        "type": "asset",
-        "asset": "rock-small-c",
-        "castShadow": true
-      },
       "transform": {
         "position": [-2.5, 0, -6.5],
         "rotationDeg": [0, 60, 0]
       }
+    },
+    {
+      "content": {
+        "asset": "rock-large-d",
+        "type": "asset"
+      },
+      "id": "rock-large-d-1",
+      "transform": {
+        "position": [0, 0.05, 3.2693],
+        "rotationDeg": [0, 0, 0],
+        "scale": 1
+      }
+    },
+    {
+      "content": {
+        "asset": "rock-tall-g",
+        "type": "asset"
+      },
+      "id": "rock-tall-g-1",
+      "transform": {
+        "position": [1.7279, 0.0283, 3.3538],
+        "rotationDeg": [0, 0, 0],
+        "scale": 1
+      }
     }
-  ]
+  ],
+  "resources": {
+    "prefabs": [
+      {
+        "id": "fence-section",
+        "root": {
+          "content": {
+            "asset": "fence-planks",
+            "castShadow": true,
+            "type": "asset"
+          },
+          "id": "fence-section-root"
+        }
+      }
+    ]
+  },
+  "units": "meters",
+  "version": "iwsdk.scene.v1"
 }
