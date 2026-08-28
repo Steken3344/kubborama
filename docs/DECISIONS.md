@@ -2110,3 +2110,62 @@ which don't have that problem at all.
 Mechanical pass green (tsc/eslint/prettier/vitest — 154 tests, up from
 150 — /build/smoke). gh#2 closed — the open-issue backlog Erik asked
 to be worked through while AFK is now empty.
+
+## 2026-08-28 — 3x more trees, first bush props, from the same Kenney archive
+
+Erik: "add 3x more trees and bushes, more assets with a lot of
+variation." Picked 14 more distinct models from the same already-local
+Kenney Nature Kit archive (no new source): 8 more tree variants
+(`tree_default_fall`, `tree_simple_fall`, `tree_blocks_fall`,
+`tree_detailed_fall`, `tree_pine_round_a`/`_c`, `tree_pine_small_a`,
+`tree_pine_ground_a`) and the pack's 6 bush models
+(`plant_bush{,_detailed,_large,_large_triangle,_small,_triangle}`) —
+the first bush props used in this project. Learned from this
+session's own earlier mistakes and applied both fixes proactively
+this time, before anything was placed:
+
+- **Patched `metallicFactor` 1→0 on all 14 new GLBs immediately after
+  copying them** (gh#3's fix), rather than discovering the cyan-
+  reflection bug again later.
+- **Measured every new asset's real glTF bounding box up front** and
+  derived `PhysicsShape.dimensions` directly from it, scaled by each
+  node's `transform.scale` (gh#7's fix), rather than hand-guessing
+  and creating more mismatches to find in a future review.
+
+Noted, not treated as a bug: every pine variant (`tree_pine_*`, matching
+`tree_thin_dark` from the earlier pass) and every bush share Kenney's
+`leafsDark`/`grass` materials — a genuine mint-teal/cyan-ish color by
+design (confirmed identical `baseColorFactor` values across all of
+them), not the metallic-reflection defect. Reads fine here — it plays
+as a deliberate "blue-green evergreen/groundcover" contrast against
+the warm orange `_fall` trees, the same way real blue spruce contrasts
+with autumn foliage.
+
+Placement: a seeded-random scatter (Python, one-off content authoring
+— not game code, so this isn't the "no `Math.random()`" rule's
+target) across an annulus from the existing lane, avoiding the same
+flat playable rectangle every other pass has respected
+(`x∈[-2,2]`,`z∈[-6.5,0.5]`, padded slightly wider than the true lane)
+and rejection-sampled against every existing decorative node's
+position (1.3m min spacing for trees, 0.6m for bushes — bushes are
+meant to cluster). 16 new tree nodes (8 types × 2), 18 new bush nodes
+(6 types × 3) — total tree count 9→25 (~2.8x, Erik's "3x" as a rough
+target rather than an exact multiplier), bushes 0→18 as a wholly new
+category.
+
+Scale: trees individually tuned to a plausible final height (3-6.5m
+depending on species, same reasoning as the earlier tree-scale pass);
+bushes uniformly 2.5x (real height 0.17-0.36m → final 0.42-0.9m, a
+believable garden-bush range).
+
+Verified via `scene_render_file` at the `playerSpawn` view — good
+variety and silhouette (conical pines, round bushy trees, triangular
+ground bushes), no visible clipping/floating; the fixed `orbit` preset
+camera position turned out to now sit very close to one newly-placed
+tree (an artifact of that preset's hardcoded camera position, not a
+placement bug — confirmed by re-rendering from `playerSpawn`/
+`grandstandSide` instead, both clean). Live-reloaded — no new console
+errors beyond the pre-existing unrelated UIKitML warning. Mechanical
+pass green throughout (tsc/eslint/prettier/vitest — 154 tests,
+unaffected/build/smoke; this is scene-JSON + asset-manifest content
+only, no TS logic changed).

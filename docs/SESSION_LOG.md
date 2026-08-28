@@ -811,3 +811,26 @@ built today (M5 grab fix, environment pass + rescale, and now the
 font/haptics/collider/test fixes). Also floated but not started:
 swapping in a more detailed/varied asset pack (Quaternius suggested)
 per Erik's separate request — he'll say if/when to start that.
+
+## 2026-08-28 — 3x more trees, first bushes, and a multiplayer design sketch
+
+Erik asked for roughly 3x more trees plus bushes with a lot of
+variation. Picked 8 more tree variants and all 6 of the pack's bush
+models from the same already-local Kenney archive. This time applied
+today's own two lessons proactively instead of re-discovering them:
+patched the metallic-reflection defect (gh#3) on every new file right
+after copying it, and measured real bounding boxes for the colliders
+(gh#7) instead of guessing. Scattered 34 new nodes (16 trees, 18
+bushes) via a seeded random placement script, keeping the same lane
+clearance and spacing rules as every prior environment pass. Verified
+via rendered views (good variety, no clipping) and a live reload (no
+new console errors). Mechanical pass green.
+
+Mid-task, Erik also asked how a multiplayer mode could work (opponent
+on the other baseline, voice, waving, 3 selectable avatars). Answered
+with a concrete but unimplemented sketch: WebRTC peer-to-peer
+(no server to host), host-authoritative physics, spawn at the
+existing opposite-baseline court data, a simple synced head+hands
+avatar rig (waving is then "free"), voice riding the same WebRTC
+connection. Offered to write it up as a real milestone plan
+next — he hasn't said which way yet.

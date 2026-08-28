@@ -1724,6 +1724,856 @@
         "position": [-7.0, 0, 1.3],
         "rotationDeg": [0, 45, 0]
       }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.4472, 1.9, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-default-fall",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-9",
+      "name": "Tree (default, autumn)",
+      "transform": {
+        "position": [-1.045, 0, 6.628],
+        "rotationDeg": [0, 276.4, 0],
+        "scale": 3.8
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.4472, 1.9, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-default-fall",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-10",
+      "name": "Tree (default, autumn)",
+      "transform": {
+        "position": [-6.98, 0, -7.193],
+        "rotationDeg": [0, 79.7, 0],
+        "scale": 3.8
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.2106, 1.65, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-simple-fall",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-11",
+      "name": "Tree (simple, autumn)",
+      "transform": {
+        "position": [-9.068, 0, -4.049],
+        "rotationDeg": [0, 342.1, 0],
+        "scale": 3.3
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.2106, 1.65, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-simple-fall",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-12",
+      "name": "Tree (simple, autumn)",
+      "transform": {
+        "position": [8.572, 0, 5.187],
+        "rotationDeg": [0, 78.2, 0],
+        "scale": 3.3
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.4104, 1.9, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-blocks-fall",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-13",
+      "name": "Tree (blocks, autumn)",
+      "transform": {
+        "position": [7.827, 0, -2.122],
+        "rotationDeg": [0, 247.2, 0],
+        "scale": 3.8
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.4104, 1.9, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-blocks-fall",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-14",
+      "name": "Tree (blocks, autumn)",
+      "transform": {
+        "position": [-3.283, 0, 8.091],
+        "rotationDeg": [0, 32.0, 0],
+        "scale": 3.8
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.6169, 2.25, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-detailed-fall",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-15",
+      "name": "Tree (detailed, autumn)",
+      "transform": {
+        "position": [3.728, 0, 0.903],
+        "rotationDeg": [0, 241.9, 0],
+        "scale": 4.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.6169, 2.25, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-detailed-fall",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-16",
+      "name": "Tree (detailed, autumn)",
+      "transform": {
+        "position": [6.096, 0, -7.5],
+        "rotationDeg": [0, 201.5, 0],
+        "scale": 4.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.4887, 2.2, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-pine-round-a",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-17",
+      "name": "Pine (round)",
+      "transform": {
+        "position": [4.534, 0, -8.196],
+        "rotationDeg": [0, 131.3, 0],
+        "scale": 4.4
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.4887, 2.2, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-pine-round-a",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-18",
+      "name": "Pine (round)",
+      "transform": {
+        "position": [0.177, 0, -8.864],
+        "rotationDeg": [0, 197.5, 0],
+        "scale": 4.4
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.3805, 2.2, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-pine-round-c",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-19",
+      "name": "Pine (round)",
+      "transform": {
+        "position": [6.713, 0, -0.698],
+        "rotationDeg": [0, 21.5, 0],
+        "scale": 4.4
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.3805, 2.2, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-pine-round-c",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-20",
+      "name": "Pine (round)",
+      "transform": {
+        "position": [-10.109, 0, 0.401],
+        "rotationDeg": [0, 82.9, 0],
+        "scale": 4.4
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.324, 1.8, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-pine-small",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-21",
+      "name": "Pine (small)",
+      "transform": {
+        "position": [-2.86, 0, 2.635],
+        "rotationDeg": [0, 52.7, 0],
+        "scale": 3.6
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.324, 1.8, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-pine-small",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-22",
+      "name": "Pine (small)",
+      "transform": {
+        "position": [-1.39, 0, 5.171],
+        "rotationDeg": [0, 236.6, 0],
+        "scale": 3.6
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.2854, 1.65, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-pine-ground",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-23",
+      "name": "Pine (ground)",
+      "transform": {
+        "position": [-2.602, 0, -4.332],
+        "rotationDeg": [0, 164.6, 0],
+        "scale": 3.3
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.2854, 1.65, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-pine-ground",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-24",
+      "name": "Pine (ground)",
+      "transform": {
+        "position": [-3.164, 0, -1.871],
+        "rotationDeg": [0, 165.0, 0],
+        "scale": 3.3
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.99, 0.611, 0.99],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-0",
+      "name": "Bush",
+      "transform": {
+        "position": [2.357, 0, 3.932],
+        "rotationDeg": [0, 293.3, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.99, 0.611, 0.99],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-1",
+      "name": "Bush",
+      "transform": {
+        "position": [0.004, 0, -6.95],
+        "rotationDeg": [0, 215.9, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.99, 0.611, 0.99],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-2",
+      "name": "Bush",
+      "transform": {
+        "position": [-4.234, 0, -0.723],
+        "rotationDeg": [0, 252.2, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1.5063, 0.901, 1.5063],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-detailed",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-3",
+      "name": "Bush (detailed)",
+      "transform": {
+        "position": [-2.414, 0, -1.219],
+        "rotationDeg": [0, 95.6, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1.5063, 0.901, 1.5063],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-detailed",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-4",
+      "name": "Bush (detailed)",
+      "transform": {
+        "position": [2.651, 0, -4.849],
+        "rotationDeg": [0, 130.6, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1.5063, 0.901, 1.5063],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-detailed",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-5",
+      "name": "Bush (detailed)",
+      "transform": {
+        "position": [3.599, 0, -4.815],
+        "rotationDeg": [0, 307.2, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.9358, 0.6073, 0.8393],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-large",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-6",
+      "name": "Bush (large)",
+      "transform": {
+        "position": [5.502, 0, 5.522],
+        "rotationDeg": [0, 219.2, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.9358, 0.6073, 0.8393],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-large",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-7",
+      "name": "Bush (large)",
+      "transform": {
+        "position": [8.032, 0, 2.948],
+        "rotationDeg": [0, 222.7, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.9358, 0.6073, 0.8393],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-large",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-8",
+      "name": "Bush (large)",
+      "transform": {
+        "position": [2.785, 0, 3.175],
+        "rotationDeg": [0, 120.7, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1.0192, 0.4233, 1.177],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-large-triangle",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-9",
+      "name": "Bush (large)",
+      "transform": {
+        "position": [-3.947, 0, -8.004],
+        "rotationDeg": [0, 331.6, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1.0192, 0.4233, 1.177],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-large-triangle",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-10",
+      "name": "Bush (large)",
+      "transform": {
+        "position": [0.503, 0, -7.929],
+        "rotationDeg": [0, 197.8, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1.0192, 0.4233, 1.177],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-large-triangle",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-11",
+      "name": "Bush (large)",
+      "transform": {
+        "position": [6.734, 0, 2.854],
+        "rotationDeg": [0, 191.4, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.9575, 0.5182, 0.8407],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-small",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-12",
+      "name": "Bush (small)",
+      "transform": {
+        "position": [-6.067, 0, -5.378],
+        "rotationDeg": [0, 116.5, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.9575, 0.5182, 0.8407],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-small",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-13",
+      "name": "Bush (small)",
+      "transform": {
+        "position": [-2.55, 0, -0.222],
+        "rotationDeg": [0, 131.6, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.9575, 0.5182, 0.8407],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-small",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-14",
+      "name": "Bush (small)",
+      "transform": {
+        "position": [-5.615, 0, -1.203],
+        "rotationDeg": [0, 257.5, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.911, 0.7388, 1.034],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-triangle",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-15",
+      "name": "Bush",
+      "transform": {
+        "position": [4.647, 0, 5.903],
+        "rotationDeg": [0, 330.0, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.911, 0.7388, 1.034],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-triangle",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-16",
+      "name": "Bush",
+      "transform": {
+        "position": [-2.382, 0, -5.133],
+        "rotationDeg": [0, 54.8, 0],
+        "scale": 2.5
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.911, 0.7388, 1.034],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "bush-triangle",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "bush-17",
+      "name": "Bush",
+      "transform": {
+        "position": [-1.606, 0, 2.769],
+        "rotationDeg": [0, 358.0, 0],
+        "scale": 2.5
+      }
     }
   ],
   "resources": {
