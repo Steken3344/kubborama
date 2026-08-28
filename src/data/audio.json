@@ -1,0 +1,14 @@
+{
+  "stickImpact": {
+    "softMaxNormalized": 0.45,
+    "lightMaxNormalized": 0.7
+  },
+  "volume": {
+    "impactMin": 0.3,
+    "impactMax": 1.0,
+    "felledFixed": 0.7,
+    "foley": 0.12,
+    "uiClick": 0.35,
+    "ambienceBaseGain": 0.3
+  }
+}

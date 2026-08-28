@@ -3,6 +3,26 @@ export interface RestThresholds {
   restAngularThresholdRadS: number;
 }
 
+/** Caps a single frame's contribution to a held-duration accumulator.
+ * A loading stall or dropped frame can otherwise hand a caller one
+ * enormous `delta` — enough on its own to satisfy a multi-second
+ * "has this held continuously" check in a single, spurious step. See
+ * accumulateHeldDuration and docs/DECISIONS.md (M5). */
+const MAX_FRAME_DELTA_S = 0.1;
+
+/**
+ * Tracks how long a condition has held continuously. The caller resets
+ * `previousS` to 0 the instant the condition fails even once — this
+ * function only guards against one frame's `deltaS` overstating real
+ * elapsed time, not against gaps in when it's called.
+ */
+export function accumulateHeldDuration(
+  previousS: number,
+  deltaS: number,
+): number {
+  return previousS + Math.min(deltaS, MAX_FRAME_DELTA_S);
+}
+
 /**
  * Shared by every "has this dynamic body stopped moving" check
  * (ThrowingSystem's stick settling, ToppleSystem's felled-piece rest

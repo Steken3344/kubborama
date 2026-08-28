@@ -52,14 +52,34 @@ done
 dl "$PH_HDR/2k/autumn_park_2k.hdr" "$RAW/hdri/autumn_park_2k.hdr" \
    "https://polyhaven.com/a/autumn_park" "CC0"
 
+echo "== M5 audio (Kenney + OpenGameArt, CC0) =="
+echo "kenney.nl's download link contains a build hash that can rotate —"
+echo "if either fetch below 404s, open the asset page in a browser and"
+echo "re-grab the 'Continue without donating' link's URL."
+mkdir -p "$RAW/audio/impact" "$RAW/audio/ui" "$RAW/audio/ambience" "$RAW/audio/music"
+dl "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip" \
+   "$RAW/audio/kenney_impact-sounds.zip" \
+   "https://kenney.nl/assets/impact-sounds" "CC0"
+dl "https://kenney.nl/media/pages/assets/ui-audio/490d233f68-1677590494/kenney_ui-audio.zip" \
+   "$RAW/audio/kenney_ui-audio.zip" \
+   "https://kenney.nl/assets/ui-audio" "CC0"
+dl "https://opengameart.org/sites/default/files/Forest_Ambience_0.mp3" \
+   "$RAW/audio/ambience/forest_ambience.mp3" \
+   "https://opengameart.org/content/forest-ambience" "CC0"
+dl "https://opengameart.org/sites/default/files/gone_fishin_by_memoraphile_CC0.mp3" \
+   "$RAW/audio/music/gone_fishin.mp3" \
+   "https://opengameart.org/content/gone-fishin" "CC0"
+echo "-> unzip the two Kenney zips, then convert the two mp3s to ogg and"
+echo "   place the runtime subset in public/audio/ — see ASSETS.md for"
+echo "   exactly which variants are committed and why."
+
 echo ""
 echo "== Manual downloads (2 clicks each — hashed/interactive URLs) =="
 echo "  1. Kenney Nature Kit (CC0):      https://kenney.nl/assets/nature-kit"
-echo "  2. Kenney Impact Sounds (CC0):   https://kenney.nl/assets/impact-sounds"
-echo "     -> unzip both into $RAW/models/ and $RAW/audio/"
-echo "  3. Music (pick by taste):        https://pixabay.com/music/search/calm%20acoustic/"
-echo "     -> save into $RAW/audio/music/ and add a line to ASSETS.md"
-echo "  4. (Later, avatars) Quaternius:  https://quaternius.com (CC0)"
+echo "  2. (Later, avatars) Quaternius:  https://quaternius.com (CC0)"
+echo "  Pixabay Music (PLAN.md's original M5 pick) sits behind a Cloudflare"
+echo "  bot challenge and could not be scripted at all, even manually via"
+echo "  curl — OpenGameArt.org substituted instead (both fetches above)."
 echo ""
 echo "Done. Raw assets in $RAW/ (git-ignored); only optimized runtime files"
 echo "(KTX2/resized, via gltf-transform) get committed, per the start prompt."

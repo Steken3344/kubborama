@@ -100,6 +100,18 @@
   .stat-line:dark {
     color: rgba(255, 255, 255, 0.9);
   }
+
+  .version-line {
+    font-size: 11px;
+    text-align: center;
+    color: #9a9a9a;
+    padding-top: 14px;
+    padding-bottom: 4px;
+  }
+
+  .version-line:dark {
+    color: rgba(255, 255, 255, 0.45);
+  }
 </style>
 <Panel id="menu-root" class="panel-root" style="display: none">
   <div class="tab-bar">
@@ -146,6 +158,7 @@
     <Button id="profile-name-button" class="button">
       <ButtonLabel id="profile-name-label">Namn: Spelare</ButtonLabel>
     </Button>
+    <span id="version-label" class="version-line">Version: dev</span>
   </div>
 
   <div id="tab-stats-content" class="tab-content" style="display: none">

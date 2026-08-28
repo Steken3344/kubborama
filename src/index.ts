@@ -2,11 +2,13 @@ import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 import { CourtLinesSystem } from './systems/courtLines.js';
 import { GrabHighlightSystem } from './systems/grabHighlight.js';
+import { HandoffSystem } from './systems/handoff.js';
 import { HudSystem } from './systems/hud.js';
 import { ImpactSystem } from './systems/impact.js';
 import { MenuSystem } from './systems/menu.js';
 import { RoundSystem } from './systems/round.js';
 import { SettingsSystem } from './systems/settings.js';
+import { SfxSystem } from './systems/sfx.js';
 import { StatsSystem } from './systems/stats.js';
 import { ThrowingSystem } from './systems/throwing.js';
 import { ToppleSystem } from './systems/topple.js';
@@ -26,6 +28,10 @@ World.create(
   // game-mode-driven topple angle, WindSystem's wind vector,
   // CourtLinesSystem's toggle).
   world.registerSystem(SettingsSystem);
+  // M5: priority doesn't fix a same-frame race here (see
+  // systems/handoff.ts) — just runs slightly ahead of GrabSystem (-3)
+  // so a release is visible as early in the frame as possible.
+  world.registerSystem(HandoffSystem, { priority: -4 });
   // StatsSystem next: MenuSystem's stats tab and HudSystem both read
   // StatsSystem.stats, so it must be registered (and its RoundEnded
   // subscription attached) before either of them.
@@ -36,6 +42,9 @@ World.create(
   world.registerSystem(ThrowingSystem);
   world.registerSystem(ImpactSystem);
   world.registerSystem(WindSystem);
+  // M5: sound + the kubbFelled/kingFelled/roundCleared haptic sequences
+  // core/haptics.ts defined back in M3/M4 but nothing fired until now.
+  world.registerSystem(SfxSystem);
   world.registerSystem(MenuSystem);
   world.registerSystem(GrabHighlightSystem);
   world.registerSystem(CourtLinesSystem);

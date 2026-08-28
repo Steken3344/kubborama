@@ -8,13 +8,18 @@ import {
 import type { Entity } from '@iwsdk/core';
 import { Resettable } from '../components/resettable.js';
 import { StickPhase, StickState } from '../components/stick-state.js';
+import { audio } from '../config.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { accuracy } from '../core/stats.js';
 import { gameEvents } from '../core/events.js';
+import { uiTick } from '../core/haptics.js';
 import { log } from '../core/log.js';
+import { createRng } from '../core/rng.js';
 import type { Vec3 } from '../core/vec3.js';
 import { i18nState } from '../i18nState.js';
 import { settingsState } from '../settingsState.js';
+import { pulseHaptic } from './hapticPlayer.js';
+import { playSfxVariant } from './playSfx.js';
 import { SettingsSystem } from './settings.js';
 import { StatsSystem } from './stats.js';
 
@@ -30,6 +35,9 @@ type TabId = 'main' | 'settings' | 'stats';
  * greater than the current value rather than assume grid alignment — see
  * docs/DECISIONS.md (M4 review). */
 const VOLUME_STEPS = [0, 25, 50, 75, 100] as const;
+
+/** Deterministic per-session UI-click-sfx-variant picker — not the physics RNG. */
+const UI_SFX_SEED = 24601;
 
 // 5 kubbs per baseline, 2 baselines, 1 king (docs/PLAN.md §2b).
 const TOTAL_PIECES = KUBB_COUNT * 2 + 1;
@@ -57,6 +65,7 @@ export class MenuSystem extends createSystem({
   private menuOpen = false;
   private activeTab: TabId = 'main';
   private currentTimeS = 0;
+  private uiSfxRng = createRng(UI_SFX_SEED);
 
   init(): void {
     const grabSystem = this.world.getSystem(GrabSystem);
@@ -109,85 +118,61 @@ export class MenuSystem extends createSystem({
     this.menuPanel =
       this.world.requireSceneObject<UIKitMLAsset>('reset-menu-panel');
 
-    this.menuPanel
-      .requireElementById('tab-main-button')
-      .addEventListener('click', () => this.setActiveTab('main'));
-    this.menuPanel
-      .requireElementById('tab-settings-button')
-      .addEventListener('click', () => this.setActiveTab('settings'));
-    this.menuPanel
-      .requireElementById('tab-stats-button')
-      .addEventListener('click', () => this.setActiveTab('stats'));
+    this.wireButton('tab-main-button', () => this.setActiveTab('main'));
+    this.wireButton('tab-settings-button', () => this.setActiveTab('settings'));
+    this.wireButton('tab-stats-button', () => this.setActiveTab('stats'));
 
-    this.menuPanel
-      .requireElementById('reset-button')
-      .addEventListener('click', () => {
-        this.resetAll();
-        this.setMenuOpen(false);
-      });
-    this.menuPanel
-      .requireElementById('language-button')
-      .addEventListener('click', () => {
-        this.settingsSystem.toggleLanguage();
-      });
-    this.menuPanel
-      .requireElementById('game-mode-button')
-      .addEventListener('click', () => {
-        this.settingsSystem.toggleGameMode();
-        this.refreshLabels();
-      });
-    this.menuPanel
-      .requireElementById('haptics-button')
-      .addEventListener('click', () => {
-        this.settingsSystem.setHapticsEnabled(
-          !settingsState.current.hapticsEnabled,
-        );
-        this.refreshLabels();
-      });
-    this.menuPanel
-      .requireElementById('haptics-strength-button')
-      .addEventListener('click', () => {
-        this.settingsSystem.setHapticsIntensityPercent(
-          nextVolumeStep(settingsState.current.hapticsIntensityPercent),
-        );
-        this.refreshLabels();
-      });
-    this.menuPanel
-      .requireElementById('music-volume-button')
-      .addEventListener('click', () => {
-        this.settingsSystem.setMusicVolumePercent(
-          nextVolumeStep(settingsState.current.musicVolumePercent),
-        );
-        this.refreshLabels();
-      });
-    this.menuPanel
-      .requireElementById('sfx-volume-button')
-      .addEventListener('click', () => {
-        this.settingsSystem.setSfxVolumePercent(
-          nextVolumeStep(settingsState.current.sfxVolumePercent),
-        );
-        this.refreshLabels();
-      });
-    this.menuPanel
-      .requireElementById('profile-name-button')
-      .addEventListener('click', () => {
-        const current = PROFILE_NAME_OPTIONS.indexOf(
-          settingsState.current.profileName,
-        );
-        const next =
-          PROFILE_NAME_OPTIONS[(current + 1) % PROFILE_NAME_OPTIONS.length] ??
-          null;
-        this.settingsSystem.setProfileName(next);
-        this.refreshLabels();
-      });
-    this.menuPanel
-      .requireElementById('court-lines-button')
-      .addEventListener('click', () => {
-        this.settingsSystem.setCourtLinesVisible(
-          !settingsState.current.courtLinesVisible,
-        );
-        this.refreshLabels();
-      });
+    this.wireButton('reset-button', () => {
+      this.resetAll();
+      this.setMenuOpen(false);
+    });
+    this.wireButton('language-button', () => {
+      this.settingsSystem.toggleLanguage();
+    });
+    this.wireButton('game-mode-button', () => {
+      this.settingsSystem.toggleGameMode();
+      this.refreshLabels();
+    });
+    this.wireButton('haptics-button', () => {
+      this.settingsSystem.setHapticsEnabled(
+        !settingsState.current.hapticsEnabled,
+      );
+      this.refreshLabels();
+    });
+    this.wireButton('haptics-strength-button', () => {
+      this.settingsSystem.setHapticsIntensityPercent(
+        nextVolumeStep(settingsState.current.hapticsIntensityPercent),
+      );
+      this.refreshLabels();
+    });
+    this.wireButton('music-volume-button', () => {
+      this.settingsSystem.setMusicVolumePercent(
+        nextVolumeStep(settingsState.current.musicVolumePercent),
+      );
+      this.refreshLabels();
+    });
+    this.wireButton('sfx-volume-button', () => {
+      this.settingsSystem.setSfxVolumePercent(
+        nextVolumeStep(settingsState.current.sfxVolumePercent),
+      );
+      this.refreshLabels();
+    });
+    this.wireButton('profile-name-button', () => {
+      const current = PROFILE_NAME_OPTIONS.indexOf(
+        settingsState.current.profileName,
+      );
+      const next =
+        PROFILE_NAME_OPTIONS[(current + 1) % PROFILE_NAME_OPTIONS.length] ??
+        null;
+      this.settingsSystem.setProfileName(next);
+      this.refreshLabels();
+    });
+    this.wireButton('court-lines-button', () => {
+      this.settingsSystem.setCourtLinesVisible(
+        !settingsState.current.courtLinesVisible,
+      );
+      this.refreshLabels();
+    });
 
     this.refreshLabels();
     this.setActiveTab('main');
@@ -204,6 +189,25 @@ export class MenuSystem extends createSystem({
         this.refreshLabels();
       }),
     );
+  }
+
+  /** Wires a button's click to `handler`, plus the shared UI-click
+   * feedback (uiTick haptic + click sound) every button gets — see
+   * docs/DECISIONS.md (M5) for why this fires on the right hand only
+   * (a UIKitML click event carries no hand/pointer info to key off). */
+  private wireButton(elementId: string, handler: () => void): void {
+    this.menuPanel
+      .requireElementById(elementId)
+      .addEventListener('click', () => {
+        pulseHaptic(this.input.xr.gamepads.right, uiTick);
+        playSfxVariant(
+          this.world,
+          'uiClick',
+          this.uiSfxRng,
+          audio.volume.uiClick,
+        );
+        handler();
+      });
   }
 
   private setActiveTab(tab: TabId): void {
@@ -265,6 +269,9 @@ export class MenuSystem extends createSystem({
     });
     this.menuPanel.requireElementById('court-lines-label').setProperties({
       text: s.courtLinesVisible ? t('courtLinesOn') : t('courtLinesOff'),
+    });
+    this.menuPanel.requireElementById('version-label').setProperties({
+      text: t('versionLabel', { version: __APP_VERSION__ }),
     });
   }
 

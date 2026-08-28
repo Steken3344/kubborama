@@ -219,15 +219,50 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
   writeup in docs/DECISIONS.md. Tagged `v0.5-m4` — no headset gate for
   this milestone.
 
-## M5 — Polish & performance `status: not started`
+## M5 — Polish & performance `status: in progress — audio slice done`
 
-- [ ] SFX inventory (Kenney Impact Sounds): klonk variants, pitch random,
-      volume by force; ambience birds (2-3 positional in trees)
-- [ ] Cozy music loop (Pixabay; ASSETS.md log; music/SFX channels)
+- [x] SFX inventory (Kenney Impact Sounds + UI Audio, CC0): impact
+      sounds classified by impacting entity + force (stick/king/kubb,
+      3 force tiers for sticks — see docs/DECISIONS.md for why not
+      pairwise), volume scaled by force; UI click on every settings
+      button. **Known gaps, documented not silently dropped:** no
+      pitch randomization (IWSDK's `AudioSource` has no
+      pitch/playbackRate field at all — verified in source); no
+      positional audio (one-shot entities have no `Object3D` to anchor
+      `PositionalAudio` to — verified in source, not attempted);
+      ambience is "Forest Ambience" (birds not specifically confirmed
+      by ear — can't audition audio in this environment) rather than a
+      dedicated garden/birds track
+- [x] Cozy music loop — OpenGameArt.org "Gone Fishin'" (banjo/bluegrass,
+      CC0), not Pixabay as PLAN.md named (Pixabay's download sits
+      behind a Cloudflare bot challenge, not scriptable — see
+      docs/DECISIONS.md). Two independent volume channels
+      (`musicVolumePercent`/`sfxVolumePercent`, M4) live-applied;
+      ambience follows the SFX channel at a reduced base gain
+      (`audio.volume.ambienceBaseGain`) since it has no slider of its
+      own
+- [x] Closed a dormant gap from M3/M4: `kubbFelled`/`kingFelled`/
+      `roundCleared` haptic sequences were defined but never fired —
+      wired to their events now
+- [x] **Found and fixed a real pre-existing bug, not part of the audio
+      task but discovered while building it**: every fresh load could
+      falsely "fell" the king and all 10 kubbs within a few seconds,
+      before the player could interact — silently corrupting round 1's
+      scoring until the player's first real throw. Root cause and fix
+      (rest-duration accumulation + a startup grace window) in
+      docs/DECISIONS.md
+- [x] Erik's second feedback round (2026-08-28): version indicator in
+      the settings menu (`git describe` baked in at build time); a
+      cross-hand stick handoff (`HandoffSystem`) — real fix, but two
+      presses not one seamless motion (framework constraint, see
+      docs/DECISIONS.md); reduced ground-rolling by raising the
+      angular-damping tuning default (a felt-physics change, wants
+      Erik's real-headset confirmation); settings panel scaled down
+      1.15→0.85
 - [ ] GC/pooling pass (no per-frame allocations); optional king-cam slow-mo
 - [ ] 72 Hz verified ON QUEST 2 (chrome-devtools via adb — needs USB card)
 - **GATE (Erik, headset): perf + comfort + full experience pass** 🎧
-- Review gate → tag v0.6-m5
+- Review gate → tag v0.6-m5 once the rest of M5 closes out
 
 ## M6 — PWA (optional) `status: not started`
 

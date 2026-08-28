@@ -7,7 +7,8 @@ import { getGameMode, pieces } from '../config.js';
 import { gameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
 import type { Quat } from '../core/quat.js';
-import { isResting } from '../core/restState.js';
+import { accumulateHeldDuration, isResting } from '../core/restState.js';
+import { createStartupGate } from '../core/startupGrace.js';
 import { isToppled } from '../core/topple.js';
 import { settingsState } from '../settingsState.js';
 import { readBodySpeed } from './bodySpeed.js';
@@ -22,6 +23,20 @@ import { readBodySpeed } from './bodySpeed.js';
  * when the Reset event fires (the menu's "Ny runda" button, or a
  * round auto-reset), since every Resettable piece is teleported back
  * upright at that point.
+ *
+ * Rest duration is tracked as accumulated, per-frame-capped delta
+ * (accumulateHeldDuration), not a wall-clock start-timestamp
+ * comparison — a single frame with an abnormally large delta (an
+ * asset-loading stall, a dropped frame from a WebGL context hiccup)
+ * could otherwise satisfy restDurationS on its own. That alone wasn't
+ * enough, though: reproduced live, every kubb (and sometimes the king)
+ * still "felled" a few seconds into a fresh load on some runs — a
+ * physics warm-up window (Havok's WASM stabilizing) where orientation
+ * and velocity can both genuinely misread for several CONSECUTIVE real
+ * frames, not just one. A startup grace (the player cannot possibly
+ * interact within pieces.throw.startupGraceS of a fresh load anyway)
+ * is the pragmatic fix on top of the accumulator — see
+ * docs/DECISIONS.md (M5) for the full investigation.
  */
 export class ToppleSystem extends createSystem({
   toppleable: {
@@ -29,15 +44,16 @@ export class ToppleSystem extends createSystem({
     excluded: [StickState],
   },
 }) {
-  private restTimerStartS = new Map<number, number>();
+  private restAccumS = new Map<number, number>();
   private felledReported = new Set<number>();
   private unsubscribeReset?: () => void;
   private tmpQuat: Quat = [0, 0, 0, 1];
   private tmpSpeed: [number, number] = [0, 0];
+  private isPastStartupGrace = createStartupGate(pieces.throw.startupGraceS);
 
   init(): void {
     this.unsubscribeReset = gameEvents.on('Reset', () => {
-      this.restTimerStartS.clear();
+      this.restAccumS.clear();
       this.felledReported.clear();
     });
   }
@@ -46,13 +62,16 @@ export class ToppleSystem extends createSystem({
     this.unsubscribeReset?.();
   }
 
-  update(_delta: number, timeS: number): void {
+  update(delta: number, timeS: number): void {
+    if (!this.isPastStartupGrace(timeS)) {
+      return;
+    }
     for (const entity of this.queries.toppleable.entities) {
-      this.checkOne(entity, timeS);
+      this.checkOne(entity, delta, timeS);
     }
   }
 
-  private checkOne(entity: Entity, timeS: number): void {
+  private checkOne(entity: Entity, delta: number, timeS: number): void {
     if (this.felledReported.has(entity.index)) {
       return;
     }
@@ -66,22 +85,22 @@ export class ToppleSystem extends createSystem({
       settingsState.current.gameMode,
     ).toppleAngleDeg;
     if (!isToppled(this.tmpQuat, toppleAngleDeg)) {
-      this.restTimerStartS.delete(entity.index);
+      this.restAccumS.delete(entity.index);
       return;
     }
 
     readBodySpeed(entity, this.tmpSpeed);
     if (!isResting(this.tmpSpeed[0], this.tmpSpeed[1], pieces.throw)) {
-      this.restTimerStartS.delete(entity.index);
+      this.restAccumS.delete(entity.index);
       return;
     }
 
-    const restStartS = this.restTimerStartS.get(entity.index);
-    if (restStartS === undefined) {
-      this.restTimerStartS.set(entity.index, timeS);
-      return;
-    }
-    if (timeS - restStartS < pieces.throw.restDurationS) {
+    const accumS = accumulateHeldDuration(
+      this.restAccumS.get(entity.index) ?? 0,
+      delta,
+    );
+    this.restAccumS.set(entity.index, accumS);
+    if (accumS < pieces.throw.restDurationS) {
       return;
     }
 

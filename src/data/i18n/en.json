@@ -26,5 +26,6 @@
   "statsLongestFellingThrow": "Longest felling throw: {value} m",
   "statsStreak": "King-fell streak: {value}",
   "statsRoundsPlayed": "Rounds played: {value}",
-  "statsAccuracy": "Accuracy: {value}%"
+  "statsAccuracy": "Accuracy: {value}%",
+  "versionLabel": "Version: {version}"
 }

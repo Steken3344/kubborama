@@ -1102,3 +1102,258 @@ project's standard teardown convention, which this file predated).
 M4 is now feature-complete per Erik's approved scope. No headset gate
 for this milestone (only M0/M2/M5 have one) — tagged `v0.5-m4` once
 this entry lands.
+
+## 2026-08-28 — M5 slice 1: audio, plus a real pre-existing topple bug found and fixed
+
+Continued autonomously per Erik's "kör vidare så långt du kan". Built
+the M5 "Audio" section of docs/PLAN.md: impact/felled sound, ambience,
+music, UI clicks, and closed a real gap from M3/M4 — three
+`HapticSequence`s (`kubbFelled`, `kingFelled`, `roundCleared`) were
+defined in `core/haptics.ts` back then but nothing ever fired them.
+
+**Asset sourcing — real constraints, worked around.** PLAN.md named
+Kenney Impact Sounds and Pixabay Music. Kenney's own `fetch-assets.sh`
+comment already flagged its download links as "hashed/interactive" —
+still true, but the hash is embedded in the page's own "Continue
+without donating" link and stable enough to script: fetched the exact
+URL via `WebFetch`, verified it with a plain `curl -I` before trusting
+it (200, correct content-type), and it worked for both Impact Sounds
+and UI Audio. Pixabay Music was a harder wall: `curl` gets a Cloudflare
+bot-challenge 403, and `WebFetch` on the track page couldn't surface a
+download URL either (it's behind client-side JS, not in the served
+HTML) — chrome-devtools MCP couldn't help either, no Chrome binary
+installed in this environment. Substituted OpenGameArt.org for both
+ambience and music (each individually CC0-verified on its own asset
+page, not just the collection page it was found through): "Forest
+Ambience" by Rick Hoppmann (TinyWorlds) for the garden loop, "Gone
+Fishin'" by You're Perfect Studio (banjo/bluegrass — reads as
+backyard-cozy) for music. Both shipped as mp3 originally;
+`ffmpeg-static` installed as a one-off scratch npm package (not a
+project dependency) converted them to ogg. Full sourcing detail,
+including the exact commit-worthy fetch URLs, in ASSETS.md.
+
+**IWSDK's AudioSource has no pitch/playbackRate field** — checked by
+reading `@iwsdk/core/dist/audio/audio.js`'s component schema end to
+end, not guessed. PLAN.md's "pitch-randomize ±10%" therefore isn't
+achievable through this API surface at all; anti-repetition comes
+entirely from picking between 3 pre-recorded variants per category
+(`core/audio.ts`'s `pickVariantIndex`, seeded per-system so it's
+reproducible, not `Math.random()`). Also verified (reading
+`AudioUtils.createOneShot`'s implementation and `AudioSystem`'s
+positional-audio handling): a one-shot's entity has no `Object3D`, and
+positional audio needs a `PositionalAudio` anchored in the scene
+graph — passing `position` through `createOneShot` is a no-op in the
+installed version. Every SFX in this build is non-positional; a real
+in-scene position for impact sounds is a real gap, not attempted this
+pass.
+
+**Impact-sound classification is honest about what the physics layer
+can and can't tell it.** The per-tick `Impact` event (M2's |Δv|
+heuristic) fires per BODY, never per PAIR — there is still no way to
+know a stick hit a kubb specifically vs. the ground vs. another stick
+(same root cause as the M2 "no collision-event API" finding). Rather
+than fake pairwise knowledge, `ImpactSystem` classifies by the
+impacting entity's own type (king / stick / kubb) and, for sticks
+specifically, by force magnitude via a new `stickImpactTier` (soft /
+light / medium — a gentle grass settle is a low-Δv impact, a solid hit
+is high-Δv): `impactSoft_medium` / `impactWood_light` /
+`impactWood_medium` respectively. `KubbFelled`/`KingFelled` (the
+tilt-based topple events, not the per-tick heuristic) get their own
+fixed-volume sounds instead, since those events carry no force data at
+all to scale from.
+
+**Fresh-eyes-worthy self-review while wiring `MenuSystem`'s UI-click
+feedback**: rather than adding a sound+haptic call to all 12 button
+handlers individually, extracted a `wireButton(id, handler)` helper
+that adds the (also previously-dormant) `uiTick` haptic and a click
+sound once, in one place — 12 near-identical call sites is well past
+DRY's "second occurrence" bar. Fires on the right hand only; a UIKitML
+click event carries no hand/pointer info to pick the real hand, and
+B-button-opens-the-menu is already a right-hand convention in this
+project, so this is a reasonable, documented simplification rather
+than a bug.
+
+**A real, pre-existing bug found by accident: every fresh load could
+silently "fell" the king and all 10 kubbs before the player could
+possibly interact.** Building `SfxSystem` meant, for the first time,
+actually reading console logs closely on a hard page reload (rather
+than reusing an already-advanced dev session, which is how M3/M4's own
+testing happened) — and `[state] king felled` / `[state] kubb felled`
+×10 showed up within a few seconds of boot, every so often, with zero
+player input. Confirmed this wasn't cosmetic: `RoundSystem`'s
+`KingFelled`/`KubbFelled` handlers update `roundState` unconditionally
+(scoring only actually finalizes on the next `Settled` stick event via
+`maybeEndRound`), so this corruption sits silently until the player's
+very first real throw — which would then instantly "win" round 1 with
+wrong stats (a fewest-throws-to-fell-king personal best of effectively
+zero, permanently). This is exactly the class of finding CLAUDE.md
+calls foundation-breaking — fixed now, not filed.
+
+Root-caused as far as it was practical to without deeper Havok
+instrumentation, via direct ECS manipulation and `ecs_pause`/`ecs_step`
+frame-stepping in the emulator:
+
+- `ToppleSystem`'s rest-duration check compared `timeS` against a
+  first-seen timestamp (`timeS - restStartS >= restDurationS`) — a
+  single frame with an abnormally large `delta` (confirmed: THREE.Clock
+  is unclamped, so an asset-loading stall hands the next `update()`
+  call one big real-world delta) can satisfy that comparison in one
+  step even though nothing was ever continuously true. Fixed by
+  switching to `accumulateHeldDuration` (`core/restState.ts`, new,
+  TDD'd): duration is now the SUM of each frame's delta, each
+  individually capped at 0.1s, so no single frame's contribution can
+  ever be large enough to fake sustained rest on its own. Verified via
+  `ecs_pause` + `ecs_step` with a controlled 0.016s delta: forcing a
+  kubb's orientation to 90° via `ecs_set_component` correctly fires
+  `KubbFelled` after exactly the expected number of steps, confirming
+  the accumulator itself is correct.
+- That alone did not fully eliminate the bug in live testing (6/6 clean
+  reloads at first, then a 7th run still false-positived) — meaning the
+  underlying condition can genuinely read true for several CONSECUTIVE
+  real frames during Havok's WASM warm-up, not just one glitchy sample.
+  `ImpactSystem`'s single-frame impact-reaction (no duration check at
+  all) showed the same class of false positive independently
+  (`entityIndex: 36`, a stick, `deltaVMps: 4.08` at boot). Rather than
+  keep chasing Havok's internal warm-up behavior — a real rabbit hole,
+  and this project doesn't own that code — added a shared
+  `createStartupGate` (`core/startupGrace.ts`, new, TDD'd):
+  `pieces.throw.startupGraceS` (4s) since the first `update()` call,
+  before which neither system reacts to anything. Completely safe
+  from a gameplay perspective (donning a headset and reaching for a
+  stick takes longer than 4s regardless), and directly prevents the
+  observed failure mode regardless of its exact root cause. Re-verified
+  live: 6 consecutive clean reloads with the grace window in place;
+  genuine topple detection (via the same `ecs_pause`/`ecs_step` method)
+  still fires correctly once the grace window has passed.
+- Accepted residual uncertainty, stated plainly: the delta-accumulator
+  fix is unconditionally correct engineering regardless of root cause
+  (it also protects against a mid-game hitch, not just startup) and is
+  kept; the startup-grace fix is a pragmatic mitigation for an
+  incompletely-diagnosed Havok/WASM warm-up window, not a fully
+  root-caused fix — if a false felled/impact event is ever seen more
+  than `startupGraceS` into a real session, that would mean this
+  theory was incomplete and needs revisiting.
+
+**Process note, unrelated to the bug above but caught while chasing
+it**: the managed dev-server's scene editor silently re-serializes and
+re-saves `public/scenes/main.iwsdk.scene.json` (key-sorted, multi-line
+arrays — a different formatter than this file's normal hand-edited
+style) just from having the scene open/interacted-with during a
+session, with no actual content change. Caught twice this session via
+`git diff --stat` showing a ~1600-line diff with zero semantic change;
+reverted both times with `git checkout --`. Worth an explicit
+`git diff` gut-check on this specific file before staging anything,
+same spirit as the secret-hygiene review-before-push habit.
+
+Mechanical pass green throughout (tsc/eslint/prettier/vitest — 148
+tests, up from 140 mid-M4 — /build/smoke).
+
+## 2026-08-28 — Fresh-eyes review fixes, then Erik's second feedback round
+
+**Review gate on the M5 audio slice**: fresh-eyes found one real,
+confirmed config bug before it shipped. `stickImpactTier`'s `soft`
+band (`normalizedForce < 0.25`) was mathematically unreachable:
+`normalizedForce` is `deltaVMps / impactMaxForceForFullHapticMps`
+(`/10`), and `detectImpact` never even counts anything below
+`impactThresholdMps` (`2.5`) as an impact at all — so the lowest
+`normalizedForce` `playImpactSfx` could ever see was exactly `2.5/10 =
+0.25`, equal to (never less than) the soft-tier ceiling. The pure
+`stickImpactTier` function itself was correct and its unit test passed
+— the bug was invisible at the unit level because the test exercised a
+`t` value (0.24) production code can never actually produce. Fixed by
+raising `audio.json`'s tier thresholds (0.25→0.45, 0.6→0.7) comfortably
+above the real floor, added a `config.test.ts` regression guard
+(`softMaxNormalized` must exceed
+`impactThresholdMps/impactMaxForceForFullHapticMps`) so a future
+retune of either JSON file can't silently reintroduce this, and added
+code comments at both consumption sites. Two lower-severity notes from
+the same review — ambience volume deliberately follows the SFX slider
+(already PLAN.md's spec, just added a comment so it doesn't read as a
+mistake) and `playHapticSequence`'s untracked `setTimeout`s (real but
+minor — logged as accepted debt, not fixed) — addressed without code
+restructuring.
+
+**Erik's second feedback round, from his own testing (2026-08-28,
+verbatim in docs/SESSION_LOG.md)**: a version indicator, cross-hand
+stick handoff, sticks still rolling too far on grass, and the settings
+panel feeling too large. All four addressed:
+
+**Version display.** `vite.config.ts` now runs `git describe --tags
+--always --dirty` at build time (falls back to `"dev"` if git isn't
+available, e.g. a source tarball) and injects it as `__APP_VERSION__`
+via Vite's `define`. Shown as a small, muted line at the bottom of the
+settings tab (`versionLabel` i18n key, wired through
+`MenuSystem.refreshLabels()` — the same proven pattern as every other
+label). This reads far better than `package.json`'s rarely-bumped
+`"0.1.0"` — it directly names the milestone tag Erik is testing
+(`v0.5-m4-dirty` right now, `v0.6-m5` once M5 tags), with commit count
+and hash once work has moved past a tag.
+
+**Cross-hand handoff — implemented, but honestly short of "seamless".**
+`OneHandGrabbable`'s pointer capture (`@pmndrs/handle`, `multitouch:
+false`) rejects a second hand's squeeze outright while the first still
+holds the object — verified in source
+(`store.js`'s `capturePointer` returns `false` without even queuing
+the second pointer). New `HandoffSystem` (`src/systems/handoff.ts`):
+when the free hand's squeeze goes down within 15cm of a stick the
+other hand is holding, force-releases the holder
+(`GrabSystem.forceRelease`). Live-tested in the emulator via
+`ecs_set_component`-driven gamepad state and confirmed BOTH the
+correctness of the release AND a real limitation: physical-squeeze
+grab capture is wired outside the ECS update loop entirely (not a
+per-frame poll GrabSystem does in `update()` — that method only
+forwards hand-pinch-as-squeeze when `useHandPinchForGrab` is on, which
+this project doesn't use). This means the SAME squeeze press that
+triggers the release can't also complete the new hand's grab — that
+press's own capture attempt already ran and failed before
+`HandoffSystem` ran, regardless of system priority (tried registering
+at priority -4, before `GrabSystem`'s -3, on the theory that update-
+order would matter — confirmed live it doesn't fix this, for the
+reason above). The real, tested behavior is two presses: squeeze once
+to make the holder let go, squeeze again to actually pick it up. Still
+a genuine fix for Erik's literal complaint ("the other hand can't take
+over AT ALL" is now false), just not a single fluid motion. A true
+one-motion handoff would mean hooking `@pmndrs/handle`'s internal
+`capture()` directly from application code — undocumented, version-
+fragile, and not attempted this pass; noted as a known follow-up if
+the two-press interaction doesn't feel acceptable to Erik.
+
+**Stick rolling reduced, not eliminated — a tuning-value change,
+verify by feel.** Traced the actual lever: `TuningLabSystem.
+applyTuningToPhysics()` overwrites every stick's `PhysicsBody.
+angularDamping` from the live `angularDampingInFlight` tuning
+parameter every frame, for every stick regardless of phase (`Racked`/
+`Held`/`Flying`/`Settled` — no phase filter in that query) — this
+completely supersedes the scene JSON's baked-in `angularDamping: 0.05`
+on every stick node, which is therefore dead weight already (not
+touched, since editing it would have had zero effect). Since a stick
+keeps `StickState.phase === Flying` for its entire post-landing roll
+(`ThrowingSystem.checkForSettling` only flips it once linear AND
+angular speed both drop under tight rest thresholds), the SAME single
+damping value governs in-flight spin retention and how long it takes
+to stop rolling once grounded — there's no existing phase-aware split
+to change independently. Raised `tuning-params.json`'s
+`angularDampingInFlight.defaultPercent` from 25 to 45 (real value
+0.125→0.225 within the existing `[0, 0.5]` range) rather than adding
+new phase-detection logic: damping compounds over time, and the
+grounded-rolling window is longer than a typical short kubb throw's
+flight time, so this should shorten rolling noticeably more than it
+softens in-flight spin — but this is a felt-physics call I can't
+verify without a real headset (exactly the class of judgment M2's
+still-outstanding feel-calibration gate exists for). Worth flagging to
+Erik explicitly: "Angular damping (flight)" is already a live 0-100
+slider in the desktop tuning panel, so this exact value is also his to
+nudge further by feel without waiting on a code change.
+
+**Settings panel size**: `reset-menu-panel`'s scene-JSON `scale`
+reduced `1.15 → 0.85` (position unchanged at `[0, 1.4, -1.1]`).
+Verified visually: a standing-back emulator screenshot (headset at the
+default resting pose, looking at the panel) now shows the whole panel
+comfortably within frame with margin on both sides, versus needing a
+tighter crop to fit it before.
+
+Mechanical pass green throughout (tsc/eslint/prettier/vitest — 149
+tests — /build/smoke). Also caught, again, the scene-editor
+auto-resave quirk from the previous entry — this time the diff was
+correctly just the one intentional `scale` line, confirmed via `git
+diff` before treating it as clean.

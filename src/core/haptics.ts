@@ -1,3 +1,5 @@
+import { lerp, normalizedClamped } from './mathUtils.js';
+
 /**
  * Named haptic patterns as pure data. Adapters (systems/) fire these
  * on an event — never per-frame — via the WebXR gamepad haptic
@@ -33,16 +35,10 @@ export function impactRumble(
   forceMagnitude: number,
   maxForceForFullIntensityMps: number,
 ): HapticPulse {
-  const t = Math.min(
-    1,
-    Math.max(0, forceMagnitude / maxForceForFullIntensityMps),
-  );
+  const t = normalizedClamped(forceMagnitude, maxForceForFullIntensityMps);
   return {
-    intensity:
-      IMPACT_MIN_INTENSITY + t * (IMPACT_MAX_INTENSITY - IMPACT_MIN_INTENSITY),
-    durationMs:
-      IMPACT_MIN_DURATION_MS +
-      t * (IMPACT_MAX_DURATION_MS - IMPACT_MIN_DURATION_MS),
+    intensity: lerp(t, IMPACT_MIN_INTENSITY, IMPACT_MAX_INTENSITY),
+    durationMs: lerp(t, IMPACT_MIN_DURATION_MS, IMPACT_MAX_DURATION_MS),
   };
 }
 

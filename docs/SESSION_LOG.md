@@ -402,3 +402,101 @@ built (low priority); the M2 headset feel-calibration gate is still
 outstanding and blocks tagging `v0.3-m2` retroactively (M2's code has
 shipped inside every subsequent tag, but the tag itself waits on
 Erik's real-headset throws, per docs/MILESTONES.md).
+
+## 2026-08-28 — M5 slice 1 (Audio), same session, continued autonomously
+
+Erik: "kör vidare så långt du nu kan" — continued past M4 straight
+into M5's Audio section.
+
+Sourced CC0 SFX/music without a headless browser available (no Chrome
+binary in this environment, so `chrome-devtools` MCP couldn't help):
+Kenney Impact Sounds + UI Audio via their real (if hash-bearing)
+direct download URLs, verified with `curl -I` before trusting them;
+OpenGameArt.org for ambience and music after Pixabay (PLAN.md's
+original pick) turned out to sit behind a Cloudflare bot challenge
+that blocked even a plain `curl`. Built `ImpactSystem` classification
+by impacting-entity-type + force tier (no pairwise contact info
+exists — same root cause as M2's "no collision API" finding),
+`SfxSystem` for felled/ambience/music, and closed a real gap:
+`kubbFelled`/`kingFelled`/`roundCleared` haptics were defined back in
+M3/M4 but never fired anywhere.
+
+**Found a real, pre-existing bug while building this**: reading
+console logs closely on a genuine hard reload (rather than reusing an
+already-running session, which is how prior milestones tested)
+surfaced every kubb and the king "felling" within a few seconds of
+every fresh load, before the player could possibly interact — silently
+corrupting round 1's scoring state until the player's first real
+throw. Root-caused via `ecs_pause`/`ecs_step` frame-stepping as a
+physics-warm-up timing issue (Havok's WASM stabilizing over several
+real frames, not just one glitchy sample) compounded by a
+wall-clock-comparison bug in the rest-duration check. Fixed both:
+`accumulateHeldDuration` (per-frame-capped delta accumulation,
+core/restState.ts) plus a startup grace window
+(`core/startupGrace.ts`) before either `ToppleSystem` or `ImpactSystem`
+reacts to anything. Verified live via repeated reloads (6/6 clean with
+both fixes in place) and via controlled frame-stepping that legitimate
+topple detection still fires correctly. Full investigation, including
+the honestly-stated residual uncertainty about Havok's exact internal
+behavior, in docs/DECISIONS.md.
+
+Mechanical pass green throughout (tsc/eslint/prettier/vitest — 148
+tests, up from 140 — /build/smoke). Also noted and worked around a
+dev-server quirk: the scene editor silently re-serializes
+`main.iwsdk.scene.json` (no content change, just reformatting) just
+from being open during a session — caught twice via `git diff --stat`
+and reverted both times.
+
+**Handover.** M5 is genuinely in progress: audio + the topple-bug fix
+are done, but GC/pooling and the Quest 2 72Hz check (needs a real
+headset + adb) are not. Also mid-session, Erik sent fresh feedback from
+his own testing (in Swedish): a version number visible in the settings
+menu; the ability to hand a held stick from one hand to the other
+(currently the second hand can't "take over" a held stick); sticks
+still roll a short distance on grass after landing (wants this
+reduced/eliminated); the settings panel is a bit too large. Not yet
+addressed — next up.
+
+## 2026-08-28 — Fresh-eyes fixes + Erik's second feedback round, same session
+
+Fresh-eyes review of the audio slice caught one real config bug before
+it shipped: the `stickSoft` SFX tier was mathematically unreachable
+(the impact-detection floor and the tier threshold were the same
+number). Fixed, plus added a regression test that checks the two JSON
+files stay consistent with each other — the kind of cross-file
+assumption a unit test on the pure function alone can't catch.
+
+Then addressed Erik's second feedback round in full:
+
+- **Version indicator**: `git describe` baked into the build, shown in
+  the settings menu.
+- **Cross-hand handoff**: built `HandoffSystem`, and in the process
+  learned something real about the framework — physical-squeeze grab
+  capture happens outside the ECS system-update loop entirely, so no
+  system priority trick makes a single squeeze both release the old
+  hand and grab with the new one. Shipped the honest version: squeeze
+  once to release, squeeze again to grab. A real improvement over
+  "impossible" but not literally seamless — documented plainly rather
+  than oversold, including the deeper fix (hooking `@pmndrs/handle`'s
+  internals directly) that wasn't attempted.
+- **Stick rolling**: traced to a single tuning value
+  (`angularDampingInFlight`) that — despite its name — governs a
+  stick's rotation throughout its whole lifecycle, not just flight,
+  because nothing marks it "landed" separately from "at rest."
+  Raised the default from 25% to 45%. This is a felt-physics change
+  neither the emulator nor I can fully judge — flagged for Erik to
+  confirm on the headset, and noted that the same slider is already
+  live-adjustable in the desktop tuning panel if 45% isn't right.
+- **Settings panel size**: scaled down 1.15→0.85, confirmed visually
+  in the emulator.
+
+Mechanical pass green throughout (149 tests, up from 148 —
+tsc/eslint/prettier/vitest/build/smoke). Scene-editor auto-resave
+quirk (noted last entry) checked for again before staging — clean this
+time, just the one intended `scale` line.
+
+**Handover.** M5's audio slice plus this feedback round are both done
+and reviewed. Still open in M5: the GC/pooling pass and the Quest 2
+72Hz check (needs Erik's headset + adb). The stick-rolling fix and the
+two-press handoff both want Erik's real-headset judgment before being
+called fully settled — flagged, not silently assumed correct.

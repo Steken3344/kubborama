@@ -26,5 +26,6 @@
   "statsLongestFellingThrow": "Basta fallkast: {value} m",
   "statsStreak": "Kungsvit: {value}",
   "statsRoundsPlayed": "Rundor spelade: {value}",
-  "statsAccuracy": "Precision: {value}%"
+  "statsAccuracy": "Precision: {value}%",
+  "versionLabel": "Version: {version}"
 }

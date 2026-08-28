@@ -7,6 +7,7 @@
 import { computeCourtLayout } from './core/court-layout.js';
 import type { CourtLayout } from './core/court-layout.js';
 import type { Vec3 } from './core/vec3.js';
+import audioData from './data/audio.json' with { type: 'json' };
 import courtPresetsData from './data/court-presets.json' with { type: 'json' };
 import gameModesData from './data/game-modes.json' with { type: 'json' };
 import piecesData from './data/pieces.json' with { type: 'json' };
@@ -29,6 +30,7 @@ export function windVectorForMode(name: GameModeName): Vec3 {
   return [gameModes[name].windMps, 0, 0];
 }
 
+export const audio = audioData;
 export const pieces = piecesData;
 export type MaterialName = keyof typeof pieces.materials;
 export const defaultMaterial = pieces.defaultMaterial as MaterialName;

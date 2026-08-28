@@ -9,13 +9,17 @@ import {
 } from '@iwsdk/core';
 import type { Entity } from '@iwsdk/core';
 import { StickPhase, StickState } from '../components/stick-state.js';
-import { pieces } from '../config.js';
+import { audio, pieces } from '../config.js';
+import { createRng } from '../core/rng.js';
 import { gameEvents } from '../core/events.js';
-import { grabTick, releaseClick, scaleHapticPulse } from '../core/haptics.js';
+import { grabTick, releaseClick } from '../core/haptics.js';
+import type { HapticPulse } from '../core/haptics.js';
 import { log } from '../core/log.js';
 import { isResting } from '../core/restState.js';
-import { settingsState } from '../settingsState.js';
 import { readBodySpeed } from './bodySpeed.js';
+import type { Hand } from './hapticPlayer.js';
+import { pulseHaptic } from './hapticPlayer.js';
+import { playSfxVariant } from './playSfx.js';
 import {
   computeHandVelocity,
   computeReleaseVelocity,
@@ -24,11 +28,11 @@ import type { PoseSample } from '../core/throwRelease.js';
 import { activePreset, percentToReal, tuningParams } from '../core/tuning.js';
 import { classifyThrow } from '../core/underhandClassifier.js';
 import { length, scale } from '../core/vec3.js';
-import type { HapticPulse } from '../core/haptics.js';
 import type { Vec3 } from '../core/vec3.js';
 import { presetBank } from '../tuningState.js';
 
-type Hand = 'left' | 'right';
+/** Deterministic per-session foley-variant picker — not the physics RNG. */
+const FOLEY_SFX_SEED = 4242;
 
 /**
  * The stick state machine (Racked -> Held -> Flying -> Settled) and the
@@ -53,6 +57,7 @@ export class ThrowingSystem extends createSystem({
   private lastKnownHand = new Map<number, Hand>();
   private restTimerStartS = new Map<number, number>();
   private currentTimeS = 0;
+  private foleyRng = createRng(FOLEY_SFX_SEED);
 
   private tmpPos = new Vector3();
   private tmpQuat = new Quaternion();
@@ -136,7 +141,7 @@ export class ThrowingSystem extends createSystem({
     if (hand !== null) {
       this.lastKnownHand.set(entity.index, hand);
     }
-    this.pulseHaptic(hand, grabTick);
+    this.pulseHapticAndFoley(hand, grabTick);
     log('debug', 'grab', 'stick grabbed', { entityIndex: entity.index, hand });
   }
 
@@ -183,7 +188,7 @@ export class ThrowingSystem extends createSystem({
 
     const hand = this.lastKnownHand.get(entity.index) ?? 'right';
     entity.setValue(StickState, 'lastThrowerHand', hand);
-    this.pulseHaptic(hand, releaseClick);
+    this.pulseHapticAndFoley(hand, releaseClick);
 
     const classification = classifyThrow({
       poses: buffer,
@@ -251,22 +256,11 @@ export class ThrowingSystem extends createSystem({
     }
   }
 
-  private pulseHaptic(hand: Hand | null, pattern: HapticPulse): void {
+  private pulseHapticAndFoley(hand: Hand | null, pattern: HapticPulse): void {
     if (hand === null) {
       return;
     }
-    const pulse = scaleHapticPulse(
-      pattern,
-      settingsState.current.hapticsEnabled,
-      settingsState.current.hapticsIntensityPercent,
-    );
-    if (!pulse) {
-      return;
-    }
-    const gamepad = this.input.xr.gamepads[hand];
-    gamepad?.inputSource.gamepad?.hapticActuators?.[0]?.pulse(
-      pulse.intensity,
-      pulse.durationMs,
-    );
+    pulseHaptic(this.input.xr.gamepads[hand], pattern);
+    playSfxVariant(this.world, 'foley', this.foleyRng, audio.volume.foley);
   }
 }

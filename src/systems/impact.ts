@@ -6,20 +6,33 @@ import {
   Vector3,
 } from '@iwsdk/core';
 import type { Entity } from '@iwsdk/core';
+import { KingPiece } from '../components/king-piece.js';
 import { StickPhase, StickState } from '../components/stick-state.js';
-import { pieces } from '../config.js';
+import { audio, pieces } from '../config.js';
+import { stickImpactTier } from '../core/audio.js';
 import { gameEvents } from '../core/events.js';
-import { impactRumble, scaleHapticPulse } from '../core/haptics.js';
+import { impactRumble } from '../core/haptics.js';
 import { detectImpact } from '../core/impactDetector.js';
 import { log } from '../core/log.js';
+import { lerp, normalizedClamped } from '../core/mathUtils.js';
+import { createRng } from '../core/rng.js';
+import { createStartupGate } from '../core/startupGrace.js';
 import type { Vec3 } from '../core/vec3.js';
-import { settingsState } from '../settingsState.js';
+import { isHand, pulseHaptic } from './hapticPlayer.js';
+import { playSfxVariant } from './playSfx.js';
+import type { SfxCategoryName } from './sfxLibrary.js';
+
+/** Deterministic per-session impact-sfx-variant picker — not the physics RNG. */
+const IMPACT_SFX_SEED = 7331;
 
 /**
  * No public collision-event API exists (see docs/DECISIONS.md): this
  * is the |delta v|-per-tick heuristic applied to every dynamic body.
- * Emits Impact for M3's future topple logic to consume, and fires
- * impactRumble haptics on a flying stick's last-thrower hand.
+ * Emits Impact for M3's future topple logic to consume, fires
+ * impactRumble haptics on a flying stick's last-thrower hand, and
+ * plays an impact sound classified from the impacting entity's own
+ * type + force (never the contact partner — the heuristic has no way
+ * to know what a piece hit, see docs/DECISIONS.md, M5).
  */
 export class ImpactSystem extends createSystem({
   dynamicBodies: {
@@ -33,8 +46,14 @@ export class ImpactSystem extends createSystem({
   private previousVelocity = new Map<number, Vec3>();
   private tmpCurr: Vec3 = [0, 0, 0];
   private tmpPos = new Vector3();
+  private sfxRng = createRng(IMPACT_SFX_SEED);
+  private isPastStartupGrace = createStartupGate(pieces.throw.startupGraceS);
 
   update(_delta: number, time: number): void {
+    // Velocity bookkeeping always runs (skipping it would make the
+    // first post-grace frame compare against a stale previousVelocity
+    // and read a fake huge delta); only the impact reaction is gated.
+    const isPastGrace = this.isPastStartupGrace(time);
     for (const entity of this.queries.dynamicBodies.entities) {
       const linVel = entity.getVectorView(PhysicsBody, '_linearVelocity');
       this.tmpCurr[0] = linVel[0] ?? 0;
@@ -55,7 +74,7 @@ export class ImpactSystem extends createSystem({
       prev[1] = this.tmpCurr[1];
       prev[2] = this.tmpCurr[2];
 
-      if (!isImpact) {
+      if (!isImpact || !isPastGrace) {
         continue;
       }
 
@@ -78,6 +97,7 @@ export class ImpactSystem extends createSystem({
       });
 
       this.pulseIfFlyingStick(entity, deltaVMps);
+      this.playImpactSfx(entity, deltaVMps);
     }
   }
 
@@ -92,26 +112,47 @@ export class ImpactSystem extends createSystem({
     if (!isHand(hand)) {
       return;
     }
-    const rawPulse = impactRumble(
+    const pulse = impactRumble(
       deltaVMps,
       pieces.throw.impactMaxForceForFullHapticMps,
     );
-    const pulse = scaleHapticPulse(
-      rawPulse,
-      settingsState.current.hapticsEnabled,
-      settingsState.current.hapticsIntensityPercent,
-    );
-    if (!pulse) {
-      return;
-    }
-    const gamepad = this.input.xr.gamepads[hand];
-    gamepad?.inputSource.gamepad?.hapticActuators?.[0]?.pulse(
-      pulse.intensity,
-      pulse.durationMs,
-    );
+    pulseHaptic(this.input.xr.gamepads[hand], pulse);
   }
-}
 
-function isHand(value: string | null): value is 'left' | 'right' {
-  return value === 'left' || value === 'right';
+  private playImpactSfx(entity: Entity, deltaVMps: number): void {
+    // `t` can never actually be below
+    // impactThresholdMps/impactMaxForceForFullHapticMps (0.25 at
+    // current pieces.json values) — anything softer never counts as
+    // an impact at all (detectImpact's own threshold). Keep
+    // audio.json's stickImpact.softMaxNormalized comfortably above
+    // that floor, or the "soft" tier silently never plays — a fresh-
+    // eyes M5 review caught exactly this when the floor and the
+    // threshold were equal (see docs/DECISIONS.md).
+    const t = normalizedClamped(
+      deltaVMps,
+      pieces.throw.impactMaxForceForFullHapticMps,
+    );
+    const volume = lerp(t, audio.volume.impactMin, audio.volume.impactMax);
+    const category = this.classifyImpact(entity, t);
+    playSfxVariant(this.world, category, this.sfxRng, volume);
+  }
+
+  private classifyImpact(entity: Entity, t: number): SfxCategoryName {
+    if (entity.hasComponent(KingPiece)) {
+      return 'kingImpact';
+    }
+    if (!entity.hasComponent(StickState)) {
+      return 'kubbImpact';
+    }
+    const tier = stickImpactTier(
+      t,
+      audio.stickImpact.softMaxNormalized,
+      audio.stickImpact.lightMaxNormalized,
+    );
+    return tier === 'soft'
+      ? 'stickSoft'
+      : tier === 'light'
+        ? 'stickLight'
+        : 'stickMedium';
+  }
 }
