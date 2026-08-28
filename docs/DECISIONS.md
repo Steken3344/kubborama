@@ -1611,3 +1611,79 @@ Asked Erik whether the "always centers" behavior happens even when
 physically reaching out and touching the stick (close grab) versus
 only when grabbing from further away (ray grab), to confirm or rule
 out the DistanceGrabbable hypothesis before changing anything.
+
+**Resolved: DistanceGrabbable removed from sticks; replaced with a
+custom StickPullSystem.** Erik confirmed it happens both ways ("spelar
+ingen roll om jag plockar upp dem på marken eller jag får dem åkande
+till mig"), and separately confirmed the pull is a visible animated
+flight to the hand, not an instant snap ("pinne kommer flygandes till
+mig") — both consistent with `DistanceGrabbable`'s `MoveTowardsTarget`
+default being the one active grab path for every stick interaction,
+never `OneHandGrabbable`'s offset-preserving one, exactly as the
+hypothesis above predicted. The exact mechanism for why
+`DistanceGrabbable` won the single-Handle-per-entity race despite
+`GrabSystem.init()` initializing `OneHandGrabbable` first was never
+pinned down — not needed, since the fix removes the conflict at its
+root regardless of which one would have "won".
+
+Given three options (drop the fly-to-me convenience / make it smart /
+something else), Erik chose "gör något smart": keep the convenience,
+lose the conflict. Considered dynamically swapping
+`OneHandGrabbable`/`DistanceGrabbable` on an entity based on live
+hand distance, but that requires removing the existing `Handle` so a
+different grab type can initialize — and `Handle` isn't part of
+`@iwsdk/core`'s public API (`.claude/rules/ecs-api.md`: "never
+deep-import `Handle`"). Rejected that path before writing any code.
+
+Implemented instead: `DistanceGrabbable` removed from all 6 sticks in
+`main.iwsdk.scene.json` (only `OneHandGrabbable` remains — verified
+live afterward, off-center grabs now preserve the exact grab offset
+as the hand moves: controller delta and stick delta matched to the
+float, where before every grab snapped to center). New
+`src/systems/stickPull.ts` (`StickPullSystem`) reimplements "pull a
+far stick to me" without a second `Handle`: on a `Hovered` +
+`RayInteractable` stick (the same `Hovered` tag `GrabHighlightSystem`
+already reads), if a hand's trigger is held AND that hand's ray is
+actually aimed at the stick (dot product of ray direction vs.
+direction-to-stick > cos(35°) — needed because `Hovered` is a plain
+tag with no hand/pointer info, confirmed in `@iwsdk/core`'s
+`state-tags.ts`, so an unrelated trigger held by the other hand, e.g.
+for a UI click, must not be mistaken for the hand causing the hover),
+sets `PhysicsManipulation.linearVelocity` toward that hand's grip at
+2.5 m/s every frame until within 10cm, then stops and lets
+`OneHandGrabbable`'s own ~7cm proximity grab (`@pmndrs/pointer-events`'
+`createGrabPointer`) finish the job as a normal, offset-preserving
+close grab.
+
+A fresh-eyes review of the first draft caught two real bugs before
+this landed: (1) the initial hand-attribution fallback used pure grip
+distance, not aim direction — replaced with the ray-alignment check
+above; (2) `PhysicsManipulation.linearVelocity` writes are one-shot
+and absolute, so a stick let go mid-pull (trigger released, hover
+lost, or the 10cm stop reached) would keep coasting at 2.5 m/s
+indefinitely with nothing to arrest it — fixed by tracking
+currently-pulling entities in a `Map` and giving each one an explicit
+one-shot zero-velocity write the frame it stops qualifying. Also
+excluded `StickPhase.Flying` from the query per the review — `
+WindSystem` also drives `PhysicsManipulation` on flying sticks, and
+without the exclusion a flying stick that's also ray-hovered would
+have both systems overwrite each other's one-shot component in the
+same frame (and a player could otherwise tractor-beam a stick out of
+mid-flight, clearly unintended).
+
+Mechanical pass green (tsc/eslint/prettier/vitest — still 151 tests,
+no new pure-core logic to cover — /build/smoke). Live-verified the
+core regression fix (off-center `OneHandGrabbable` grab, no
+`DistanceGrabbable` interference) in the emulator, twice — once before
+and once after the review-driven rewrite. Could **not** live-verify
+the ray-based pull itself: pointing a synthetic controller at a stick
+from beyond `OneHandGrabbable`'s ~7cm proximity range never set
+`Hovered`, even with generous, geometrically-precise aiming (straight
+down from 28cm directly above the stick's center) — proximity-based
+`Hovered` (within ~7cm) works reliably, ray-based `Hovered` from
+further away does not register at all through this CLI's synthetic
+controller-pose injection. Same category of emulator/CLI-testing
+limitation as the unresolved grab-offset reproduction attempts above,
+not a new finding. The pull mechanic is code-reviewed and
+mechanically verified but needs Erik's real-headset confirmation
+before it can be called done.

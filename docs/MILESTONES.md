@@ -277,6 +277,16 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       `WindSystem` options-object literal). Full detail and the
       remaining 14 systems confirmed clean in docs/DECISIONS.md.
       Optional king-cam slow-mo not attempted (low priority, cut)
+- [x] Fixed the grab-always-centers regression (2026-08-28): removed
+      `DistanceGrabbable` from all 6 sticks — it conflicted with
+      `OneHandGrabbable` over a single per-entity `Handle`, so every
+      grab (even a close reach) went through its always-centering
+      path. New `StickPullSystem` reimplements "pull a far stick to
+      me" without a second `Handle` (aim + trigger → velocity toward
+      the hand, hands off to `OneHandGrabbable` once close). Live-
+      verified the offset-preserving close grab; the ray-pull itself
+      is code-reviewed + mechanically verified only — needs Erik's
+      headset to confirm. Full writeup in docs/DECISIONS.md
 - [ ] 72 Hz verified ON QUEST 2 (chrome-devtools via adb — needs USB card)
 - [ ] 72 Hz verified ON QUEST 2 (chrome-devtools via adb — needs USB card)
 - **GATE (Erik, headset): perf + comfort + full experience pass** 🎧

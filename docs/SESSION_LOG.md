@@ -595,3 +595,46 @@ verification, which needs Erik's headset connected via adb and can't
 be done from here. Also still open: his grab-point report (waiting on
 his answer to narrow down close-grab vs. ray-grab) and the usual
 feel-confirmation asks (throw, rolling) from the previous entry.
+
+## 2026-08-28 — Grab-point fix: DistanceGrabbable removed, custom pull system
+
+Erik answered the grab-point question: happens both ways (picking up
+off the ground or pulling via pointing), and confirmed the pull is a
+visible flight to the hand, not an instant snap — both nailed down the
+`DistanceGrabbable`-conflict hypothesis from the previous entry.
+Offered three options; he picked "do something smart" — keep the
+pull-to-me convenience without the centering bug — and asked me to
+watch a video of the in-game behavior first. Couldn't: `WebFetch`
+returned no actual video content for the link, just an empty
+placeholder. Proceeded on his text description plus the code analysis
+instead, and I'm flagging that gap here rather than glossing over it.
+
+Removed `DistanceGrabbable` from all 6 sticks and wrote a new
+`StickPullSystem`: point at a hovered stick and hold the trigger to
+fly it toward that hand's grip via a direct velocity set, handing off
+to the existing `OneHandGrabbable` once close — no second `Handle`
+involved, so the offset-preserving close grab is never in conflict
+with anything again. A fresh-eyes review of the first draft caught two
+real bugs before it shipped: hand attribution used raw grip distance
+rather than checking which hand was actually aiming (would misattribute
+a pull to the wrong hand if the other hand's trigger happened to be
+down for something unrelated, e.g. a UI click), and released/stopped
+pulls never zeroed the object's velocity, so a stick let go mid-pull
+would have coasted at 2.5 m/s indefinitely. Both fixed; full detail in
+docs/DECISIONS.md.
+
+Live-verified the core regression fix twice (before and after the
+review rewrite): grabbing a stick off-center now preserves the exact
+grab offset as the hand moves, where before every grab snapped to
+center. Could not live-verify the ray-pull itself — pointing a
+synthetic controller at a stick from beyond point-blank range never
+registered as `Hovered` in the emulator, regardless of aim precision,
+matching the same CLI/testing-methodology limitation flagged earlier
+this session for grab-offset reproduction. Mechanical pass green
+throughout (151 tests, tsc/eslint/prettier/build/smoke).
+
+**Handover.** This fix needs Erik's real-headset confirmation on two
+counts: does the close grab now correctly preserve offset, and does
+pointing-and-pulling a far stick still feel good (aim cone, pull
+speed, the handoff to a normal grab at 10cm). Still open from before:
+the Quest 2 72Hz check (M5's last item, needs adb + headset).

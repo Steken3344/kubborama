@@ -591,9 +591,6 @@
     },
     {
       "components": {
-        "DistanceGrabbable": {
-          "returnToOrigin": false
-        },
         "OneHandGrabbable": {
           "rotate": true,
           "translate": true
@@ -630,9 +627,6 @@
     },
     {
       "components": {
-        "DistanceGrabbable": {
-          "returnToOrigin": false
-        },
         "OneHandGrabbable": {
           "rotate": true,
           "translate": true
@@ -669,9 +663,6 @@
     },
     {
       "components": {
-        "DistanceGrabbable": {
-          "returnToOrigin": false
-        },
         "OneHandGrabbable": {
           "rotate": true,
           "translate": true
@@ -708,9 +699,6 @@
     },
     {
       "components": {
-        "DistanceGrabbable": {
-          "returnToOrigin": false
-        },
         "OneHandGrabbable": {
           "rotate": true,
           "translate": true
@@ -747,9 +735,6 @@
     },
     {
       "components": {
-        "DistanceGrabbable": {
-          "returnToOrigin": false
-        },
         "OneHandGrabbable": {
           "rotate": true,
           "translate": true
@@ -786,9 +771,6 @@
     },
     {
       "components": {
-        "DistanceGrabbable": {
-          "returnToOrigin": false
-        },
         "OneHandGrabbable": {
           "rotate": true,
           "translate": true

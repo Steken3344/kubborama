@@ -11,6 +11,7 @@ import { SettingsSystem } from './systems/settings.js';
 import { SfxSystem } from './systems/sfx.js';
 import { StatsSystem } from './systems/stats.js';
 import { StickGroundDampingSystem } from './systems/stickGroundDamping.js';
+import { StickPullSystem } from './systems/stickPull.js';
 import { ThrowingSystem } from './systems/throwing.js';
 import { ToppleSystem } from './systems/topple.js';
 import { TuningLabSystem } from './systems/tuningLab.js';
@@ -51,6 +52,9 @@ World.create(
   world.registerSystem(SfxSystem);
   world.registerSystem(MenuSystem);
   world.registerSystem(GrabHighlightSystem);
+  // M5 feedback: replaces DistanceGrabbable (removed from sticks — see
+  // docs/DECISIONS.md for why it conflicted with OneHandGrabbable).
+  world.registerSystem(StickPullSystem);
   world.registerSystem(CourtLinesSystem);
   // M3: ToppleSystem emits KubbFelled/KingFelled -> RoundSystem drives
   // the round reducer and emits RoundEnded -> StatsSystem (registered
