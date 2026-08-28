@@ -2169,3 +2169,43 @@ errors beyond the pre-existing unrelated UIKitML warning. Mechanical
 pass green throughout (tsc/eslint/prettier/vitest — 154 tests,
 unaffected/build/smoke; this is scene-JSON + asset-manifest content
 only, no TS logic changed).
+
+**Found by Erik's `/code-review` and fixed same-session: the flat
+1.3m/0.6m spacing constants above didn't scale with object size — 8
+real overlapping-collider pairs, mostly between the newer, larger bush
+models (half-extent up to 0.75m) and their neighbors.** The renders
+above genuinely looked clean (bushes/trees are visually compact enough
+that a rendered screenshot doesn't obviously reveal a 0.2-0.8m
+footprint overlap at scatter-plot scale), but a rigorous oriented-box
+check the review ran caught them. Root cause: the placement script's
+rejection sampling checked plain center-to-center distance against one
+fixed number per category, without accounting for each specific
+model's actual footprint radius — a `bush_large_triangle` (half-extent
+0.75m after its 2.5x scale) needs roughly 2.5x more clearance than the
+0.6m constant assumed, and the script never asked.
+
+Fixed properly rather than nudging the 8 flagged coordinates: rewrote
+the spacing check to derive each node's own circumscribed-circle
+radius from its actual `PhysicsShape` (radius directly for Cylinder,
+half-diagonal of the box for Box — the same measured dimensions
+already used to set the collider itself, just finally reused for
+placement too), and require `radiusA + radiusB + 0.15m margin`
+between any two nodes instead of a flat constant. A circumscribed
+circle is rotation-invariant, so this stays correct regardless of each
+node's `rotationDeg` without needing full oriented-box math. Also
+padded the lane-buffer check by each candidate's own radius, since the
+review separately flagged a few bushes reaching into (not through) the
+documented `x∈[-2,2]`/`z∈[-6.5,0.5]` buffer.
+
+Regenerated all 34 nodes from scratch with the corrected script (same
+seed, same target counts/scale/asset choices — only the spacing logic
+changed) rather than patching the flagged pairs individually, since
+several formed overlap chains (one bush touching two different
+trees). Verified programmatically this time, not just by eye: a
+pairwise circle-overlap self-check across every new node plus every
+pre-existing one reports zero overlaps involving any new node (a
+handful of pre-existing overlaps remain — kubbs/king/court-lines
+sitting close by design, and the already-reviewed-and-accepted
+campsite/cliff clustering from the earlier environment pass — out of
+scope for this fix, not touched). Re-verified live (render + console)
+and re-ran the full mechanical pass, all green.

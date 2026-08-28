@@ -834,3 +834,15 @@ existing opposite-baseline court data, a simple synced head+hands
 avatar rig (waving is then "free"), voice riding the same WebRTC
 connection. Offered to write it up as a real milestone plan
 next — he hasn't said which way yet.
+
+Erik ran `/code-review` on the tree/bush commit and it earned its
+keep: found 8 real overlapping-collider pairs the rendered screenshots
+hadn't revealed, all traced to one root cause — the placement script's
+spacing check used a flat distance constant per category instead of
+each object's actual footprint size, so the newer, larger bush models
+still collided with neighbors placed just past the (too-small)
+threshold. Rewrote the spacing check to derive real circumscribed-
+circle radii from each node's own `PhysicsShape` and regenerated all
+34 nodes from scratch. Verified this time with an actual pairwise
+overlap check, not just a screenshot — zero overlaps involving any new
+node. Full writeup in docs/DECISIONS.md.

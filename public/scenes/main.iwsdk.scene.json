@@ -2095,8 +2095,8 @@
       "id": "tree-23",
       "name": "Pine (ground)",
       "transform": {
-        "position": [-2.602, 0, -4.332],
-        "rotationDeg": [0, 164.6, 0],
+        "position": [6.319, 0, 1.261],
+        "rotationDeg": [0, 24.5, 0],
         "scale": 3.3
       }
     },
@@ -2120,8 +2120,8 @@
       "id": "tree-24",
       "name": "Pine (ground)",
       "transform": {
-        "position": [-3.164, 0, -1.871],
-        "rotationDeg": [0, 165.0, 0],
+        "position": [-8.057, 0, -1.211],
+        "rotationDeg": [0, 79.9, 0],
         "scale": 3.3
       }
     },
@@ -2145,8 +2145,8 @@
       "id": "bush-0",
       "name": "Bush",
       "transform": {
-        "position": [2.357, 0, 3.932],
-        "rotationDeg": [0, 293.3, 0],
+        "position": [-2.636, 0, -8.199],
+        "rotationDeg": [0, 152.9, 0],
         "scale": 2.5
       }
     },
@@ -2170,8 +2170,8 @@
       "id": "bush-1",
       "name": "Bush",
       "transform": {
-        "position": [0.004, 0, -6.95],
-        "rotationDeg": [0, 215.9, 0],
+        "position": [-0.808, 0, 8.268],
+        "rotationDeg": [0, 167.6, 0],
         "scale": 2.5
       }
     },
@@ -2195,8 +2195,8 @@
       "id": "bush-2",
       "name": "Bush",
       "transform": {
-        "position": [-4.234, 0, -0.723],
-        "rotationDeg": [0, 252.2, 0],
+        "position": [2.872, 0, 3.275],
+        "rotationDeg": [0, 120.7, 0],
         "scale": 2.5
       }
     },
@@ -2220,8 +2220,8 @@
       "id": "bush-3",
       "name": "Bush (detailed)",
       "transform": {
-        "position": [-2.414, 0, -1.219],
-        "rotationDeg": [0, 95.6, 0],
+        "position": [-4.141, 0, 4.662],
+        "rotationDeg": [0, 179.6, 0],
         "scale": 2.5
       }
     },
@@ -2245,8 +2245,8 @@
       "id": "bush-4",
       "name": "Bush (detailed)",
       "transform": {
-        "position": [2.651, 0, -4.849],
-        "rotationDeg": [0, 130.6, 0],
+        "position": [5.287, 0, 7.487],
+        "rotationDeg": [0, 69.2, 0],
         "scale": 2.5
       }
     },
@@ -2270,8 +2270,8 @@
       "id": "bush-5",
       "name": "Bush (detailed)",
       "transform": {
-        "position": [3.599, 0, -4.815],
-        "rotationDeg": [0, 307.2, 0],
+        "position": [-4.687, 0, -8.17],
+        "rotationDeg": [0, 120.1, 0],
         "scale": 2.5
       }
     },
@@ -2295,8 +2295,8 @@
       "id": "bush-6",
       "name": "Bush (large)",
       "transform": {
-        "position": [5.502, 0, 5.522],
-        "rotationDeg": [0, 219.2, 0],
+        "position": [8.073, 0, -0.463],
+        "rotationDeg": [0, 113.9, 0],
         "scale": 2.5
       }
     },
@@ -2320,8 +2320,8 @@
       "id": "bush-7",
       "name": "Bush (large)",
       "transform": {
-        "position": [8.032, 0, 2.948],
-        "rotationDeg": [0, 222.7, 0],
+        "position": [-1.344, 0, 2.332],
+        "rotationDeg": [0, 274.1, 0],
         "scale": 2.5
       }
     },
@@ -2345,8 +2345,8 @@
       "id": "bush-8",
       "name": "Bush (large)",
       "transform": {
-        "position": [2.785, 0, 3.175],
-        "rotationDeg": [0, 120.7, 0],
+        "position": [-5.045, 0, -0.693],
+        "rotationDeg": [0, 73.9, 0],
         "scale": 2.5
       }
     },
@@ -2370,8 +2370,8 @@
       "id": "bush-9",
       "name": "Bush (large)",
       "transform": {
-        "position": [-3.947, 0, -8.004],
-        "rotationDeg": [0, 331.6, 0],
+        "position": [-2.982, 0, -0.072],
+        "rotationDeg": [0, 336.1, 0],
         "scale": 2.5
       }
     },
@@ -2395,8 +2395,8 @@
       "id": "bush-10",
       "name": "Bush (large)",
       "transform": {
-        "position": [0.503, 0, -7.929],
-        "rotationDeg": [0, 197.8, 0],
+        "position": [1.17, 0, 2.292],
+        "rotationDeg": [0, 207.9, 0],
         "scale": 2.5
       }
     },
@@ -2420,8 +2420,8 @@
       "id": "bush-11",
       "name": "Bush (large)",
       "transform": {
-        "position": [6.734, 0, 2.854],
-        "rotationDeg": [0, 191.4, 0],
+        "position": [3.615, 0, -7.034],
+        "rotationDeg": [0, 204.4, 0],
         "scale": 2.5
       }
     },
@@ -2445,8 +2445,8 @@
       "id": "bush-12",
       "name": "Bush (small)",
       "transform": {
-        "position": [-6.067, 0, -5.378],
-        "rotationDeg": [0, 116.5, 0],
+        "position": [8.408, 0, -4.193],
+        "rotationDeg": [0, 289.4, 0],
         "scale": 2.5
       }
     },
@@ -2470,8 +2470,8 @@
       "id": "bush-13",
       "name": "Bush (small)",
       "transform": {
-        "position": [-2.55, 0, -0.222],
-        "rotationDeg": [0, 131.6, 0],
+        "position": [-5.897, 0, -2.593],
+        "rotationDeg": [0, 136.8, 0],
         "scale": 2.5
       }
     },
@@ -2495,8 +2495,8 @@
       "id": "bush-14",
       "name": "Bush (small)",
       "transform": {
-        "position": [-5.615, 0, -1.203],
-        "rotationDeg": [0, 257.5, 0],
+        "position": [3.45, 0, -2.801],
+        "rotationDeg": [0, 307.4, 0],
         "scale": 2.5
       }
     },
@@ -2520,8 +2520,8 @@
       "id": "bush-15",
       "name": "Bush",
       "transform": {
-        "position": [4.647, 0, 5.903],
-        "rotationDeg": [0, 330.0, 0],
+        "position": [2.395, 0, 6.711],
+        "rotationDeg": [0, 33.1, 0],
         "scale": 2.5
       }
     },
@@ -2545,8 +2545,8 @@
       "id": "bush-16",
       "name": "Bush",
       "transform": {
-        "position": [-2.382, 0, -5.133],
-        "rotationDeg": [0, 54.8, 0],
+        "position": [3.581, 0, 5.573],
+        "rotationDeg": [0, 118.5, 0],
         "scale": 2.5
       }
     },
@@ -2570,8 +2570,8 @@
       "id": "bush-17",
       "name": "Bush",
       "transform": {
-        "position": [-1.606, 0, 2.769],
-        "rotationDeg": [0, 358.0, 0],
+        "position": [-4.942, 0, -5.95],
+        "rotationDeg": [0, 274.9, 0],
         "scale": 2.5
       }
     }
