@@ -45,7 +45,7 @@ dl "https://ambientcg.com/get?file=Grass004_1K-JPG.zip" \
   echo "NOTE: unzip failed — inspect $RAW/textures/Grass004_1K-JPG.zip manually"
 
 echo "== Sky HDRIs (Poly Haven, CC0) — 1k for dev, 2k for final =="
-for id in autumn_park ballawley_park; do
+for id in autumn_park ballawley_park autumn_hill_view; do
   dl "$PH_HDR/1k/${id}_1k.hdr" "$RAW/hdri/${id}_1k.hdr" \
      "https://polyhaven.com/a/$id" "CC0"
 done

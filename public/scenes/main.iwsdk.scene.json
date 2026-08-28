@@ -31,11 +31,11 @@
     "DomeTexture": {
       "blurriness": 0,
       "intensity": 1,
-      "src": "textures/autumn-park-1k.hdr"
+      "src": "textures/autumn-hill-view-1k.hdr"
     },
     "IBLTexture": {
       "intensity": 1,
-      "src": "textures/autumn-park-1k.hdr"
+      "src": "textures/autumn-hill-view-1k.hdr"
     }
   },
   "environment": {},
@@ -854,7 +854,9 @@
     },
     {
       "components": {
-        "PhysicsBody": { "state": "STATIC" },
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
         "PhysicsShape": {
           "shape": "Cylinder",
           "dimensions": [0.15, 0.4, 0],
@@ -876,7 +878,9 @@
     },
     {
       "components": {
-        "PhysicsBody": { "state": "STATIC" },
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
         "PhysicsShape": {
           "shape": "Cylinder",
           "dimensions": [0.15, 0.4, 0],
@@ -898,7 +902,9 @@
     },
     {
       "components": {
-        "PhysicsBody": { "state": "STATIC" },
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
         "PhysicsShape": {
           "shape": "Cylinder",
           "dimensions": [0.12, 0.4, 0],
@@ -920,7 +926,9 @@
     },
     {
       "components": {
-        "PhysicsBody": { "state": "STATIC" },
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
         "PhysicsShape": {
           "shape": "Cylinder",
           "dimensions": [0.15, 0.4, 0],
@@ -942,7 +950,9 @@
     },
     {
       "components": {
-        "PhysicsBody": { "state": "STATIC" },
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
         "PhysicsShape": {
           "shape": "Cylinder",
           "dimensions": [0.1, 0.4, 0],
@@ -964,7 +974,9 @@
     },
     {
       "components": {
-        "PhysicsBody": { "state": "STATIC" },
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
         "PhysicsShape": {
           "shape": "Box",
           "dimensions": [0.5, 0.4, 0.5],
@@ -986,7 +998,9 @@
     },
     {
       "components": {
-        "PhysicsBody": { "state": "STATIC" },
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
         "PhysicsShape": {
           "shape": "Box",
           "dimensions": [0.3, 0.25, 0.3],
@@ -1008,7 +1022,9 @@
     },
     {
       "components": {
-        "PhysicsBody": { "state": "STATIC" },
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
         "PhysicsShape": {
           "shape": "Box",
           "dimensions": [0.3, 0.5, 0.3],
@@ -1030,7 +1046,9 @@
     },
     {
       "components": {
-        "PhysicsBody": { "state": "STATIC" },
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
         "PhysicsShape": {
           "shape": "Box",
           "dimensions": [0.3, 0.25, 0.3],
@@ -1052,7 +1070,9 @@
     },
     {
       "components": {
-        "PhysicsBody": { "state": "STATIC" },
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
         "PhysicsShape": {
           "shape": "Box",
           "dimensions": [0.5, 0.4, 0.5],
@@ -1074,7 +1094,9 @@
     },
     {
       "components": {
-        "PhysicsBody": { "state": "STATIC" },
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
         "PhysicsShape": {
           "shape": "Box",
           "dimensions": [0.3, 0.25, 0.3],
@@ -1096,7 +1118,9 @@
     },
     {
       "components": {
-        "PhysicsBody": { "state": "STATIC" },
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
         "PhysicsShape": {
           "shape": "Box",
           "dimensions": [0.5, 0.4, 0.5],
@@ -1117,7 +1141,9 @@
     },
     {
       "components": {
-        "PhysicsBody": { "state": "STATIC" },
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
         "PhysicsShape": {
           "shape": "Box",
           "dimensions": [0.3, 0.5, 0.3],
@@ -1134,6 +1160,558 @@
         "position": [1.7279, 0.0283, 3.3538],
         "rotationDeg": [0, 0, 0],
         "scale": 1
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1, 1, 1],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "cliff-large",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "cliff-0",
+      "name": "Cliff (large)",
+      "transform": {
+        "position": [-8.5, 0, -6.0],
+        "rotationDeg": [0, 40, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1, 1, 1],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "cliff-block",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "cliff-1",
+      "name": "Cliff (block)",
+      "transform": {
+        "position": [-9.0, 0, -2.5],
+        "rotationDeg": [0, 110, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1, 1, 1],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "cliff-diagonal",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "cliff-2",
+      "name": "Cliff (diagonal)",
+      "transform": {
+        "position": [-8.2, 0, 1.5],
+        "rotationDeg": [0, 200, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1, 1, 1],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "cliff-top",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "cliff-3",
+      "name": "Cliff (top)",
+      "transform": {
+        "position": [-7.5, 0, 5.0],
+        "rotationDeg": [0, 260, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1, 1, 1],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "cliff-half",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "cliff-4",
+      "name": "Cliff (half)",
+      "transform": {
+        "position": [-6.5, 0, -8.5],
+        "rotationDeg": [0, 15, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1, 1, 1],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "cliff-corner",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "cliff-5",
+      "name": "Cliff (corner)",
+      "transform": {
+        "position": [8.5, 0, -5.5],
+        "rotationDeg": [0, 320, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1, 1, 1],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "cliff-large",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "cliff-6",
+      "name": "Cliff (large)",
+      "transform": {
+        "position": [9.0, 0, -1.5],
+        "rotationDeg": [0, 250, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1, 1, 1],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "cliff-block",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "cliff-7",
+      "name": "Cliff (block)",
+      "transform": {
+        "position": [8.2, 0, 2.0],
+        "rotationDeg": [0, 170, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1, 1, 1],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "cliff-diagonal",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "cliff-8",
+      "name": "Cliff (diagonal)",
+      "transform": {
+        "position": [6.5, 0, 5.5],
+        "rotationDeg": [0, 80, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1, 1, 1],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "cliff-top",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "cliff-9",
+      "name": "Cliff (top)",
+      "transform": {
+        "position": [1.5, 0, -9.5],
+        "rotationDeg": [0, 0, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1, 1, 1],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "cliff-half",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "cliff-10",
+      "name": "Cliff (half)",
+      "transform": {
+        "position": [-1.8, 0, -9.7],
+        "rotationDeg": [0, 5, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.16, 0.4, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-oak-fall",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-5",
+      "name": "Tree (oak, autumn)",
+      "transform": {
+        "position": [6.5, 0, -3.5],
+        "rotationDeg": [0, 45, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.16, 0.4, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-tall-fall",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-6",
+      "name": "Tree (tall, autumn)",
+      "transform": {
+        "position": [-6.0, 0, -4.5],
+        "rotationDeg": [0, 300, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.18, 0.4, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-pine-tall",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-7",
+      "name": "Tree (pine)",
+      "transform": {
+        "position": [-6.8, 0, 5.5],
+        "rotationDeg": [0, 100, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Cylinder",
+          "dimensions": [0.18, 0.4, 0],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "tree-pine-tall",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "tree-8",
+      "name": "Tree (pine)",
+      "transform": {
+        "position": [7.0, 0, 4.0],
+        "rotationDeg": [0, 200, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.5, 0.4, 0.5],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "rock-large-e",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "rock-6",
+      "name": "Rock (large)",
+      "transform": {
+        "position": [6.8, 0, -6.0],
+        "rotationDeg": [0, 80, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.3, 0.5, 0.3],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "rock-tall-h",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "rock-7",
+      "name": "Rock (tall)",
+      "transform": {
+        "position": [-6.5, 0, 0.5],
+        "rotationDeg": [0, 150, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.3, 0.2, 0.3],
+          "friction": 0.6,
+          "restitution": 0.1
+        }
+      },
+      "content": {
+        "asset": "rock-small-flat-a",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "rock-8",
+      "name": "Rock (flat)",
+      "transform": {
+        "position": [5.5, 0, 1.5],
+        "rotationDeg": [0, 30, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1.4, 1.0, 1.0],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "tent",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "campsite-tent",
+      "name": "Campsite tent",
+      "transform": {
+        "position": [-7.3, 0, 2.0],
+        "rotationDeg": [0, 60, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.6, 0.3, 0.6],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "campfire",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "campsite-fire",
+      "name": "Campsite campfire",
+      "transform": {
+        "position": [-6.2, 0, 2.8],
+        "rotationDeg": [0, 0, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [1.2, 0.3, 0.3],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "log-bench",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "campsite-bench",
+      "name": "Campsite log bench",
+      "transform": {
+        "position": [-6.8, 0, 3.6],
+        "rotationDeg": [0, 20, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.4, 0.4, 0.4],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "stump-seat",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "campsite-stump",
+      "name": "Campsite stump seat",
+      "transform": {
+        "position": [-5.5, 0, 3.0],
+        "rotationDeg": [0, 0, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "shape": "Box",
+          "dimensions": [0.6, 0.5, 0.6],
+          "friction": 0.7,
+          "restitution": 0.05
+        }
+      },
+      "content": {
+        "asset": "log-pile",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "campsite-logs",
+      "name": "Campsite firewood pile",
+      "transform": {
+        "position": [-7.0, 0, 1.3],
+        "rotationDeg": [0, 45, 0]
       }
     }
   ],

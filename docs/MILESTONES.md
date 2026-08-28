@@ -287,6 +287,13 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       verified the offset-preserving close grab; the ray-pull itself
       is code-reviewed + mechanically verified only — needs Erik's
       headset to confirm. Full writeup in docs/DECISIONS.md
+- [x] Environment pass (2026-08-28): swapped the flat garden HDRI for
+      a hilltop/valley vista (Poly Haven's `autumn_hill_view`), ringed
+      the playable area with cliff-edge dressing from the same Kenney
+      pack (never touching the flat lane), added 6 more trees/rocks,
+      and a cozy-campsite vignette (fire, tent, log/stump seating) off
+      to one side — all per Erik's live feedback and choices. Needs his
+      in-headset reaction; full writeup in docs/DECISIONS.md
 - [ ] 72 Hz verified ON QUEST 2 (chrome-devtools via adb — needs USB card)
 - [ ] 72 Hz verified ON QUEST 2 (chrome-devtools via adb — needs USB card)
 - **GATE (Erik, headset): perf + comfort + full experience pass** 🎧

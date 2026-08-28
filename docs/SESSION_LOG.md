@@ -638,3 +638,43 @@ counts: does the close grab now correctly preserve offset, and does
 pointing-and-pulling a far stick still feel good (aim cone, pull
 speed, the handoff to a normal grab at 10cm). Still open from before:
 the Quest 2 72Hz check (M5's last item, needs adb + headset).
+
+## 2026-08-28 — Environment feedback: hilltop sky, cliffs, campsite
+
+Erik asked for three things in one message: more trees/rocks from the
+same asset library in a more open layout, a hilltop feeling instead of
+the garden backdrop, and some fun/exciting dressing around the court.
+Asked him to pick between three concrete options for the first two
+(sky+cliff-dressing vs. real terrain vs. sky-only; fantasy vs.
+campsite vs. mixed theme) since both materially change the build and
+redoing either would waste real work — he picked sky+cliffs (lane
+stays flat) and cozy campsite.
+
+Found the existing tree/rock GLBs are Kenney's Nature Kit with the
+full 330-model pack already sitting locally, unused beyond the 11
+models picked in M1/M2 — picked 17 more straight from that same
+archive (6 cliff-edge modules, 3 more trees, 3 more rocks, 5 campsite
+props), all CC0, no new licensing question. Queried Poly Haven's API
+for a hilltop/valley HDRI matching the existing autumn palette and
+landed on `autumn_hill_view` — downloaded it, swapped it in for the
+old flat garden panorama, and deleted the now-unused original from
+`public/`. Built an 11-piece broken cliff ring at 6.5-9.7m radius
+(never touching the flat playable lane) and a five-prop campsite
+vignette off to one side, all with the same static-collider treatment
+the trees/rocks already got.
+
+No fresh-eyes review dispatched this time — this is placement/asset
+wiring, not logic, so checked directly instead: a pairwise-distance
+script for accidental overlaps, four rendered camera angles (orbit,
+top, the authored player-spawn view, and the side diagnostic view),
+and a live reload of the running app to confirm no new console errors.
+Mechanical pass green throughout (151 tests, tsc/eslint/prettier/
+build/smoke).
+
+**Handover.** This is a content/vibe pass, not a mechanic — the real
+test is Erik's own reaction on the headset. Open questions worth his
+opinion: does the cliff ring read as "hilltop" from inside VR at full
+scale (renders look right, but VR depth perception differs from a flat
+screenshot), and does the campsite placement feel natural to glance at
+mid-game rather than in the way. Still open from before: the Quest 2
+72Hz check.

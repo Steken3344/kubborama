@@ -1687,3 +1687,88 @@ limitation as the unresolved grab-offset reproduction attempts above,
 not a new finding. The pull mechanic is code-reviewed and
 mechanically verified but needs Erik's real-headset confirmation
 before it can be called done.
+
+## 2026-08-28 — Environment pass: hilltop sky, plateau-edge cliffs, campsite vignette
+
+Erik asked for three things: a more open environment with more trees/
+rocks from "the same library" (more assets, not a new source); the
+garden backdrop replaced with a "standing on a high hill" feeling; and
+some fun/exciting dressing around the court. Given three concrete
+options for each of the first two (asked via AskUserQuestion since he
+was live in the conversation, not autonomous), he picked: sky + cliff-
+edge dressing around the plane's visible perimeter (lane stays flat,
+no real terrain modeling) for the hill, and a cozy-campsite theme
+(campfire, tent, log/stump seating) for the fun dressing.
+
+**"Same library, more assets."** The tree/rock GLBs already in
+`public/gltf/` are Kenney's Nature Kit (confirmed via ASSETS.md and
+the 2026-08-27 "environment felt bare" entry) — `assets/raw/models/
+nature-kit/` has the full 330-model pack already downloaded locally,
+of which only 11 were ever used. Picked 17 more straight from that
+same local archive (no new source, no re-licensing question — CC0,
+same as the rest): `tree_oak_fall`/`tree_tall_fall`/`tree_pine_tall_a`
+(pine breaks up the all-round-canopy monotony), `rock_large_e`/
+`rock_tall_h`/`rock_small_flat_a`, six `cliff_*_rock` variants (block/
+large/top/diagonal/half/corner — the pack's terrain-edge module
+family, an exact fit for "plateau edge" dressing), and five campsite
+props (`campfire_stones`, `tent_detailedOpen`, `log`, `log_stack`,
+`stump_round`). Copied straight into `public/gltf/<id>/` per the
+established convention (camelCase source name → snake_case folder,
+same as `rock_largeD.glb` → `rock_large_d/`), registered in
+`src/assets.ts`, logged in `ASSETS.md`.
+
+**The hill.** `DomeTexture`/`IBLTexture` (the actual sky+IBL mechanism,
+per the M1 "garden feeling is built in" note above) pointed at
+`autumn-park-1k.hdr`, a flat park panorama with no sense of elevation.
+Queried Poly Haven's public API for HDRIs tagged `hilltop`+`valley`+
+`vista` and picked `autumn_hill_view` — a genuine hilltop-overlooking-
+a-valley photo that also keeps the existing autumn palette (matches
+the already-`_fall`-suffixed trees) rather than clashing with a
+different season/mood. Downloaded the 1k `.hdr` (same resolution
+tier as the file it replaces), committed it as `textures/autumn-
+hill-view-1k.hdr`, deleted the now-unreferenced `autumn-park-1k.hdr`
+from `public/` (kept in `assets/raw/hdri/`, git-ignored, per ASSETS.md's
+existing "unused alternative" precedent for `ballawley_park`/`autumn_
+park_2k`) and added it to `fetch-assets.sh`'s HDRI loop for
+reproducibility. Framed 11 cliff pieces in a broken ring at 6.5-9.7m
+radius — sides and both ends, never inside the flat playable lane
+(`x∈[-1.5,1.5]`, `z∈[-6,0]`) — so the horizon reads as a plateau edge
+from the player's standing eye height without touching gameplay
+geometry at all. Verified via `scene_render_file` at the authored
+`playerSpawn` view: the hill vista fills the horizon behind the far
+kubb line, with two cliff pieces subtly flanking it — visible, not
+obstructing the kubbs.
+
+**The campsite.** A five-prop vignette (tent, campfire, a log bench, a
+stump seat, a firewood pile) grouped at roughly (-6.5, 2.5) — behind
+the near baseline, to the side, beyond the existing fence line (which
+only spans `z∈[-5.26,-1.26]` at `x=-3.72`, confirmed by reading its
+`pattern` distribution) and beyond the inner tree/rock ring, so it
+reads as "off to the side of the pitch" rather than blocking either
+throwing lane's sightline.
+
+**Physics.** All 23 new nodes got the same `PhysicsBody: STATIC` +
+`PhysicsShape` treatment as the existing trees/rocks (M5's earlier
+"nothing rolling stopped for them" fix) — hand-estimated Box/Cylinder
+dimensions per prop family, consistent with the existing rock/tree
+sizing convention. Checked pairwise distances between every new and
+existing decoration node; the only sub-1.2m pairs are the intentional
+campsite clustering (fire next to its own bench/stump) and two cliff-
+adjacent placements (a tent pitched against a cliff face, a pine
+growing next to one) that read as natural composition, not overlap
+bugs — confirmed by eye in the rendered views below.
+
+Mechanical pass green (tsc/eslint/prettier/vitest — 151 tests,
+unaffected/build/smoke). Validated via `scene_render_file` at four
+views (`orbit`, `top`, `playerSpawn`, `grandstandSide`) — `valid: true`,
+zero diagnostics, all 17 new `sceneAssets` entries resolved with
+non-zero mesh counts, `visibleNodeIds` matched expectations per view,
+triangle count still trivial for VR (≤3.1k across the whole scene).
+Live-verified in the running app too (not just the static composer):
+reloaded the dev server, confirmed the new sky and props render with
+no new console errors or warnings beyond the pre-existing, unrelated
+UIKitML editor-preview warning. Did not dispatch a fresh-eyes review
+for this pass — unlike the grab-logic fix earlier in this session,
+there's no algorithmic logic here to get subtly wrong, just placement
+and asset wiring, and that was checked directly (JSON validity, the
+distance-collision script above, four rendered angles, live console).

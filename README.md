@@ -1,9 +1,10 @@
 # KubbOrama
 
 A VR prototype of the traditional Swedish lawn game **kubb**, built for
-**Meta Quest 2** with WebXR. Stand in a garden, pick up a kastpinne
-(throwing stick), and throw it at kubb blocks until they topple —
-honest release physics, real spin, no menus in the way.
+**Meta Quest 2** with WebXR. Stand on a hilltop court ringed by cliffs
+and a cozy campsite, pick up a kastpinne (throwing stick), and throw it
+at kubb blocks until they topple — honest release physics, real spin,
+no menus in the way.
 
 **Play now:** https://steken3344.github.io/kubborama/ (open in the
 Quest browser, tap "Enter XR")
