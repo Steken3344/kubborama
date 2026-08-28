@@ -733,3 +733,25 @@ autonomously per this project's own rule for unattended work: keep
 making the calls, log decisions here and in docs/DECISIONS.md, batch
 anything genuinely open for him in docs/QUESTIONS.md rather than
 blocking.
+
+**gh#3 (cyan autumn foliage) — root-caused and fixed.** Not a texture
+problem as originally guessed: every Kenney Nature Kit glTF in this
+project has `metallicFactor: 1`, which under this scene's HDRI makes
+surfaces reflect the (mostly blue) sky instead of showing their real
+color. Patched all 28 committed GLBs' materials to `metallicFactor: 0`
+by rewriting each GLB's JSON chunk directly. Hit a genuinely confusing
+debugging detour proving the fix: the composer preview looked stuck on
+a stale render (turned out to need a full dev-server restart, not just
+a page reload), and then the live runtime still showed cyan trees —
+which turned out to be two _different_, never-reported tree variants
+(`tree_thin_dark`, the pine) that are intentionally teal in Kenney's
+own data, not a bug, just visually overlapping the actually-fixed tree
+in frame after this session's earlier scale-up made every canopy huge.
+Isolating entities with a `Visibility` toggle settled it. All three
+originally-reported trees confirmed fixed by aiming the headset
+directly at each one. Mechanical pass green. gh#3 closed.
+
+Erik also asked, separately: why does this project use low-poly
+assets instead of more realistic ones? Answered directly (Quest 2
+performance budget, free CC0 licensing, one consistent art style) —
+not something to act on without a real ask.

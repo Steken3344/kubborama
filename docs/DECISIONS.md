@@ -1899,3 +1899,75 @@ to the fence, not a toy. Live-reloaded the running app too — no new
 console errors/warnings beyond the pre-existing unrelated UIKitML
 editor-preview one. Mechanical pass green (tsc/eslint/prettier/vitest
 — 151 tests, unaffected — /build/smoke).
+
+## 2026-08-28 — gh#3 root-caused and fixed: cyan autumn foliage was a metallic-reflection bug
+
+Erik went AFK and asked me to work the open-issue backlog one at a
+time. gh#3's own hypothesis ("a texture failing to resolve") turned
+out to be wrong — read the actual glTF materials for the three named
+trees (`tree_fat_fall`, `tree_small_fall`, `tree_cone_fall`) and found
+their `leafsFall` material's `baseColorFactor` is already correct warm
+orange (`[1, 0.573, 0.255, 1]`); there's no texture reference at all
+(`textures: []`, `images: []`) for the loader to fail to resolve.
+
+The real cause: every material in every Kenney Nature Kit glTF in this
+project — trees, rocks, cliffs, fence, campsite props, no exception —
+has `metallicFactor: 1, roughnessFactor: 1`. A fully-metallic surface's
+visible color comes from reflecting the environment (tinted by
+baseColor as Fresnel reflectance), not from diffuse albedo — under
+this scene's HDRI sky (mostly blue), that reads as a cyan/blue tint
+regardless of the material's actual orange baseColorFactor. Confirmed
+by patching one file (`tree_fat_fall.glb`'s `metallicFactor` 1→0,
+rewriting the GLB's JSON chunk directly — GLB is just a length-
+prefixed JSON+BIN container, no export tool needed) and live-verifying
+in the runtime: cyan → correct warm cream/orange, immediately.
+
+Since every Kenney material in the pack shares this defect (confirmed
+by dumping every `public/gltf/*/*.glb`'s materials — rocks/cliffs/
+fence/campsite props all show the identical `metallicFactor: 1`
+pattern), patched all 28 committed GLBs the same way, not just the 3
+originally reported — the cyan-tinted rock/cliff tops visible in the
+M5 environment-pass screenshots were the same bug, just less
+obviously wrong-looking on grey/tan stone than on foliage that should
+read unambiguously orange.
+
+**A real debugging trap hit along the way, worth recording**: the
+IWSDK-managed browser's in-memory `CacheManager` (a plain module-level
+`Map`, confirmed by reading `@iwsdk/core`'s source — genuinely not
+persisted anywhere) did NOT explain what looked like a stuck cache at
+first. `scene_render_file`'s composer preview kept returning an
+identical `screenshotSha256` across calls even after `browser_reload_
+page` and a full `npx iwsdk dev down`/`dev up` — turned out to be a
+red herring: a `curl` straight to the dev server confirmed the patched
+bytes were being served correctly the whole time, and the composer
+preview DID pick up the fix after the full server restart (confirmed
+by its screenshot hash finally changing). The subsequent live
+`browser_screenshot` still showing cyan trees was **not** a caching
+bug at all — it was `tree_thin_dark` and `tree_pine_tall_a`, two
+_different_, never-reported tree variants sharing a `leafsDark`
+material whose `baseColorFactor` genuinely is `[0.169, 0.651, 0.667]`
+— an intentionally teal/cyan "dark" foliage color in Kenney's own
+data, not a bug. Confirmed by toggling that entity's `Visibility` off
+mid-session and re-shooting the same camera angle: the reported-broken
+tree next to it was already showing correct warm color: the two trees'
+huge new canopies (after the same-session scale-up pass) were simply
+overlapping in frame, and the intentionally-teal one visually
+dominated the shot. Lesson: when a fix appears to only partially work,
+identify the SPECIFIC entity on screen (`ecs_find_entities` position
+lookup + `Visibility` toggle) before assuming the fix itself is wrong
+or the tooling is stale — three different explanations (cache, wrong
+fix, unrelated intentional color) were live candidates simultaneously,
+and only the entity-isolation test actually distinguished them.
+
+Not touched: `tree_thin_dark`/`tree_pine_tall_a`'s teal color itself —
+that's Kenney's own aesthetic choice for the "dark" variant, not what
+gh#3 reported, and recoloring it wasn't asked for. Flagged to Erik as
+an observation (now more visually prominent after the trees' scale-up)
+rather than acted on unilaterally.
+
+Mechanical pass green (tsc/eslint/prettier/vitest — 151 tests,
+unaffected/build/smoke — none of this touches TS source, only
+committed binary assets). Live-verified all three originally-reported
+trees individually (direct camera aim at each, `Visibility`-isolated
+where two trees' canopies overlapped in frame) — all three now show
+correct warm autumn color. gh#3 closed.
