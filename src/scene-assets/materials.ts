@@ -60,3 +60,10 @@ export const accentRedMaterial = new MeshStandardMaterial({
   color: '#b5342a',
   roughness: 0.6,
 });
+
+/** Optional court boundary lines (settings toggle, off by default — real
+ * courts have no lines, docs/PLAN.md §2). Pale field-marking paint. */
+export const courtLineMaterial = new MeshStandardMaterial({
+  color: '#f2f0e6',
+  roughness: 0.9,
+});

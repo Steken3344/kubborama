@@ -1,5 +1,4 @@
 {
-  "menuTitle": "Menu",
   "resetButton": "New round",
   "languageNameSv": "Swedish",
   "languageNameEn": "English",
@@ -7,5 +6,25 @@
   "gameModeNameAdvanced": "Advanced",
   "hudRoundLabel": "Round",
   "hudFelledLabel": "Felled",
-  "hudBestLabel": "Best"
+  "hudBestLabel": "Best",
+  "tabMain": "Menu",
+  "tabSettings": "Options",
+  "tabStats": "Stats",
+  "hapticsOn": "Haptics: On",
+  "hapticsOff": "Haptics: Off",
+  "hapticsStrength": "Strength: {percent}%",
+  "musicVolume": "Music: {percent}%",
+  "sfxVolume": "SFX: {percent}%",
+  "courtLinesOn": "Court lines: On",
+  "courtLinesOff": "Court lines: Off",
+  "profileNamePrefix": "Name: {name}",
+  "profileNameDefault": "Player",
+  "statsFewestSticks": "Fewest throws to fell the king: {value}",
+  "statsFewestSticksEmpty": "Fewest throws to fell the king: -",
+  "statsMostFelled": "Most felled in one round: {value}/{total}",
+  "statsLongestThrow": "Longest throw: {value} m",
+  "statsLongestFellingThrow": "Longest felling throw: {value} m",
+  "statsStreak": "King-fell streak: {value}",
+  "statsRoundsPlayed": "Rounds played: {value}",
+  "statsAccuracy": "Accuracy: {value}%"
 }

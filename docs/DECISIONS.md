@@ -999,3 +999,106 @@ holds the reference — so a single shared, never-mutated array is the
 correct shape here, not a shortcut. Re-verified live: zero console
 errors through a full grab→swing→release→settle cycle in Advanced
 mode with the new lookup active.
+
+## 2026-08-28 — M4: settings panel closes out (haptics, volume, profile
+
+name, stats tab, court lines)
+
+Erik approved the full scope in one batch (`AskUserQuestion`, three
+answers): build every item deferred from the previous entry (haptics
+on/off + intensity, stats tab, profile name, music/SFX volume,
+court-lines toggle+rendering), as a third tab in the existing B-menu
+panel (his explicit preference over a separate panel), plus move both
+`hud-panel` and `reset-menu-panel` further from the player (his own
+words: the menu and the scoreboard sit "väldigt nära" — move them a
+bit further away). Then: "nu drar jag till jobbet men kör på så långt
+du kan" — explicit permission to keep building solo past that point.
+
+**Built:** `reset-menu.uikitml` rewritten to three tabs (Meny /
+Alternativ / Statistik), each a plain `div` shown/hidden the same way
+the whole panel already was (`display:none` toggle) — there is no
+native UIKitML tab component. Every new control is a Button that
+shows its current value and advances/toggles on click, continuing the
+convention from the M2/M3 menu buttons rather than reaching for the
+Horizon kit's native `Toggle`/`Slider`/`Input` — their UIKitML-level
+change-event wiring was never confirmed working from application
+code, and gambling on it wasn't worth repeating the M4 font rabbit
+hole. Court lines are a new `CourtLine` tag component on 4 thin
+`BoxGeometry` scene nodes (materialized in
+`court-line-{long,short}.scene-asset.ts`), toggled by a new
+`CourtLinesSystem` that mirrors `WindSystem`/`ToppleSystem`'s
+"read `settingsState` once per frame, act only on change" shape — no
+new `PhysicsBody`, purely visual. `hud-panel` moved
+`(1,1.5,-1)→(1.4,1.6,-1.4)` at `scale:1.3`; `reset-menu-panel` moved
+`(0,1.4,-0.6)→(0,1.4,-1.1)` at `scale:1.15` (rotation unchanged in
+both — scaling a position that already points roughly at the player
+preserves the yaw). `StatsSystem` had to move earlier in
+`index.ts`'s registration order, ahead of `MenuSystem`, since the new
+Statistik tab reads `StatsSystem.stats` synchronously from
+`MenuSystem.init()`'s wiring (elics runs `init()` synchronously per
+`registerSystem()` call, same fact the M4-core entry already
+leaned on for `SettingsSystem`).
+
+**Live-verification methodology, and its real limit.** Clicking a
+specific row in the emulator needs a ray target in world space, and
+guessing one from panel layout math repeatedly failed. What worked:
+set the controller's position identical to the headset's, then use
+headset screenshots to find the look-at target that visually centers
+a given row — since a camera and a same-position controller ray are
+geometrically identical for the same target, that target is also the
+correct controller aim. This verified, live, both directions of:
+tab switching (Meny↔Alternativ), Haptik on/off, Musik/Ljud/Styrka
+cycling, and profile-name cycling. It never reliably landed on the
+"Planlinjer" or "Statistik" buttons specifically — both sit at the
+edges of the panel (first row, and the rightmost of three tabs) where
+small aiming errors miss the panel or its bezel entirely. Their
+underlying logic was verified a different way instead: court-lines'
+full chain (settings write → `CourtLinesSystem` → `Visibility`) was
+proven correct by writing `Visibility.isVisible=true` directly via
+`ecs_set_component` on all 4 line entities and confirming a correctly
+aligned court boundary renders; the Statistik tab's `setActiveTab`
+call is textually identical to the already-proven Alternativ tab's,
+just a different id and target. This is a documented, accepted gap —
+the click _handlers_ for these two controls were never exercised
+end-to-end through a real ray, only proven-by-construction and by
+identical-pattern analogy to sibling controls that were exercised.
+Also worth recording as a lesson, not a bug: earlier in this session,
+"Planlinjer" appeared to be silently missing from the rendered panel
+entirely (visible up through "Namn" and no further); reordering it to
+the first settings-tab row (still its current position — cosmetic,
+Erik expressed no ordering preference) revealed it was rendering
+correctly all along and the screenshot just wasn't framed far enough
+down the panel to show the true last row. No code was at fault.
+
+**Fresh-eyes review found one real, confirmed bug, fixed before
+tagging.** `nextVolumeStep(current) = (current + 25) % 125` silently
+assumed the current value already sat on the 0/25/50/75/100 grid —
+but `defaultSettings()` starts `musicVolumePercent`/
+`sfxVolumePercent`/`hapticsIntensityPercent` at **70**, off that grid.
+From 70 the sequence went 70→95→**120**→20→45→70…, and 120 is outside
+the field's `z.number().min(0).max(100)` schema. Two compounding
+failures from that one out-of-range write: `scaleHapticPulse()` would
+have fed WebXR's `hapticActuator.pulse(intensity, …)` an intensity
+above the spec-required `[0,1]` range; and because `decodeSettings()`
+runs the _whole_ settings object through `safeParse` and falls back to
+`defaultSettings()` on any failure, a single out-of-grid volume value
+would have silently reset language, game mode, haptics-enabled,
+profile name, and court-lines-visible together on the next load — not
+just the one field. Root cause was the modulo arithmetic's implicit
+assumption; fixed by replacing it with "find the smallest grid step
+strictly greater than the current value" (`VOLUME_STEPS = [0, 25, 50,
+75, 100]`, a linear scan), which is correct for _any_ starting value,
+not just grid-aligned ones, and provably terminates in range with no
+cache/invalidation logic. Re-verified live in the emulator through a
+full cycle on the real default: 70→75→100→0. Two smaller suggestions
+from the same review were also folded in: `statsMostFelled`'s "/11"
+was a duplicated literal for kubb-count math that already lives in
+`court-layout.ts` (now `KUBB_COUNT` is exported and the i18n string
+takes a second `{total}` param instead of hardcoding it); and
+`MenuSystem`'s two `gameEvents.on(...)` unsubscribes moved from a
+hand-rolled `destroy()` override into `this.cleanupFuncs` (the
+project's standard teardown convention, which this file predated).
+
+M4 is now feature-complete per Erik's approved scope. No headset gate
+for this milestone (only M0/M2/M5 have one) — tagged `v0.5-m4` once
+this entry lands.

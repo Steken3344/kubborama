@@ -156,7 +156,7 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
   velocity-read block, both fixed). Full writeup in docs/DECISIONS.md.
   Tagged `v0.4-m3` — no headset gate for this milestone.
 
-## M4 — Wind, tunables & settings `status: in progress — core done, settings panel deferred`
+## M4 — Wind, tunables & settings `status: DONE`
 
 - [x] core/wind.ts (TDD): F = windVector × dragFactor; `WindSystem`
       re-adds `PhysicsManipulation({force})` every tick to Flying
@@ -191,18 +191,33 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       [gh#5](https://github.com/Steken3344/kubborama/issues/5)): the
       sv/en dictionaries deliberately avoid those glyphs, and a test
       (`src/i18nState.test.ts`) guards against regressing that
-- [ ] Settings panel UI: music/SFX volume sliders, haptics toggle UI,
-      profile name prompt (non-blocking first-run), stats tab,
-      court-lines toggle+rendering — **not built this session**. The
-      settings _model_/persistence for every one of these already
-      exists (`core/settings.ts`); only the panel controls are
-      missing. Deliberately cut rather than rushed — this is
-      player-facing UX worth a design pass, unlike the mostly-mechanical
-      pieces above
+- [x] Settings panel UI: new "Statistik" tab (read-only personal
+      bests) alongside the existing menu, plus a settings tab with
+      music/SFX volume, haptics on/off + intensity, profile name
+      (cycled placeholder, not free text entry), and court-lines
+      toggle+rendering (4 new `CourtLine`-tagged scene nodes, toggled
+      by a new `CourtLinesSystem`). Every control is a Button that
+      cycles/toggles its value on click (same convention as the
+      existing language/game-mode buttons), not a native
+      Toggle/Slider/Input — see docs/DECISIONS.md for why. Panels
+      moved further from the player per Erik's feedback
+      (`hud-panel`, `reset-menu-panel`). Verified live in the
+      emulator (tab switching, every settings button, court-lines
+      rendering); the "Planlinjer" and "Statistik" buttons'
+      click-handlers specifically were verified by code-pattern
+      analogy and (for court-lines) a direct ECS render check rather
+      than a live click — both sit at panel edges where ray-aiming
+      repeatedly missed. Full writeup, including a fresh-eyes review
+      that caught a real volume-cycling bug (fixed before tagging),
+      in docs/DECISIONS.md
 - [ ] Dev debug panel (tweakpane reuse) for wind knobs; optional leaf
-      wind indicator — not built, low priority relative to the above
-- Review gate on what's built so far; `v0.5-m4` tags once the settings
-  panel closes out the milestone
+      wind indicator — not built, low priority, deferred past this
+      milestone (not part of Erik's approved M4 scope)
+- Review gate: fresh-eyes found one real bug (`nextVolumeStep` could
+  drift a volume setting out of its valid range and silently reset
+  all settings on next load) — fixed and re-verified live. Full
+  writeup in docs/DECISIONS.md. Tagged `v0.5-m4` — no headset gate for
+  this milestone.
 
 ## M5 — Polish & performance `status: not started`
 

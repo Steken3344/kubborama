@@ -46,7 +46,9 @@ const STICK_SCATTER_MARGIN_M = 0.15;
 const STICK_SCATTER_NEAR_Z = -0.15;
 const STICK_SCATTER_FAR_Z = -0.9;
 const STICK_COUNT = 6;
-const KUBB_COUNT = 5;
+/** Per baseline; exported so consumers (e.g. the stats display's
+ * felled-out-of-total count) don't re-hardcode the piece total. */
+export const KUBB_COUNT = 5;
 
 /**
  * Player origin is world (0,0,0), facing -Z. The near baseline (player's

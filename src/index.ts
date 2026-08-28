@@ -1,5 +1,6 @@
 import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
+import { CourtLinesSystem } from './systems/courtLines.js';
 import { GrabHighlightSystem } from './systems/grabHighlight.js';
 import { HudSystem } from './systems/hud.js';
 import { ImpactSystem } from './systems/impact.js';
@@ -22,8 +23,13 @@ World.create(
   // M4: SettingsSystem loads persisted settings + wires the i18n
   // translator before anything else reads settingsState/i18nState
   // (haptics scaling, MenuSystem/HudSystem's labels, ToppleSystem's
-  // game-mode-driven topple angle, WindSystem's wind vector).
+  // game-mode-driven topple angle, WindSystem's wind vector,
+  // CourtLinesSystem's toggle).
   world.registerSystem(SettingsSystem);
+  // StatsSystem next: MenuSystem's stats tab and HudSystem both read
+  // StatsSystem.stats, so it must be registered (and its RoundEnded
+  // subscription attached) before either of them.
+  world.registerSystem(StatsSystem);
   // Default priority (0) runs after GrabSystem (-3) and PhysicsSystem
   // (-2), so both systems read up-to-date grab state and post-physics
   // velocities each frame.
@@ -32,16 +38,13 @@ World.create(
   world.registerSystem(WindSystem);
   world.registerSystem(MenuSystem);
   world.registerSystem(GrabHighlightSystem);
+  world.registerSystem(CourtLinesSystem);
   // M3: ToppleSystem emits KubbFelled/KingFelled -> RoundSystem drives
-  // the round reducer and emits RoundEnded -> StatsSystem records it
-  // (must come before HudSystem, which reads StatsSystem.stats in the
-  // same RoundEnded tick) -> HudSystem repaints the scoreboard.
-  // MenuSystem (registered above) also subscribes to RoundEnded to
-  // auto-reset. Order matters here, unlike the event-only systems
-  // below.
+  // the round reducer and emits RoundEnded -> StatsSystem (registered
+  // above) records it -> HudSystem repaints the scoreboard. MenuSystem
+  // (registered above) also subscribes to RoundEnded to auto-reset.
   world.registerSystem(ToppleSystem);
   world.registerSystem(RoundSystem);
-  world.registerSystem(StatsSystem);
   world.registerSystem(HudSystem);
   // Reads gameEvents emitted by ThrowingSystem/ImpactSystem — order
   // doesn't matter for correctness (subscriptions, not query timing),

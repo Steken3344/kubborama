@@ -8,25 +8,42 @@ import {
 import type { Entity } from '@iwsdk/core';
 import { Resettable } from '../components/resettable.js';
 import { StickPhase, StickState } from '../components/stick-state.js';
+import { KUBB_COUNT } from '../core/court-layout.js';
+import { accuracy } from '../core/stats.js';
 import { gameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
 import type { Vec3 } from '../core/vec3.js';
 import { i18nState } from '../i18nState.js';
 import { settingsState } from '../settingsState.js';
 import { SettingsSystem } from './settings.js';
+import { StatsSystem } from './stats.js';
 
 interface HomePose {
   position: Vec3;
   quaternion: [number, number, number, number];
 }
 
+type TabId = 'main' | 'settings' | 'stats';
+
+/** Cycle grid for the volume/haptics-strength buttons. `defaultSettings()`
+ * starts these at 70, off this grid, so advancing must find the next step
+ * greater than the current value rather than assume grid alignment — see
+ * docs/DECISIONS.md (M4 review). */
+const VOLUME_STEPS = [0, 25, 50, 75, 100] as const;
+
+// 5 kubbs per baseline, 2 baselines, 1 king (docs/PLAN.md §2b).
+const TOTAL_PIECES = KUBB_COUNT * 2 + 1;
+/** null = the default "Spelare"/"Player" placeholder — cycled through
+ * on the profile-name button since real text entry in VR wasn't
+ * attempted this session (see docs/DECISIONS.md). */
+const PROFILE_NAME_OPTIONS: Array<string | null> = [null, 'Erik', 'Gast'];
+
 /**
- * B button (right controller) toggles a small pause menu: Reset
- * (teleports every kubb/king/stick back to its authored spawn pose,
- * captured once at init, before physics has moved anything; returns
- * sticks to StickState.Racked), plus language and game-mode toggles
- * (M4) that call SettingsSystem directly — a UI action dispatch, not
- * the scoring/stats/haptics traffic the "one event bus" rule targets.
+ * B button (right controller) toggles a small pause menu with three
+ * tabs: Meny (reset), Alternativ (settings), Statistik (read-only
+ * personal bests). Every control is a Button that shows its current
+ * value and advances on click — see reset-menu.uikitml's header
+ * comment for why, over a native Toggle/Slider/Input.
  */
 export class MenuSystem extends createSystem({
   resettable: { required: [Resettable] },
@@ -34,12 +51,12 @@ export class MenuSystem extends createSystem({
   private grabSystem!: GrabSystem;
   private physicsSystem!: PhysicsSystem;
   private settingsSystem!: SettingsSystem;
+  private statsSystem!: StatsSystem;
   private homePoses = new Map<number, HomePose>();
   private menuPanel!: UIKitMLAsset;
   private menuOpen = false;
+  private activeTab: TabId = 'main';
   private currentTimeS = 0;
-  private unsubscribeRoundEnded?: () => void;
-  private unsubscribeLanguageChanged?: () => void;
 
   init(): void {
     const grabSystem = this.world.getSystem(GrabSystem);
@@ -60,9 +77,14 @@ export class MenuSystem extends createSystem({
         'MenuSystem requires SettingsSystem to be registered first',
       );
     }
+    const statsSystem = this.world.getSystem(StatsSystem);
+    if (!statsSystem) {
+      throw new Error('MenuSystem requires StatsSystem to be registered first');
+    }
     this.grabSystem = grabSystem;
     this.physicsSystem = physicsSystem;
     this.settingsSystem = settingsSystem;
+    this.statsSystem = statsSystem;
 
     for (const entity of this.queries.resettable.entities) {
       const object3D = entity.object3D;
@@ -86,59 +108,206 @@ export class MenuSystem extends createSystem({
 
     this.menuPanel =
       this.world.requireSceneObject<UIKitMLAsset>('reset-menu-panel');
-    const resetButton = this.menuPanel.requireElementById('reset-button');
-    resetButton.addEventListener('click', () => {
-      this.resetAll();
-      this.setMenuOpen(false);
-    });
-    const languageButton = this.menuPanel.requireElementById('language-button');
-    languageButton.addEventListener('click', () => {
-      this.settingsSystem.toggleLanguage();
-    });
-    const gameModeButton =
-      this.menuPanel.requireElementById('game-mode-button');
-    gameModeButton.addEventListener('click', () => {
-      this.settingsSystem.toggleGameMode();
-      this.refreshLabels();
-    });
+
+    this.menuPanel
+      .requireElementById('tab-main-button')
+      .addEventListener('click', () => this.setActiveTab('main'));
+    this.menuPanel
+      .requireElementById('tab-settings-button')
+      .addEventListener('click', () => this.setActiveTab('settings'));
+    this.menuPanel
+      .requireElementById('tab-stats-button')
+      .addEventListener('click', () => this.setActiveTab('stats'));
+
+    this.menuPanel
+      .requireElementById('reset-button')
+      .addEventListener('click', () => {
+        this.resetAll();
+        this.setMenuOpen(false);
+      });
+    this.menuPanel
+      .requireElementById('language-button')
+      .addEventListener('click', () => {
+        this.settingsSystem.toggleLanguage();
+      });
+    this.menuPanel
+      .requireElementById('game-mode-button')
+      .addEventListener('click', () => {
+        this.settingsSystem.toggleGameMode();
+        this.refreshLabels();
+      });
+    this.menuPanel
+      .requireElementById('haptics-button')
+      .addEventListener('click', () => {
+        this.settingsSystem.setHapticsEnabled(
+          !settingsState.current.hapticsEnabled,
+        );
+        this.refreshLabels();
+      });
+    this.menuPanel
+      .requireElementById('haptics-strength-button')
+      .addEventListener('click', () => {
+        this.settingsSystem.setHapticsIntensityPercent(
+          nextVolumeStep(settingsState.current.hapticsIntensityPercent),
+        );
+        this.refreshLabels();
+      });
+    this.menuPanel
+      .requireElementById('music-volume-button')
+      .addEventListener('click', () => {
+        this.settingsSystem.setMusicVolumePercent(
+          nextVolumeStep(settingsState.current.musicVolumePercent),
+        );
+        this.refreshLabels();
+      });
+    this.menuPanel
+      .requireElementById('sfx-volume-button')
+      .addEventListener('click', () => {
+        this.settingsSystem.setSfxVolumePercent(
+          nextVolumeStep(settingsState.current.sfxVolumePercent),
+        );
+        this.refreshLabels();
+      });
+    this.menuPanel
+      .requireElementById('profile-name-button')
+      .addEventListener('click', () => {
+        const current = PROFILE_NAME_OPTIONS.indexOf(
+          settingsState.current.profileName,
+        );
+        const next =
+          PROFILE_NAME_OPTIONS[(current + 1) % PROFILE_NAME_OPTIONS.length] ??
+          null;
+        this.settingsSystem.setProfileName(next);
+        this.refreshLabels();
+      });
+    this.menuPanel
+      .requireElementById('court-lines-button')
+      .addEventListener('click', () => {
+        this.settingsSystem.setCourtLinesVisible(
+          !settingsState.current.courtLinesVisible,
+        );
+        this.refreshLabels();
+      });
 
     this.refreshLabels();
+    this.setActiveTab('main');
 
     // A finished round (RoundSystem) auto-resets through the exact
     // same path as the menu's manual Reset button — one reset
     // implementation, two triggers.
-    this.unsubscribeRoundEnded = gameEvents.on('RoundEnded', () => {
-      this.resetAll();
-    });
-    this.unsubscribeLanguageChanged = gameEvents.on('LanguageChanged', () => {
-      this.refreshLabels();
-    });
+    this.cleanupFuncs.push(
+      gameEvents.on('RoundEnded', () => {
+        this.resetAll();
+        this.refreshStats();
+      }),
+      gameEvents.on('LanguageChanged', () => {
+        this.refreshLabels();
+      }),
+    );
   }
 
-  destroy(): void {
-    this.unsubscribeRoundEnded?.();
-    this.unsubscribeLanguageChanged?.();
+  private setActiveTab(tab: TabId): void {
+    this.activeTab = tab;
+    this.menuPanel
+      .requireElementById('tab-main-content')
+      .setProperties({ display: tab === 'main' ? 'flex' : 'none' });
+    this.menuPanel
+      .requireElementById('tab-settings-content')
+      .setProperties({ display: tab === 'settings' ? 'flex' : 'none' });
+    this.menuPanel
+      .requireElementById('tab-stats-content')
+      .setProperties({ display: tab === 'stats' ? 'flex' : 'none' });
+    if (tab === 'stats') {
+      this.refreshStats();
+    }
   }
 
   private refreshLabels(): void {
     const t = i18nState.t;
+    const s = settingsState.current;
     this.menuPanel
-      .requireElementById('menu-title')
-      .setProperties({ text: t('menuTitle') });
+      .requireElementById('tab-main-label')
+      .setProperties({ text: t('tabMain') });
+    this.menuPanel
+      .requireElementById('tab-settings-label')
+      .setProperties({ text: t('tabSettings') });
+    this.menuPanel
+      .requireElementById('tab-stats-label')
+      .setProperties({ text: t('tabStats') });
     this.menuPanel
       .requireElementById('reset-button-label')
       .setProperties({ text: t('resetButton') });
     this.menuPanel.requireElementById('language-button-label').setProperties({
-      text:
-        settingsState.current.language === 'sv'
-          ? t('languageNameSv')
-          : t('languageNameEn'),
+      text: s.language === 'sv' ? t('languageNameSv') : t('languageNameEn'),
     });
     this.menuPanel.requireElementById('game-mode-button-label').setProperties({
       text:
-        settingsState.current.gameMode === 'simple'
+        s.gameMode === 'simple'
           ? t('gameModeNameSimple')
           : t('gameModeNameAdvanced'),
+    });
+    this.menuPanel.requireElementById('haptics-button-label').setProperties({
+      text: s.hapticsEnabled ? t('hapticsOn') : t('hapticsOff'),
+    });
+    this.menuPanel.requireElementById('haptics-strength-label').setProperties({
+      text: t('hapticsStrength', { percent: s.hapticsIntensityPercent }),
+    });
+    this.menuPanel.requireElementById('music-volume-label').setProperties({
+      text: t('musicVolume', { percent: s.musicVolumePercent }),
+    });
+    this.menuPanel
+      .requireElementById('sfx-volume-label')
+      .setProperties({ text: t('sfxVolume', { percent: s.sfxVolumePercent }) });
+    this.menuPanel.requireElementById('profile-name-label').setProperties({
+      text: t('profileNamePrefix', {
+        name: s.profileName ?? t('profileNameDefault'),
+      }),
+    });
+    this.menuPanel.requireElementById('court-lines-label').setProperties({
+      text: s.courtLinesVisible ? t('courtLinesOn') : t('courtLinesOff'),
+    });
+  }
+
+  private refreshStats(): void {
+    const t = i18nState.t;
+    const stats = this.statsSystem.stats;
+    const pb = stats.personalBests;
+    this.menuPanel.requireElementById('stats-fewest-sticks').setProperties({
+      text:
+        pb.fewestSticksToFellKing === null
+          ? t('statsFewestSticksEmpty')
+          : t('statsFewestSticks', { value: pb.fewestSticksToFellKing }),
+    });
+    this.menuPanel.requireElementById('stats-most-felled').setProperties({
+      text: t('statsMostFelled', {
+        value: pb.mostFelledInRound,
+        total: TOTAL_PIECES,
+      }),
+    });
+    this.menuPanel.requireElementById('stats-longest-throw').setProperties({
+      text: t('statsLongestThrow', {
+        value: Math.round(pb.longestThrowM * 10) / 10,
+      }),
+    });
+    this.menuPanel
+      .requireElementById('stats-longest-felling-throw')
+      .setProperties({
+        text: t('statsLongestFellingThrow', {
+          value: Math.round(pb.longestFellingThrowM * 10) / 10,
+        }),
+      });
+    this.menuPanel.requireElementById('stats-streak').setProperties({
+      text: t('statsStreak', { value: pb.longestKingFellingStreak }),
+    });
+    this.menuPanel.requireElementById('stats-rounds-played').setProperties({
+      text: t('statsRoundsPlayed', {
+        value: stats.lifetimeTotals.roundsPlayed,
+      }),
+    });
+    this.menuPanel.requireElementById('stats-accuracy').setProperties({
+      text: t('statsAccuracy', {
+        value: Math.round(accuracy(stats) * 100),
+      }),
     });
   }
 
@@ -179,4 +348,13 @@ export class MenuSystem extends createSystem({
       quaternion: home.quaternion,
     });
   }
+}
+
+function nextVolumeStep(current: number): number {
+  for (const step of VOLUME_STEPS) {
+    if (step > current) {
+      return step;
+    }
+  }
+  return 0;
 }

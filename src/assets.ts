@@ -1,4 +1,6 @@
 import { AssetType, defineAssets } from '@iwsdk/core';
+import courtLineLong from './scene-assets/court-line-long.scene-asset.js';
+import courtLineShort from './scene-assets/court-line-short.scene-asset.js';
 import ground from './scene-assets/ground.scene-asset.js';
 import king from './scene-assets/king.scene-asset.js';
 import kubb from './scene-assets/kubb.scene-asset.js';
@@ -20,6 +22,8 @@ export default defineAssets({
   king,
   stick,
   stake,
+  'court-line-long': courtLineLong,
+  'court-line-short': courtLineShort,
   'reset-menu': {
     type: AssetType.UIKitML as const,
     url: publicAssetUrl('ui/reset-menu.uikitml'),

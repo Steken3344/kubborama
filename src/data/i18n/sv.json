@@ -1,5 +1,4 @@
 {
-  "menuTitle": "Meny",
   "resetButton": "Ny runda",
   "languageNameSv": "Svenska",
   "languageNameEn": "Engelska",
@@ -7,5 +6,25 @@
   "gameModeNameAdvanced": "Avancerat",
   "hudRoundLabel": "Runda",
   "hudFelledLabel": "Fallna",
-  "hudBestLabel": "Rekord"
+  "hudBestLabel": "Rekord",
+  "tabMain": "Meny",
+  "tabSettings": "Alternativ",
+  "tabStats": "Statistik",
+  "hapticsOn": "Haptik: Pa",
+  "hapticsOff": "Haptik: Av",
+  "hapticsStrength": "Styrka: {percent}%",
+  "musicVolume": "Musik: {percent}%",
+  "sfxVolume": "Ljud: {percent}%",
+  "courtLinesOn": "Planlinjer: Pa",
+  "courtLinesOff": "Planlinjer: Av",
+  "profileNamePrefix": "Namn: {name}",
+  "profileNameDefault": "Spelare",
+  "statsFewestSticks": "Minst kast till kungen: {value}",
+  "statsFewestSticksEmpty": "Minst kast till kungen: -",
+  "statsMostFelled": "Flest fallda i en runda: {value}/{total}",
+  "statsLongestThrow": "Rekordkast: {value} m",
+  "statsLongestFellingThrow": "Basta fallkast: {value} m",
+  "statsStreak": "Kungsvit: {value}",
+  "statsRoundsPlayed": "Rundor spelade: {value}",
+  "statsAccuracy": "Precision: {value}%"
 }

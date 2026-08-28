@@ -338,3 +338,67 @@ address gh#5 (the åäö font-atlas root cause) properly, or move to a
 fresh milestone — whichever Erik prioritizes. Everything built so far
 (M2's feedback pass, M3 in full, M4's core slice) is committed,
 tested, reviewed, and documented; nothing is left half-applied.
+
+## 2026-08-28 — M4 (Settings panel), same session, continued autonomously
+
+Erik answered the batched questions from the previous entry via
+`AskUserQuestion`: build everything (haptics control, stats tab,
+profile name, music/SFX volume, court-lines toggle+rendering now), as
+a new tab in the existing B-menu (his recommendation), and move both
+the reset-menu panel and the HUD further from the player — his own
+words, they sat "väldigt nära". He then handed off mid-session ("nu
+drar jag till jobbet men kör på så långt du kan") — explicit
+permission to keep building solo.
+
+Built the full approved scope: `reset-menu.uikitml` rewritten to
+three tabs (Meny/Alternativ/Statistik); every new control follows the
+existing "Button that cycles/toggles on click" convention, not a
+native Toggle/Slider/Input (unverified event-wiring risk, not worth
+repeating this session's earlier font rabbit hole over); court lines
+as a new tag component + system, purely visual; both panels moved and
+scaled up per Erik's feedback; `StatsSystem` moved earlier in the
+registration order so the new Statistik tab can read it synchronously.
+
+Verified live in the emulator via a position-matched ray-aiming
+technique (controller position = headset position, calibrate the
+look-at target from headset screenshots, reuse it for the controller)
+— confirmed tab switching, every settings button, and (via a direct
+`ecs_set_component` write rather than a live click) court-lines
+rendering. Two controls — "Planlinjer" and "Statistik", both at panel
+edges — never landed via ray-aiming despite many attempts; accepted as
+a documented gap, verified instead by code-pattern identity with
+sibling controls that were click-tested. Also recorded a testing
+lesson: "Planlinjer" briefly looked entirely missing from the
+rendered panel — it wasn't; the screenshot just wasn't framed far
+enough down to show the true last row. Full detail in
+docs/DECISIONS.md.
+
+Dispatched a fresh-eyes review (`iwsdk-project-code-reviewer`
+subagent) before tagging. It found one real, confirmed bug:
+`nextVolumeStep`'s modulo arithmetic assumed the current value was
+already grid-aligned, but the real default is 70% — the old sequence
+could reach 120%, outside the settings schema's valid range, which
+would have silently reset every setting (not just the one field) on
+next load via `decodeSettings()`'s whole-object `safeParse` fallback.
+Fixed with a "smallest grid step greater than current" scan and
+re-verified live through a full cycle (70→75→100→0). Two smaller
+suggestions from the same review (a duplicated `/11` piece-count
+literal in the stats i18n string, and two event unsubscribes that
+should live in `this.cleanupFuncs` rather than a hand-rolled
+`destroy()`) were folded in too.
+
+Mechanical pass green throughout (tsc/eslint/prettier/vitest — 127
+tests, up from 125 — /build/smoke).
+
+**Handover.** M4 is DONE and tagged `v0.5-m4` — no headset gate for
+this milestone. Everything from this session (M2's feedback pass, M3,
+and all of M4) is committed, tested, reviewed, and documented. Next:
+either M5 (polish & performance, has a headset gate) or gh#5 (the
+åäö font-atlas root cause) — whichever Erik prioritizes when he's
+back. Known open items carried forward: game-mode switching still
+doesn't re-lay-out the court to the new preset's dimensions (noted in
+docs/MILESTONES.md); the dev debug panel's wind knobs were never
+built (low priority); the M2 headset feel-calibration gate is still
+outstanding and blocks tagging `v0.3-m2` retroactively (M2's code has
+shipped inside every subsequent tag, but the tag itself waits on
+Erik's real-headset throws, per docs/MILESTONES.md).

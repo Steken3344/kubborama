@@ -8,7 +8,7 @@ honest release physics, real spin, no menus in the way.
 **Play now:** https://steken3344.github.io/kubborama/ (open in the
 Quest browser, tap "Enter XR")
 
-Status: early prototype (M0 — project setup). See
+Status: early prototype (M4 — wind, game modes, settings panel). See
 [docs/MILESTONES.md](docs/MILESTONES.md) for what's built and what's
 next.
 

@@ -3,6 +3,16 @@
   kit. Toggled by the B button on the right controller — see
   src/systems/menu.ts. Hidden by default (display: none on the root).
 
+  Three tabs (Meny/Alternativ/Statistik), each a plain div shown/hidden
+  by MenuSystem — no native UIKitML tab component, so this is the same
+  display:none toggle already used for the whole panel, just applied
+  per-tab. Every control is a Button that shows its current value and
+  advances/toggles on click (never a Slider/Toggle/Input) — those
+  Horizon-kit components exist, but their change-event wiring from
+  application code wasn't verified working before this panel was
+  built, and the button pattern was already proven reliable across
+  every earlier control in this project.
+
   Text avoids å/ä/ö throughout on purpose (confirmed root cause, not a
   workaround guess — see docs/DECISIONS.md and gh#5): UIKitML's custom
   @font-face path always bakes its MSDF atlas from a hardcoded
@@ -28,7 +38,7 @@
   .panel-root {
     flex-direction: column;
     font-family: "DM Sans";
-    width: 300px;
+    width: 340px;
   }
 
   .panel-content {
@@ -51,26 +61,106 @@
     color: rgba(255, 255, 255, 0.9);
   }
 
+  .tab-bar {
+    flex-direction: row;
+    justify-content: space-between;
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: 12px;
+    padding-bottom: 4px;
+  }
+
+  .tab-button {
+    justify-content: center;
+    width: 100px;
+  }
+
   .button {
     justify-content: center;
     margin-left: 24px;
     margin-right: 24px;
-    margin-top: 16px;
-    margin-bottom: 24px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+
+  .tab-content {
+    flex-direction: column;
+    padding-bottom: 20px;
+  }
+
+  .stat-line {
+    font-size: 14px;
+    color: #272727;
+    padding-left: 24px;
+    padding-right: 24px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .stat-line:dark {
+    color: rgba(255, 255, 255, 0.9);
   }
 </style>
 <Panel id="menu-root" class="panel-root" style="display: none">
-  <div class="panel-content">
-    <div id="menu-title" class="heading">Meny</div>
-    <Divider></Divider>
+  <div class="tab-bar">
+    <Button id="tab-main-button" class="tab-button">
+      <ButtonLabel id="tab-main-label">Meny</ButtonLabel>
+    </Button>
+    <Button id="tab-settings-button" class="tab-button">
+      <ButtonLabel id="tab-settings-label">Alternativ</ButtonLabel>
+    </Button>
+    <Button id="tab-stats-button" class="tab-button">
+      <ButtonLabel id="tab-stats-label">Statistik</ButtonLabel>
+    </Button>
   </div>
-  <Button id="reset-button" class="button">
-    <ButtonLabel id="reset-button-label">Ny runda</ButtonLabel>
-  </Button>
-  <Button id="language-button" class="button">
-    <ButtonLabel id="language-button-label">Svenska</ButtonLabel>
-  </Button>
-  <Button id="game-mode-button" class="button">
-    <ButtonLabel id="game-mode-button-label">Enkelt</ButtonLabel>
-  </Button>
+  <Divider></Divider>
+
+  <div id="tab-main-content" class="tab-content">
+    <Button id="reset-button" class="button">
+      <ButtonLabel id="reset-button-label">Ny runda</ButtonLabel>
+    </Button>
+    <Button id="language-button" class="button">
+      <ButtonLabel id="language-button-label">Svenska</ButtonLabel>
+    </Button>
+    <Button id="game-mode-button" class="button">
+      <ButtonLabel id="game-mode-button-label">Enkelt</ButtonLabel>
+    </Button>
+  </div>
+
+  <div id="tab-settings-content" class="tab-content" style="display: none">
+    <Button id="court-lines-button" class="button">
+      <ButtonLabel id="court-lines-label">Planlinjer: Av</ButtonLabel>
+    </Button>
+    <Button id="haptics-button" class="button">
+      <ButtonLabel id="haptics-button-label">Haptik: Pa</ButtonLabel>
+    </Button>
+    <Button id="haptics-strength-button" class="button">
+      <ButtonLabel id="haptics-strength-label">Styrka: 70%</ButtonLabel>
+    </Button>
+    <Button id="music-volume-button" class="button">
+      <ButtonLabel id="music-volume-label">Musik: 70%</ButtonLabel>
+    </Button>
+    <Button id="sfx-volume-button" class="button">
+      <ButtonLabel id="sfx-volume-label">Ljud: 70%</ButtonLabel>
+    </Button>
+    <Button id="profile-name-button" class="button">
+      <ButtonLabel id="profile-name-label">Namn: Spelare</ButtonLabel>
+    </Button>
+  </div>
+
+  <div id="tab-stats-content" class="tab-content" style="display: none">
+    <span id="stats-fewest-sticks" class="stat-line"
+      >Minst kast till kungen: -</span
+    >
+    <span id="stats-most-felled" class="stat-line"
+      >Flest fallda i en runda: 0/11</span
+    >
+    <span id="stats-longest-throw" class="stat-line">Rekordkast: 0 m</span>
+    <span id="stats-longest-felling-throw" class="stat-line"
+      >Basta fallkast: 0 m</span
+    >
+    <span id="stats-streak" class="stat-line">Kungsvit: 0</span>
+    <span id="stats-rounds-played" class="stat-line">Rundor spelade: 0</span>
+    <span id="stats-accuracy" class="stat-line">Precision: 0%</span>
+  </div>
 </Panel>
