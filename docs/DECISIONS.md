@@ -2209,3 +2209,54 @@ sitting close by design, and the already-reviewed-and-accepted
 campsite/cliff clustering from the earlier environment pass — out of
 scope for this fix, not touched). Re-verified live (render + console)
 and re-ran the full mechanical pass, all green.
+
+## 2026-08-29 — Trigger now also grabs a nearby stick (not just squeeze)
+
+Erik's feedback: picking up a stick should also work on the index-
+finger trigger, not just the current button. `OneHandGrabbable`
+itself has no button-remap field (checked its actual schema — just
+rotate/translate constraints), and the grab pointer is hardwired to
+squeeze inside `@iwsdk/core`'s `GrabSystem`/`MultiPointer` — no
+per-component or per-project config exposes a different button.
+
+Found the right seam by reading `GrabSystem`'s own source rather than
+guessing: its `useHandPinchForGrab` option (forwards a hand-pinch
+gesture to grab) does exactly this already, via `this.input.xr.
+multiPointers[handedness].routeDown('squeeze', 'grab', { timeStamp })`
+/ `routeUp(...)` — a real, public, typed method
+(`MultiPointer.routeDown`/`routeUp` in `@iwsdk/xr-input`'s own
+`.d.ts`), gated only by `isPrimary('hand', handedness)` so it only
+fires in hand-tracking mode. `routeDown` calls `.down()` directly on
+the resolved pointer (bypassing the higher-level `InteractorState`
+machine entirely) — the underlying `@pmndrs/pointer-events` pointer
+decides whether anything is actually within its own reach at that
+instant, exactly like a real squeeze press already does.
+
+New `src/systems/triggerGrab.ts` (`TriggerGrabSystem`): on the
+controller trigger's press/release edge (`getButtonDown`/`getButtonUp
+(InputComponent.Trigger)`), calls the exact same `routeDown`/`routeUp
+('squeeze', 'grab', ...)` — controller mode's equivalent of what the
+hand-pinch path already does for hand tracking. No `Handle` deep-
+import, no parallel grab pipeline: a trigger-initiated grab sets the
+real `Grabbed` tag through the real `GrabSystem`/`Handle` machinery,
+so `ThrowingSystem`/`ImpactSystem`/`HandoffSystem` all see it exactly
+like a squeeze grab, offset-preserving included. Registered before
+`StickPullSystem` in `src/index.ts` so a same-frame trigger-grab's
+`Grabbed` tag already excludes the entity from that system's query
+this same frame.
+
+No conflict with `StickPullSystem`'s own use of trigger for pull-from-
+distance: `routeDown` is a no-op whenever nothing is within the grab
+pointer's own ~7cm proximity, so a far stick is entirely unaffected —
+`StickPullSystem`'s ray+`Hovered` logic keeps working exactly as
+before, right up until the stick is close enough that trigger being
+held would grab it anyway.
+
+Live-verified in the emulator: grabbed a stick with trigger alone (no
+squeeze), moved the controller, confirmed the exact same offset-
+preserving behavior already verified for squeeze grabs — controller
+delta matched stick delta bit for bit. Released via trigger, confirmed
+`Grabbed` cleared. Re-confirmed squeeze still grabs correctly
+afterward (unaffected regression check). Zero console errors.
+Mechanical pass green (tsc/eslint/prettier/vitest — 154 tests,
+unaffected/build/smoke).

@@ -846,3 +846,23 @@ circle radii from each node's own `PhysicsShape` and regenerated all
 34 nodes from scratch. Verified this time with an actual pairwise
 overlap check, not just a screenshot — zero overlaps involving any new
 node. Full writeup in docs/DECISIONS.md.
+
+## 2026-08-29 — Trigger also grabs sticks; logo/icon + remaining polish items next
+
+Erik asked for three things: a simple app icon/logo (king piece +
+throwing sticks), trigger as an additional way to grab a stick (not
+just the current button), and to work through the "remaining polish"
+list from the previous plan review (court size not changing with game
+mode, the Underhand HUD badge, positional audio, a wind indicator).
+
+Shipped the trigger-grab request first. `OneHandGrabbable` has no
+button-remap option and the grab pointer is hardwired to squeeze
+inside `@iwsdk/core` — but `GrabSystem`'s own `useHandPinchForGrab`
+option already forwards hand-pinch gestures to grab via a real public
+method, `multiPointers[hand].routeDown('squeeze', 'grab', ...)`.
+Reused that exact same call for the controller trigger's press/release
+edge in a new `TriggerGrabSystem`. Goes through the real `Grabbed`/
+`Handle` pipeline, so nothing else needed to change — offset
+preservation, throw release, haptics all just work. Live-verified:
+trigger-only grab, offset preserved, clean release, squeeze still
+works unaffected. Mechanical pass green.

@@ -14,6 +14,7 @@ import { StickGroundDampingSystem } from './systems/stickGroundDamping.js';
 import { StickPullSystem } from './systems/stickPull.js';
 import { ThrowingSystem } from './systems/throwing.js';
 import { ToppleSystem } from './systems/topple.js';
+import { TriggerGrabSystem } from './systems/triggerGrab.js';
 import { TuningLabSystem } from './systems/tuningLab.js';
 import { WindSystem } from './systems/wind.js';
 
@@ -52,6 +53,11 @@ World.create(
   world.registerSystem(SfxSystem);
   world.registerSystem(MenuSystem);
   world.registerSystem(GrabHighlightSystem);
+  // Erik's feedback: trigger should also grab a nearby stick, not
+  // just squeeze — registered before StickPullSystem so a same-frame
+  // trigger-grab's Grabbed tag already excludes the entity from that
+  // system's query this same frame (see docs/DECISIONS.md).
+  world.registerSystem(TriggerGrabSystem);
   // M5 feedback: replaces DistanceGrabbable (removed from sticks — see
   // docs/DECISIONS.md for why it conflicted with OneHandGrabbable).
   world.registerSystem(StickPullSystem);
