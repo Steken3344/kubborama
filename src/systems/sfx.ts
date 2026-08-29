@@ -55,21 +55,23 @@ export class SfxSystem extends createSystem({}) {
       volume: 0,
     });
 
-    this.unsubscribeKubbFelled = gameEvents.on('KubbFelled', () => {
+    this.unsubscribeKubbFelled = gameEvents.on('KubbFelled', ({ position }) => {
       playSfxVariant(
         this.world,
         'kubbFelled',
         this.sfxRng,
         audio.volume.felledFixed,
+        position,
       );
       this.pulseBothHands(kubbFelled);
     });
-    this.unsubscribeKingFelled = gameEvents.on('KingFelled', () => {
+    this.unsubscribeKingFelled = gameEvents.on('KingFelled', ({ position }) => {
       playSfxVariant(
         this.world,
         'kingImpact',
         this.sfxRng,
         audio.volume.felledFixed,
+        position,
       );
       this.pulseBothHands(kingFelled);
     });

@@ -220,7 +220,22 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
   writeup in docs/DECISIONS.md. Tagged `v0.5-m4` — no headset gate for
   this milestone.
 
-## M5 — Polish & performance `status: in progress — audio slice done`
+## M5 — Polish & performance `status: in progress — audio + positional audio slices done`
+
+- [x] Positional audio (fixed 2026-08-29 — the "verified in source, not
+      attempted" gap above was re-checked and turned out to be
+      specific to `AudioUtils.createOneShot`'s bare entity, not a real
+      library limitation; see docs/DECISIONS.md). Impact and
+      kubb/king-felled sounds now play from the actual world position
+      of the piece that made them; foley and UI clicks stay
+      listener-anchored (not spatially meaningful). Also fixed a
+      real, previously-unnoticed leak this uncovered: no one-shot sound
+      this game has ever played (impact, felled, foley, UI-click alike)
+      was disposing its entity — `AudioSystem`'s own instance pool only
+      returns the Audio/PositionalAudio object to its pool on
+      `onended`, never removes the entity. New `OneShotAudioSystem`
+      fixes this for every one-shot category, not just the new
+      positional ones.
 
 - [x] SFX inventory (Kenney Impact Sounds + UI Audio, CC0): impact
       sounds classified by impacting entity + force (stick/king/kubb,
@@ -228,9 +243,7 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       pairwise), volume scaled by force; UI click on every settings
       button. **Known gaps, documented not silently dropped:** no
       pitch randomization (IWSDK's `AudioSource` has no
-      pitch/playbackRate field at all — verified in source); no
-      positional audio (one-shot entities have no `Object3D` to anchor
-      `PositionalAudio` to — verified in source, not attempted);
+      pitch/playbackRate field at all — verified in source);
       ambience is "Forest Ambience" (birds not specifically confirmed
       by ear — can't audition audio in this environment) rather than a
       dedicated garden/birds track

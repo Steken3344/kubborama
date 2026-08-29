@@ -2504,3 +2504,87 @@ session recognizes the same "dev status stuck starting forever" or
 
 Mechanical pass green (tsc/eslint/prettier/vitest — 154 tests,
 build/smoke) plus the live emulator verification above.
+
+## 2026-08-29 — Positional audio (re-checked and shipped a previously-documented gap)
+
+M5's session log said positional audio was "verified in source, not
+attempted" because `playSfxVariant` used `AudioUtils.createOneShot`,
+whose entity has no `Object3D`. Re-reading
+`node_modules/@iwsdk/core/dist/audio/audio-system.js` this session
+showed the real picture: `createPool()` anchors the pool to
+`entity.object3D || this.scene` — and `AudioSource`'s own doc comment
+says outright, "For positional audio, attach the component to an
+entity with a valid Object3D." The limitation was `createOneShot`
+specifically (`world.createEntity()`, no Transform), not the audio
+system itself. Also confirmed directly: `createOneShot`'s own
+`if (options.positional && options.position) ;` is a literal
+empty-statement no-op — a stub that never got filled in.
+
+`playSfxVariant` (`playSfx.ts`) now takes an optional `position: Vec3`.
+When given, it creates a `world.createTransformEntity()` at that world
+position instead of a bare `createEntity()`, and passes
+`positional: true` — everything else (variant picking, volume) is
+unchanged. `ImpactSystem` passes the impacting entity's own world
+position (already computed for the `Impact` event, reused rather than
+duplicated — `undefined` when the entity has no `Object3D` at all, not
+`[0,0,0]`, so it degrades to non-positional instead of appearing to
+come from world origin). `KubbFelled`/`KingFelled` gained a `position`
+field (read from `Transform` at the moment `ToppleSystem` detects the
+fell, mirroring `Impact`'s existing pattern) so `SfxSystem`'s
+felled-sound handlers can pass it through too. Foley (the release
+whoosh) and UI-click sounds stay non-positional deliberately — they're
+not spatially meaningful (foley is always "at your hand", clicks are
+UI chrome).
+
+Added `audio.json`'s `positional` block (`refDistanceM: 0.6`,
+`rolloffFactor: 1.3`, `maxDistanceM: 20`) — a reasonable first-pass
+tuning for the court's actual scale (backyard 3×6m up to tournament
+5×8m), not a calibrated-by-ear value (audio can't be auditioned in
+this environment); revisit if Erik reports it sounding off on a real
+headset.
+
+**Real, previously-unnoticed bug found and fixed while building
+this**: NOTHING disposes a one-shot sound's entity, ever, and never
+has. `AudioSystem.createAndPlayInstance` wires `audio.source.onended`
+to `releaseInstance`, which returns the Audio/PositionalAudio object
+to its per-entity pool — but nothing calls `entity.dispose()` or even
+removes the `AudioSource` component. Every impact klonk, felled sound,
+foley whoosh, and UI click this game has ever played (M5 onward) has
+been leaking one entity, forever. Fixed with a new tag component
+(`OneShotAudio`) and `OneShotAudioSystem`: tracks which one-shot
+entities have actually started playing (`AudioUtils.isPlaying`), and
+disposes any that were playing and now aren't. `playSfxVariant` tags
+every entity it creates (positional or not) with `OneShotAudio`, so
+this one fix covers the pre-existing non-positional leak too, not just
+the new positional path.
+
+**Live-verified, with real limits on how far verification could go.**
+Grabbed and dropped a stick from height repeatedly in the emulator;
+console showed multiple real `[physics] impact` log lines (correct
+deltaVMps values, no errors/warnings) each time, and `ecs_find_entities
+({withComponents: ['OneShotAudio']})` consistently found zero lingering
+entities afterward across many repeated impacts — proving disposal
+isn't leaking, and combined with error-free logs and the exact code
+path being unconditionally exercised, strong indirect evidence
+creation succeeds too. Could NOT catch a one-shot entity actually alive
+mid-playback: async MCP tool round-trips (each several hundred ms to
+low-single-digit seconds, apparently — see below) are far slower than
+these clips' lifetime. Tried `ecs_pause` + frame-by-frame `ecs_step`
+to remove the timing race entirely; this let the impact-detection
+heuristic itself be exercised more/differently than normal play (many
+physics steps synchronously back to back) and surfaced spurious
+`deltaVMps` readings around 140 m/s — clearly not real motion (the
+stick was resting normally, velocity 0, immediately after), but a
+second independent data point (alongside gh#8's unreproduced
+tunneling incident and the 24-orphaned-`vite`-processes finding
+earlier this session) that heavy MCP-driven physics manipulation
+(pause/large-batch-step, or possibly just this environment's general
+load) can produce transient bogus readings from the impact heuristic.
+Not chased further — same reasoning as gh#8: a real investigation
+needs dedicated physics-debugging effort, not something to half-verify
+while shipping an audio feature. Noting here in case it helps whoever
+eventually picks up gh#8: `ecs_pause` + large `ecs_step` batches may be
+a more reliably reproducible trigger than a plain reload.
+
+Mechanical pass green (tsc/eslint/prettier/vitest — 154 tests,
+build/smoke).

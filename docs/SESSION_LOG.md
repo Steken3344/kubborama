@@ -919,6 +919,26 @@ both Simple and Advanced.
 Also found (and fixed, process-only) 24+ orphaned `vite` dev-server
 processes left running since 2026-08-27 — a strong candidate root
 cause for gh#8's "resource contention" theory. Killed them, dev server
-connected cleanly on the next `iwsdk dev up`. Positional audio and the
-wind indicator are the last two items on Erik's "remaining polish"
-list.
+connected cleanly on the next `iwsdk dev up`.
+
+**Positional audio shipped — closes another documented M5 gap.**
+Re-checked the earlier "verified in source, not attempted" claim and
+found it was specific to `AudioUtils.createOneShot`'s bare entity, not
+a real AudioSystem limitation — `AudioSource`'s own doc comment says
+positional audio just needs an entity with a valid `Object3D`.
+`playSfxVariant` now optionally takes a world position; impact and
+kubb/king-felled sounds use it, foley/UI-clicks stay non-positional.
+Along the way found and fixed a real, previously-unnoticed bug: no
+one-shot sound entity (of ANY kind, since M5) was ever being disposed
+— `AudioSystem` only returns the audio object to its pool on `onended`
+but never removes the entity. New `OneShotAudioSystem` fixes the leak
+for every one-shot category at once.
+
+Live-verified via repeated real impacts in the emulator (correct
+deltaVMps logs, zero errors, zero leaked entities afterward). Trying
+to catch a one-shot entity mid-playback via `ecs_pause`/`ecs_step`
+surfaced a second, independent lead on gh#8's physics anomaly (spurious
+~140 m/s deltaV readings under heavy frame-stepping) — noted in
+docs/DECISIONS.md for whoever picks that up, not chased now.
+
+The wind indicator is the last item on Erik's "remaining polish" list.

@@ -10,6 +10,7 @@ import type { Quat } from '../core/quat.js';
 import { accumulateHeldDuration, isResting } from '../core/restState.js';
 import { createStartupGate } from '../core/startupGrace.js';
 import { isToppled } from '../core/topple.js';
+import type { Vec3 } from '../core/vec3.js';
 import { settingsState } from '../settingsState.js';
 import { readBodySpeed } from './bodySpeed.js';
 
@@ -105,12 +106,19 @@ export class ToppleSystem extends createSystem({
     }
 
     this.felledReported.add(entity.index);
+    const positionView = entity.getVectorView(Transform, 'position');
+    const position: Vec3 = [
+      positionView[0] ?? 0,
+      positionView[1] ?? 0,
+      positionView[2] ?? 0,
+    ];
     if (entity.hasComponent(KingPiece)) {
-      gameEvents.emit('KingFelled', { timeS });
+      gameEvents.emit('KingFelled', { position, timeS });
       log('info', 'state', 'king felled', { entityIndex: entity.index });
     } else {
       gameEvents.emit('KubbFelled', {
         entityId: String(entity.index),
+        position,
         timeS,
       });
       log('info', 'state', 'kubb felled', { entityIndex: entity.index });

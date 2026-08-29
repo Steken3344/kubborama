@@ -78,9 +78,11 @@ export interface GameEvents {
   };
   KubbFelled: {
     entityId: string;
+    position: Vec3;
     timeS: number;
   };
   KingFelled: {
+    position: Vec3;
     timeS: number;
   };
   RoundEnded: {

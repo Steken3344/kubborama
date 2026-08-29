@@ -112,7 +112,10 @@ export class ImpactSystem extends createSystem({
       });
 
       this.pulseHapticForStick(entity, deltaVMps);
-      this.playImpactSfx(entity, deltaVMps);
+      // undefined (not the [0,0,0] fallback above) when there's no
+      // Object3D to anchor to, so the sound plays from the listener
+      // instead of incorrectly appearing to come from world origin.
+      this.playImpactSfx(entity, deltaVMps, object3D ? position : undefined);
     }
   }
 
@@ -136,7 +139,11 @@ export class ImpactSystem extends createSystem({
     pulseHaptic(this.input.xr.gamepads[hand], pulse);
   }
 
-  private playImpactSfx(entity: Entity, deltaVMps: number): void {
+  private playImpactSfx(
+    entity: Entity,
+    deltaVMps: number,
+    position: Vec3 | undefined,
+  ): void {
     // `t` can never actually be below
     // impactThresholdMps/impactMaxForceForFullHapticMps (0.25 at
     // current pieces.json values) — anything softer never counts as
@@ -151,7 +158,7 @@ export class ImpactSystem extends createSystem({
     );
     const volume = lerp(t, audio.volume.impactMin, audio.volume.impactMax);
     const category = this.classifyImpact(entity, t);
-    playSfxVariant(this.world, category, this.sfxRng, volume);
+    playSfxVariant(this.world, category, this.sfxRng, volume, position);
   }
 
   private classifyImpact(entity: Entity, t: number): SfxCategoryName {

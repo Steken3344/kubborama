@@ -7,6 +7,7 @@ import { HandoffSystem } from './systems/handoff.js';
 import { HudSystem } from './systems/hud.js';
 import { ImpactSystem } from './systems/impact.js';
 import { MenuSystem } from './systems/menu.js';
+import { OneShotAudioSystem } from './systems/oneShotAudio.js';
 import { RoundSystem } from './systems/round.js';
 import { SettingsSystem } from './systems/settings.js';
 import { SfxSystem } from './systems/sfx.js';
@@ -52,6 +53,10 @@ World.create(
   // M5: sound + the kubbFelled/kingFelled/roundCleared haptic sequences
   // core/haptics.ts defined back in M3/M4 but nothing fired until now.
   world.registerSystem(SfxSystem);
+  // Disposes every one-shot audio entity playSfxVariant creates, once
+  // its clip finishes — order doesn't matter, it only ever touches
+  // entities tagged OneShotAudio.
+  world.registerSystem(OneShotAudioSystem);
   world.registerSystem(MenuSystem);
   // Reads GameModeChanged (SettingsSystem, registered above) and calls
   // into MenuSystem's applyCourtLayout — must come after both.
