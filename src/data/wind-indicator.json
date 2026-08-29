@@ -1,0 +1,14 @@
+{
+  "leafCount": 14,
+  "areaHalfWidthM": 3.2,
+  "areaNearZ": 0.6,
+  "areaFarZ": -8.6,
+  "heightMinM": 1.0,
+  "heightMaxM": 2.2,
+  "driftSpeedScale": 0.6,
+  "bobAmplitudeM": 0.08,
+  "bobSpeedRadPerSMin": 1.0,
+  "bobSpeedRadPerSMax": 1.8,
+  "spinSpeedRadPerSMin": 0.6,
+  "spinSpeedRadPerSMax": 1.6
+}

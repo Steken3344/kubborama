@@ -2588,3 +2588,58 @@ a more reliably reproducible trigger than a plain reload.
 
 Mechanical pass green (tsc/eslint/prettier/vitest — 154 tests,
 build/smoke).
+
+## 2026-08-29 — Wind indicator (last item on the "remaining polish" list)
+
+docs/PLAN.md §13 always specced this: "a handful of drifting leaf
+particles as a VISIBLE WIND INDICATOR (direction + strength). It's the
+cheapest possible way to make the wind tunable feel real." M4 deferred
+it (optional, not part of that milestone's approved scope); Erik's
+"remaining polish" list picked it back up this session.
+
+New `WindIndicatorSystem` spawns `windIndicator.leafCount` (14) leaf
+entities via `world.assets.instantiate('leaf')` +
+`world.createTransformEntity()` — the exact pattern the UI skill uses
+for a runtime-instantiated UIKitML panel, just for a plain procedural
+`Object3D` instead. `leaf.scene-asset.ts` is a small pointed-oval
+`ShapeGeometry` silhouette (two quadratic curves), the same
+"deterministic parentless Object3D prototype" pattern as
+kubb/king/stake/stick.
+
+Each frame, every leaf: (1) drifts along X at
+`windVectorForMode(gameMode)[0] * windIndicator.driftSpeedScale` — the
+SAME per-mode wind vector `WindSystem` reads for the real
+`PhysicsManipulation` force on flying sticks, just scaled down
+separately for a readable ambient pace; zero in Simple mode, so no net
+drift there, matching "strength" being part of what the indicator
+shows; (2) bobs vertically on a per-leaf sine wave and tumbles on a
+random spin axis, regardless of wind, so leaves read as "alive" even
+at zero wind rather than looking frozen/broken; (3) respawns at the
+opposite edge with a fresh random height/z once it drifts past
+`windIndicator.areaHalfWidthM` — an unbounded recycling effect from a
+small fixed pool, not a growing/leaking particle count. The spawn area
+(`windIndicator.json`: half-width 3.2m, z from +0.6 to -8.6) is sized
+to cover every court preset up to tournament's 5×8m with margin, fixed
+regardless of which preset is active — deliberately NOT wired into
+CourtLayoutSystem, since this is ambient dressing, not gameplay, and
+doesn't need to track the exact active preset.
+
+**Live-verified and iterated on real feedback, not guessed.** First
+version used green leaves (`#8bae4c`) at 4.5cm — confirmed via
+screenshot in the emulator to be nearly invisible against the grass
+at normal viewing distance (green-on-green), only visible when the
+headset was moved to within ~0.3m of one. Switched to a warm autumn
+gold (`#d1892f`, matching the garden's existing "tree_*_fall"/bush
+dressing) and enlarged to 8cm; re-verified via screenshot from a
+normal court-viewing distance — small but clearly visible warm flecks
+against the cool green/teal palette. Confirmed the wind-reactivity
+itself via direct `ecs_query_entity` position reads: a leaf's X stayed
+bit-for-bit identical across two consecutive reads in Simple mode
+(zero drift), then, after switching to Advanced via the real menu
+button, moved consistently in the positive-X direction across several
+reads including at least two full wrap-arounds (each showing the
+expected fresh z and edge-reset x) before switching back to Simple and
+confirming X froze again.
+
+Mechanical pass green (tsc/eslint/prettier/vitest — 154 tests,
+build/smoke) plus the live verification above.

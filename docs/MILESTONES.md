@@ -211,16 +211,34 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       repeatedly missed. Full writeup, including a fresh-eyes review
       that caught a real volume-cycling bug (fixed before tagging),
       in docs/DECISIONS.md
-- [ ] Dev debug panel (tweakpane reuse) for wind knobs; optional leaf
-      wind indicator — not built, low priority, deferred past this
-      milestone (not part of Erik's approved M4 scope)
+- [ ] Dev debug panel (tweakpane reuse) for wind knobs — not built, low
+      priority, deferred past this milestone (not part of Erik's
+      approved M4 scope). The optional leaf wind indicator noted here
+      was built in M5 (see below) once it came up on Erik's own
+      "remaining polish" list.
 - Review gate: fresh-eyes found one real bug (`nextVolumeStep` could
   drift a volume setting out of its valid range and silently reset
   all settings on next load) — fixed and re-verified live. Full
   writeup in docs/DECISIONS.md. Tagged `v0.5-m4` — no headset gate for
   this milestone.
 
-## M5 — Polish & performance `status: in progress — audio + positional audio slices done`
+## M5 — Polish & performance `status: in progress — audio + positional audio + wind indicator slices done`
+
+- [x] Wind indicator (docs/PLAN.md §13's "cheapest possible" flourish —
+      the M4 gap above, picked up as the last item on Erik's "remaining
+      polish" list). 14 small procedural leaf shapes
+      (`leaf.scene-asset.ts`) drift across a fixed area spanning every
+      court preset, gently bobbing/tumbling always, and picking up
+      real lateral drift only when `windVectorForMode()` is nonzero
+      (Advanced mode) — reusing the same per-mode wind vector
+      `WindSystem` applies to sticks, scaled down to a readable ambient
+      pace, entirely independent of the real physics force. A leaf that
+      drifts past the area edge respawns at the opposite edge with a
+      new random height/z — an unbounded recycling effect, not N fixed
+      particles. First color choice (green) was live-verified nearly
+      invisible against the grass at normal viewing distance; switched
+      to warm autumn gold, which reads clearly and also better matches
+      the garden's existing autumn tree/bush dressing.
 
 - [x] Positional audio (fixed 2026-08-29 — the "verified in source, not
       attempted" gap above was re-checked and turned out to be

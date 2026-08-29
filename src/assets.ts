@@ -4,6 +4,7 @@ import courtLineShort from './scene-assets/court-line-short.scene-asset.js';
 import ground from './scene-assets/ground.scene-asset.js';
 import king from './scene-assets/king.scene-asset.js';
 import kubb from './scene-assets/kubb.scene-asset.js';
+import leaf from './scene-assets/leaf.scene-asset.js';
 import stake from './scene-assets/stake.scene-asset.js';
 import stick from './scene-assets/stick.scene-asset.js';
 
@@ -22,6 +23,7 @@ export default defineAssets({
   king,
   stick,
   stake,
+  leaf,
   'court-line-long': courtLineLong,
   'court-line-short': courtLineShort,
   'reset-menu': {

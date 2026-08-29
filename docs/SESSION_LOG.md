@@ -941,4 +941,19 @@ surfaced a second, independent lead on gh#8's physics anomaly (spurious
 ~140 m/s deltaV readings under heavy frame-stepping) — noted in
 docs/DECISIONS.md for whoever picks that up, not chased now.
 
-The wind indicator is the last item on Erik's "remaining polish" list.
+**Wind indicator shipped — closes Erik's "remaining polish" list.**
+docs/PLAN.md always specced this (M4 deferred it as optional): a
+handful of drifting leaves that pick up real lateral drift only when
+wind is active, reusing `WindSystem`'s own per-mode wind vector scaled
+down for a readable ambient pace. First attempt used green leaves,
+confirmed via screenshot to be nearly invisible against the grass at
+normal viewing distance — switched to warm autumn gold (matches the
+garden's existing autumn dressing) and a slightly larger size, which
+reads clearly. Verified the wind-reactivity itself via direct ECS
+position reads: zero drift in Simple mode, consistent positive drift
+(with correct wrap-around respawns) in Advanced, back to zero after
+switching back.
+
+That closes every item on Erik's "remaining polish" list from this
+session: court size + game mode, positional audio (plus a real
+one-shot-entity leak fix found along the way), and the wind indicator.
