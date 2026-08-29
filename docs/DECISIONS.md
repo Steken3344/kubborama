@@ -2436,7 +2436,7 @@ and:
   `Reset`-event/round-abandon path instead of duplicating it (switching
   mode mid-round IS a reset, just onto a different layout);
 - moves the 4 corner stakes directly via `PhysicsSystem
-  .setBodyTransform()` — **real bug caught live, not guessed**: stakes
+.setBodyTransform()` — **real bug caught live, not guessed**: stakes
   have no `Resettable` tag (real stakes are never knocked over/reset
   mid-round) so the first version silently no-opped on them —
   `applyCourtLayout()`'s home-pose overwrite only affects entities
