@@ -91,9 +91,10 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       tweakpane as the primary tuning surface during development; the
       in-headset panel is a fast-follow, not required for this gate)
 - [x] Underhand classifier + flip-quality meter (readable in the
-      tuning panel's "Style"/"Flip quality" fields). HUD badge
-      ("Underhand ✓" shown to the player mid-game) NOT built — that's
-      player-facing UI, out of scope until the HUD exists (M3+)
+      tuning panel's "Style"/"Flip quality" fields). HUD badge showing
+      the classified style after each throw (green for underhand, the
+      correct technique) built 2026-08-29 once the HUD existed —
+      see docs/DECISIONS.md
 - [x] Both spin styles honest by construction: no spin
       assist/normalization anywhere in the pipeline, angular damping
       in flight is a tunable (0-100, default 25 as of Erik's first

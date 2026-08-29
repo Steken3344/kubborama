@@ -1,11 +1,13 @@
 <!--
   Always-visible scoreboard: current round number, last round's
-  result, and the personal-best "most felled in one round". Driven by
-  src/systems/hud.ts, which listens for RoundEnded — no per-frame
-  polling needed, only updates when a round actually finishes.
+  result, the personal-best "most felled in one round", and the most
+  recent throw's classified style (underhand/overhand/helicopter,
+  informational only per docs/PLAN.md). Driven by src/systems/hud.ts,
+  which listens for RoundEnded and Thrown — no per-frame polling
+  needed, only updates when something actually happens.
 
-  å/ä/ö now render correctly (gh#5, see public/ui/reset-menu.uikitml
-  and docs/DECISIONS.md for the fix). Labels driven by
+  å/ä/ö and ✓ now render correctly (gh#5, see public/ui/reset-menu
+  .uikitml and docs/DECISIONS.md for the fix). Labels driven by
   src/i18nState.ts, refreshed by HudSystem on language change.
 -->
 <style>
@@ -60,5 +62,9 @@
   <div class="row">
     <span id="best-label" class="label">Rekord</span>
     <span id="best-felled" class="value">0</span>
+  </div>
+  <div class="row">
+    <span id="style-label" class="label">Stil</span>
+    <span id="throw-style" class="value">-</span>
   </div>
 </Panel>

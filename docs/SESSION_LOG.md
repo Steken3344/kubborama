@@ -883,3 +883,19 @@ correctly rewrites all the new asset paths for the GitHub Pages
 The court-size/game-mode gap, the Underhand HUD badge, positional
 audio, and the wind indicator — the rest of Erik's "remaining polish"
 list — are still queued next.
+
+**Underhand HUD badge shipped.** The classifier already produced a
+real style on every throw since M2; the HUD just never showed it.
+Added a fourth HUD row, wired to the existing `Thrown` event, green
+for the one correct kubb technique. First attempt used "Underhand ✓"
+and hit the exact same missing-glyph bug gh#5 just fixed for Swedish
+letters — caught live (a tofu-box glyph, not blank), extended the
+patch's charset, then just dropped the symbol anyway since the color
+alone already carries the signal.
+
+Also hit, once, an unrelated and unconfirmed physics oddity while
+testing (a stick free-falling through the floor right after a reload
+that coincided with the dev machine clearly under load — slow build,
+audio timeouts). Couldn't reproduce on a clean reload immediately
+after; filed as gh#8 rather than chased, since this session's changes
+don't touch physics at all.

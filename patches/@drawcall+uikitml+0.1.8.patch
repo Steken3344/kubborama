@@ -1,5 +1,8 @@
+diff --git a/node_modules/@drawcall/uikitml/dist/cli.js b/node_modules/@drawcall/uikitml/dist/cli.js
+old mode 100755
+new mode 100644
 diff --git a/node_modules/@drawcall/uikitml/dist/fonts.js b/node_modules/@drawcall/uikitml/dist/fonts.js
-index f40048f..658e7dc 100644
+index f40048f..e66c6b0 100644
 --- a/node_modules/@drawcall/uikitml/dist/fonts.js
 +++ b/node_modules/@drawcall/uikitml/dist/fonts.js
 @@ -245,7 +245,14 @@ function loadTTF(src) {
@@ -13,7 +16,7 @@ index f40048f..658e7dc 100644
 +    // dropped å/ä/ö/Å/Ä/Ö. TTFLoader.loadAsync itself already supports
 +    // a per-font charset override ({url, charset}) — just needed to
 +    // actually be passed one.
-+    const charset = ' \tABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?.,;:\'"()-[]{}@#$%&*+=/\\<>åäöÅÄÖ';
++    const charset = ' \tABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?.,;:\'"()-[]{}@#$%&*+=/\\<>åäöÅÄÖ✓';
 +    const loaded = new TTFLoader().loadAsync({ url: src, charset });
      ttfLoads.set(src, loaded);
      return loaded;

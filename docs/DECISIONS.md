@@ -2355,3 +2355,57 @@ fixed now" — a CI step that can silently cry wolf undermines trust in
 every future green checkmark. Mechanical pass green (tsc/eslint/
 prettier/vitest — 154 tests, unaffected/build/smoke, smoke re-run 3x
 clean).
+
+## 2026-08-29 — Underhand HUD badge (M2/M3's "Övriga kvar" list, item 1)
+
+The classifier (`core/underhandClassifier.ts`) has produced a real
+`ThrowStyle` (`underhand`/`overhand`/`helicopter`) on every throw since
+M2 — the HUD just never showed it, per `docs/MILESTONES.md`'s own
+M2 note ("HUD badge NOT built — player-facing UI, out of scope until
+the HUD exists"). The HUD has existed since M3; this was just never
+circled back to.
+
+Added a fourth HUD row (`hud.uikitml`: `style-label`/`throw-style`).
+`HudSystem` now also subscribes to the existing `Thrown` event (it
+already fires on every release, complete with `style` — no new event,
+no new core logic) and sets the row's text via three new i18n keys
+(`hudStyleLabel`, `throwStyleUnderhand/Overhand/Helicopter`) plus an
+inline color: green for `underhand` (the one correct kubb technique),
+neutral white for the other two — informational, never a penalty, per
+the classifier's own documented intent.
+
+**First attempt used "Underhand ✓" — real bug, caught live, not
+guessed.** The ✓ (U+2713) isn't in gh#5's patched charset (only
+å/ä/ö/Å/Ä/Ö were added), so it hit the exact same "Missing glyph info
+for character" failure gh#5 fixed for Swedish letters — confirmed via
+console log, then confirmed VISUALLY in the emulator: the badge showed
+a solid green tofu-box glyph in place of the checkmark, not blank
+(DM Sans's MSDF bake generates _some_ geometry for a requested-but-
+unsupported codepoint, apparently a fallback/notdef box, not empty
+space). Extended the same `patches/@drawcall+uikitml+0.1.8.patch`
+charset to include ✓ too (verified the patch still reapplies cleanly
+from a fresh install) — but then dropped the ✓ from the actual string
+anyway rather than trust a symbol this font may not really contain a
+proper glyph for; the color coding alone (green vs white) already
+carries the "this was correct" signal without depending on a fragile
+glyph. Re-verified live: "Underhand" renders cleanly in green, no tofu
+box.
+
+**Unrelated but real finding while testing, filed not chased**: one
+grab-and-release cycle, right after a page reload that coincided with
+several audio assets timing out (`Asset load timed out after 30000
+ms`) and a production build that took 2m48s instead of the usual ~10s
+(clear signs the dev machine was under real resource pressure at that
+moment), left a stick in unbounded free-fall (`position.y` reaching
+-39000 then -51000, `linearVelocity.y` climbing past -195 m/s) — a
+classic tunnel-through-the-floor symptom from an oversized single-
+frame physics delta. Reproduced-once, not on-demand: a clean reload
+immediately after put everything back to normal resting state, and
+this session's changes touch UI/i18n only, nothing physics-adjacent.
+Filed as [gh#8](https://github.com/Steken3344/kubborama/issues/8)
+rather than chased — confirming/fixing a physics-delta-clamping gap
+properly is real physics-debugging effort, not something to guess-fix
+in passing while verifying a HUD text change.
+
+Mechanical pass green throughout (tsc/eslint/prettier/vitest — 154
+tests, unaffected/build/smoke).
