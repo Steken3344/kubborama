@@ -59,6 +59,12 @@ try {
     console.log('Smoke test passed: production build renders a scene.');
   }
 } finally {
-  await browser.close();
-  await server.close();
+  // Both can throw during shutdown (observed in CI: vite preview's
+  // HTTP/2 server threw ERR_HTTP2_INVALID_STREAM closing an
+  // in-flight stream, crashing the whole process with a false-
+  // negative exit code even though the test above had already
+  // passed and logged success). Cleanup failures aren't test
+  // failures — process.exitCode above is already the real verdict.
+  await browser.close().catch(() => {});
+  await server.close().catch(() => {});
 }

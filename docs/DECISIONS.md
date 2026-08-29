@@ -2322,3 +2322,36 @@ rendering before deferred module JS runs is basic, guaranteed browser
 behavior, not something that needs to be empirically caught on camera
 to trust. Mechanical pass green throughout (tsc/eslint/prettier/vitest
 — 154 tests, unaffected/build/smoke).
+
+## 2026-08-29 — Found and fixed a real CI flake: smoke test could false-fail on cleanup
+
+Noticed while double-checking CI history that the `fix(scene):
+eliminate overlapping colliders` push (8ce4c6c) actually **failed**
+CI, unnoticed until now — typecheck/lint/format/test/build all passed,
+and `scripts/smoke-test.mjs` even printed "Smoke test passed" (its own
+assertions genuinely succeeded), but the process then crashed with
+exit code 1 anyway. The actual error, from the log: `vite preview`'s
+HTTP/2 server threw `ERR_HTTP2_INVALID_STREAM` ("the stream has been
+destroyed") from inside `server.close()`, in the script's `finally`
+block, uncaught — a shutdown-time race in Vite's own HTTP/2 preview
+server, unrelated to whether the build actually works.
+
+Fixed by catching cleanup failures separately from the test verdict:
+`browser.close().catch(() => {})` / `server.close().catch(() => {})`.
+`process.exitCode` was already being set correctly by the real
+pass/fail logic above the `finally` block — the bug was purely that an
+unrelated exception thrown _after_ that verdict was already decided
+could still crash the process and overwrite it. Couldn't reproduce the
+exact race locally (ran the smoke test three times clean, exit code 0
+each time) — this is inherently timing-dependent, not something to
+chase further; the fix is correct regardless of whether it reproduces
+on demand, since swallowing a post-verdict cleanup exception is
+unambiguously right either way.
+
+Not treated as blocking anything — later pushes (ca568f3, a8355af)
+already show CI green again, so this was a one-off flake, not a
+persistent break. Fixed anyway per "foundation-breaking findings get
+fixed now" — a CI step that can silently cry wolf undermines trust in
+every future green checkmark. Mechanical pass green (tsc/eslint/
+prettier/vitest — 154 tests, unaffected/build/smoke, smoke re-run 3x
+clean).
