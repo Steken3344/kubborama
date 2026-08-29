@@ -1,0 +1,84 @@
+{
+  "version": "iwsdk.scene.v1",
+  "units": "meters",
+  "authoring": {
+    "views": [
+      {
+        "id": "icon",
+        "role": "hero",
+        "projection": "perspective",
+        "fov": 40,
+        "position": [0, 0.09, 0.95],
+        "target": [0, 0.09, 0]
+      }
+    ]
+  },
+  "components": {
+    "DomeGradient": {
+      "sky": [0.11, 0.29, 0.21, 1],
+      "equator": [0.11, 0.29, 0.21, 1],
+      "ground": [0.11, 0.29, 0.21, 1],
+      "intensity": 1
+    }
+  },
+  "environment": {},
+  "metadata": {},
+  "resources": {},
+  "nodes": [
+    {
+      "id": "icon-sun",
+      "name": "Icon sun",
+      "components": {
+        "DirectionalLight": {
+          "color": [1, 0.95, 0.85, 1],
+          "intensity": 2.4,
+          "castShadow": false
+        }
+      },
+      "transform": {
+        "position": [0.8, 1.2, 1.0],
+        "rotationDeg": [-35, 35, 0]
+      }
+    },
+    {
+      "id": "icon-fill",
+      "name": "Icon fill",
+      "components": {
+        "HemisphereLight": {
+          "skyColor": [0.8, 0.85, 0.95, 1],
+          "groundColor": [0.35, 0.28, 0.22, 1],
+          "intensity": 0.9
+        }
+      }
+    },
+    {
+      "id": "icon-king",
+      "name": "King",
+      "content": { "asset": "king", "type": "asset" },
+      "transform": {
+        "position": [0, 0, 0],
+        "rotationDeg": [0, -20, 0]
+      }
+    },
+    {
+      "id": "icon-stick-a",
+      "name": "Stick A",
+      "content": { "asset": "stick", "type": "asset" },
+      "transform": {
+        "position": [0, 0.06, -0.12],
+        "rotationDeg": [0, 0, 45],
+        "scale": 1.5
+      }
+    },
+    {
+      "id": "icon-stick-b",
+      "name": "Stick B",
+      "content": { "asset": "stick", "type": "asset" },
+      "transform": {
+        "position": [0, 0.06, -0.12],
+        "rotationDeg": [0, 0, -45],
+        "scale": 1.5
+      }
+    }
+  ]
+}

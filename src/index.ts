@@ -73,4 +73,6 @@ World.create(
   // doesn't matter for correctness (subscriptions, not query timing),
   // but registering last keeps init order readable.
   world.registerSystem(TuningLabSystem);
+
+  document.getElementById('splash')?.classList.add('splash-hidden');
 });

@@ -2260,3 +2260,65 @@ delta matched stick delta bit for bit. Released via trigger, confirmed
 afterward (unaffected regression check). Zero console errors.
 Mechanical pass green (tsc/eslint/prettier/vitest — 154 tests,
 unaffected/build/smoke).
+
+## 2026-08-29 — App icon + a real entering-the-game moment
+
+Erik picked option B: a simple icon with the king piece and crossed
+throwing sticks. Built it from the game's own existing procedural
+geometry (`king`/`stick` scene-assets, already registered in
+`src/assets.ts` — no new external asset, no licensing question) rather
+than hand-drawing something disconnected from the actual game.
+
+New `public/scenes/icon.iwsdk.scene.json`: a small, non-playable
+composition — king centered, two sticks crossed behind it (rotated
+±45° around Z so they read as a flat X in camera space, not
+foreshortened), a solid dark-forest-green backdrop via `DomeGradient`
+with all three color stops set to the same value (the simplest way to
+get a flat-color background — no HDR file needed), one warm
+directional light + a hemisphere fill matching the main scene's
+palette, and a tight "icon" hero view. Kept as a permanent, committed
+scene file (not deleted after rendering) so the composition can be
+re-rendered later if the icon ever needs a tweak — same reasoning
+`iwsdk-scene-composer`'s scratch-module pattern already uses, just for
+a one-off tooling asset instead of a level fragment. It's never
+referenced by `iwsdk.config.json`, so it has no effect on the app
+itself.
+
+Rendered via `scene_render_file`/`npx iwsdk scene render-file` at
+1024×1024, then used `sharp` (already a project devDependency) to
+flatten the alpha channel against the same background color and
+generate the actual shipped sizes: `public/icons/icon-{192,512}.png`
+(future PWA manifest icons — M6 hasn't started, these are just sitting
+ready for it) and `public/favicon-{32,48}.png`. Checked the smallest
+size by eye: the crown's red accent gets subtle at 32px but the
+crossed-sticks-behind-a-post silhouette still reads as a distinct
+shape, which is what a favicon needs to do at a glance.
+
+**The "see it when entering the game" half of the ask**: `index.html`
+previously had zero branding at all — `<link rel="icon" href="data:,">`
+(a literal empty placeholder) and a lowercase `kubborama` title, no
+loading UI of any kind. Added a fixed, full-viewport `#splash` div
+(same background green as the icon, the icon image, a "KubbOrama"
+wordmark) directly in the static HTML body — critically, in the markup
+itself, not injected by JS, so it paints before the module script even
+starts executing, guaranteed by ordinary HTML parsing order, not
+something that needs a race-prone runtime check. `src/index.ts` adds a
+`splash-hidden` class (CSS opacity/pointer-events transition) at the
+very end of `World.create(...).then(...)`, after every system is
+registered — so it only disappears once the game is actually ready to
+play, not at some earlier, misleadingly-early "loaded" signal.
+
+Verified: the built `dist/index.html` shows Vite correctly rewrote
+every new `/`-prefixed icon/favicon reference to the same relative
+`./` form already used for `/src/index.ts` (confirming the existing
+`base: './'` GitHub Pages setup handles the new assets identically),
+and all four PNGs land in `dist/`. Live console clean, no 404s.
+Could not catch the splash mid-fade with a screenshot — local dev
+loads faster than an MCP reload-then-screenshot round-trip, so by the
+time the screenshot tool captures anything the world has always
+already finished loading. Not treated as a real verification gap: a
+static element painted directly in server-delivered HTML markup
+rendering before deferred module JS runs is basic, guaranteed browser
+behavior, not something that needs to be empirically caught on camera
+to trust. Mechanical pass green throughout (tsc/eslint/prettier/vitest
+— 154 tests, unaffected/build/smoke).

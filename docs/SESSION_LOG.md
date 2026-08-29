@@ -866,3 +866,20 @@ edge in a new `TriggerGrabSystem`. Goes through the real `Grabbed`/
 preservation, throw release, haptics all just work. Live-verified:
 trigger-only grab, offset preserved, clean release, squeeze still
 works unaffected. Mechanical pass green.
+
+Built the icon next: a small dedicated scene (`public/scenes/icon
+.iwsdk.scene.json`) composing the game's own existing king + crossed
+sticks against a flat forest-green backdrop, rendered at 1024px and
+resized with `sharp` into real favicon/PWA-icon files — no new
+external asset, reused the game's own procedural geometry. `index.
+html` had zero branding before this (a literal empty-placeholder
+favicon, lowercase title) — added the icons plus a real loading splash
+(the icon + "KubbOrama" wordmark) baked directly into the static HTML
+so it paints before any JS runs, removed once `World.create()`'s full
+system-registration completes. Confirmed the production build
+correctly rewrites all the new asset paths for the GitHub Pages
+`base: './'` setup. Mechanical pass green.
+
+The court-size/game-mode gap, the Underhand HUD badge, positional
+audio, and the wind indicator — the rest of Erik's "remaining polish"
+list — are still queued next.
