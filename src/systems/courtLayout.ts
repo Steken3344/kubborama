@@ -53,14 +53,19 @@ function stickQuaternion(yawRad: number): [number, number, number, number] {
  *     Resettable pipeline entirely and need their own transform write;
  *  3. resizes and repositions the 5 court-line meshes directly (they
  *     aren't Resettable/physics pieces either, just static decoration)
- *     by swapping in a new BoxGeometry sized for the new preset —
- *     never disposing the old, shared one from a placed clone (see
- *     .claude/rules/assets-and-manifest.md).
+ *     by swapping in a new BoxGeometry sized for the new preset — the
+ *     FIRST swap never disposes the old geometry (it's the shared
+ *     prototype from a placed clone, see
+ *     .claude/rules/assets-and-manifest.md — near/far/center all
+ *     start out pointing at the SAME object), but every swap after
+ *     that replaces a geometry that is by then private to just this
+ *     one mesh, so it IS disposed (resizedLineIds tracks which).
  */
 export class CourtLayoutSystem extends createSystem({}) {
   private menuSystem!: MenuSystem;
   private physicsSystem!: PhysicsSystem;
   private unsubscribeGameModeChanged?: () => void;
+  private resizedLineIds = new Set<string>();
 
   init(): void {
     const menuSystem = this.world.getSystem(MenuSystem);
@@ -168,6 +173,10 @@ export class CourtLayoutSystem extends createSystem({}) {
     position: Vec3,
   ): void {
     const mesh = this.world.requireSceneEntity(nodeId).object3D as Mesh;
+    if (this.resizedLineIds.has(nodeId)) {
+      mesh.geometry.dispose();
+    }
+    this.resizedLineIds.add(nodeId);
     mesh.geometry = new BoxGeometry(thicknessM, heightM, lengthM);
     mesh.position.set(position[0], position[1], position[2]);
   }
