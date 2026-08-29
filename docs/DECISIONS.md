@@ -2643,3 +2643,36 @@ confirming X froze again.
 
 Mechanical pass green (tsc/eslint/prettier/vitest — 154 tests,
 build/smoke) plus the live verification above.
+
+## 2026-08-29 — Code review of the three items above, one fix applied
+
+Requested a fresh-eyes code reviewer subagent over the full diff of
+this session's three shipped features (court resize, positional audio,
+wind indicator). Verdict: ready to merge, no Critical issues. The
+reviewer independently recomputed `computeCourtLayout('backyard', ...)`
+and diffed it byte-for-byte against the authored scene JSON (matched
+exactly), and read IWSDK's actual `AudioSystem`/`AudioUtils` source
+to confirm the one-shot-audio-leak claim rather than taking it at
+face value — both came back confirmed correct.
+
+One real Important-severity finding, fixed same session:
+`CourtLayoutSystem.setLine()`'s first `BoxGeometry` swap correctly
+skips disposal (still the shared prototype), but every swap after that
+replaces a geometry that by then belongs privately to just one mesh,
+without disposing it — a slow-accumulating GPU-buffer leak, one tiny
+box per line per mode switch. Negligible in practice (mode-switching
+is a deliberate, infrequent action), but CLAUDE.md treats this class
+of leak as worth closing. Fixed by tracking which line node ids have
+been resized at least once (`resizedLineIds: Set<string>`) and
+disposing the previous geometry from the second swap onward. Re-
+verified live: toggled game mode 4 times in a row, zero console
+errors, final state matched the active preset exactly.
+
+Two Minor notes from the review, not acted on (correctly low priority):
+mode-switch-mid-round silently abandons the round with no distinct
+feedback from a manual reset (same behavior as the existing "Ny runda"
+button already has, so not a regression); and IWSDK's own `AudioSystem`
+retries a failed audio load forever, so a one-shot entity whose clip
+404s would never reach `isPlaying` and never get disposed by
+`OneShotAudioSystem` — a pre-existing IWSDK behavior, not introduced by
+this session, not worth defending against speculatively.
