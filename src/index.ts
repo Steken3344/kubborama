@@ -11,6 +11,7 @@ import { OneShotAudioSystem } from './systems/oneShotAudio.js';
 import { RoundSystem } from './systems/round.js';
 import { SettingsSystem } from './systems/settings.js';
 import { SfxSystem } from './systems/sfx.js';
+import { SimpleRulesSystem } from './systems/simpleRules.js';
 import { StatsSystem } from './systems/stats.js';
 import { StickGroundDampingSystem } from './systems/stickGroundDamping.js';
 import { StickPullSystem } from './systems/stickPull.js';
@@ -80,6 +81,12 @@ World.create(
   // above) records it -> HudSystem repaints the scoreboard. MenuSystem
   // (registered above) also subscribes to RoundEnded to auto-reset.
   world.registerSystem(ToppleSystem);
+  // Simple mode's rules (sin-bin removal + king-protected-until-
+  // baseline-clear): reacts to ToppleSystem's KubbFelled and to
+  // Reset, so it must come after ToppleSystem is at least registered
+  // (subscriptions don't need strict ordering here, but this keeps
+  // the round-mechanics systems grouped for readability).
+  world.registerSystem(SimpleRulesSystem);
   world.registerSystem(RoundSystem);
   world.registerSystem(HudSystem);
   // Reads gameEvents emitted by ThrowingSystem/ImpactSystem — order

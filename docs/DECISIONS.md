@@ -2676,3 +2676,134 @@ retries a failed audio load forever, so a one-shot entity whose clip
 404s would never reach `isPlaying` and never get disposed by
 `OneShotAudioSystem` — a pre-existing IWSDK behavior, not introduced by
 this session, not worth defending against speculatively.
+
+## 2026-08-29 — Simple mode's real-kubb rules: sin-bin removal + king-protected-until-baseline-clear
+
+Erik's request, with two open design questions resolved via
+AskUserQuestion before writing any code (both recommended options
+picked): (1) the king simply **cannot be felled** until every kubb is
+down — not "falls but doesn't count," not "instant loss" — and (2)
+this builds INTO the existing Simple/Advanced toggle (Simple gains the
+new rules on its existing backyard/no-wind/50° preset; Advanced stays
+today's free-throw-any-order behavior unchanged) rather than a
+separate setting. Erik's larger 3-mode vision (simple/normal/advance)
+is intentionally scoped down to just Simple for now — Normal is
+deferred, not stubbed.
+
+**Also asked before building, and glad I did**: Erik wanted a "jubel"
+(cheer) on every kubb felled. Kenney's ready-made jingle packs (Music
+Jingles: 85 files, 5 instrument variants) have no win/lose
+distinction in their filenames (`jingles_NES00.ogg`, etc.) and I
+cannot play or otherwise audition audio in this environment — checked
+for `ffmpeg`/`sox`/`python3+numpy` to attempt a pitch-contour-based
+guess instead of a literal listen, none available. Picking blind
+between an unlabeled win vs. lose jingle is a genuine ~50/50 coin
+flip, a materially different risk than this project's earlier
+audio picks (all clearly named by content, e.g. "Forest_Ambience").
+Asked rather than gambled; Erik chose to skip a new audio asset
+entirely and instead reinforce the existing `kubbFelled` sound with a
+clearer haptic pattern. `core/haptics.ts`'s `kubbFelled` sequence
+changed from a flat two-pulse thud (0.4/0.4, 15ms/15ms, 60ms gap) to a
+peppy three-pulse ascending pattern (0.35→0.5→0.6, 12/12/25ms, 45ms
+gap) — distinct from the flat original and scaled clearly below
+`kingFelled`/`roundCleared`'s bigger ramps so the moment hierarchy
+(kubb < king < round) still reads correctly.
+
+**Implementation.** New `SimpleRulesSystem`, purely event-driven (no
+`update()` needed):
+
+- `KubbFelled` (only when `gameMode === 'simple'`): resolves the
+  event's `entityId` back to a real `Entity` via
+  `world.entityManager.getEntityByIndex()` (the standard elics API for
+  this — no prior use of it existed in this codebase, `round.ts` had
+  only ever used `entityId` as an opaque tracking key, never needing
+  the actual entity), teleports it to the next sin-bin slot via the
+  existing `PhysicsSystem.setBodyTransform()`, and tags it
+  `OutOfPlay`.
+- `Reset` (covers the manual "Ny runda" button, a round auto-reset,
+  AND a game-mode switch — `CourtLayoutSystem`'s `GameModeChanged`
+  handler already funnels into `MenuSystem.applyCourtLayout()` →
+  `resetAll()` → emits `Reset`, so a single handler here covers all
+  three without a separate `GameModeChanged` subscription): strips
+  every `OutOfPlay` tag. Position is already correct by the time this
+  runs — the felled kubb is still `Resettable` with its ORIGINAL
+  standing home pose untouched (`SimpleRulesSystem` never touches
+  `MenuSystem`'s `homePoses` map), and `resetAll()` (the very thing
+  that emits `Reset`) has already teleported every `Resettable` entity
+  back before any subscriber sees the event.
+- King protection is a literal ECS query gate, not a manually-tracked
+  boolean: a new `KingProtected` tag, added/removed by re-deriving
+  `gameMode === 'simple' && standingKubbs.size > 0` after every
+  `KubbFelled`/`Reset`. `ToppleSystem`'s query gained `KingProtected`
+  to its `excluded` list (alongside the existing `StickState`) — while
+  present, the king simply never enters `ToppleSystem`'s query at all,
+  so no rest/angle tracking exists for it to fire early on. Cleaner
+  than a runtime special-case inside `checkOne()`.
+
+New pure core function `sinBinSlotPosition(index, kubbHeightM, config)`
+(`core/sinBin.ts`, unit tested) computes each felled kubb's slot: a
+fixed row outside the court (not wired to the active preset — a
+preset/mode switch already empties the sin bin via `Reset`, so there's
+never an already-placed kubb to reconcile against a new preset).
+
+**A felled kubb does NOT actually get frozen in place — deliberately,
+not an oversight.** Read IWSDK's `PhysicsSystem` source specifically
+to check: `state` (Static/Kinematic/Dynamic) is read exactly ONCE, at
+Havok body creation (`createBody()`), and `HP_Body_SetMotionType` is
+never called again afterward — there is no live motion-type-change API
+on an already-created body. Confirmed by trying it: `PhysicsSystem`'s
+own per-frame sync unconditionally overwrites `entity.object3D`'s
+position/quaternion FROM Havok's authoritative transform for every
+non-grabbed body (`matrixBuffer.decompose(...)`), so a direct
+`ecs_set_component` write to `Transform.orientation` on a resting body
+gets silently discarded on the very next physics tick regardless of
+pause/step state — confirmed this dead-ends by testing it directly
+before designing around it. So both a felled kubb sitting in the sin
+bin and the king before it's felled stay perfectly normal DYNAMIC
+bodies the whole time; "out of play" and "protected" are both pure
+ECS-query-membership effects, never physics-engine ones. Accepted,
+documented simplification: a stray stick reaching far enough outside
+the throwing lanes to hit the sin bin could in principle disturb an
+already-felled kubb sitting there. Given the sin bin sits outside
+normal throwing lanes, this is low-probability and not worth
+engineering around.
+
+**Live-verified end to end**, including a real physical topple (not a
+faked one): grabbing a stick and dropping it straight down onto a
+kubb mostly missed or just wobbled it (a squat, low box resists tipping
+from a purely vertical hit) — a horizontal SWEEP through the kubb's
+side (grab the stick, position it just past one side at
+half-kubb-height, then sweep the controller across to the other side
+while still holding it) reliably toppled it. Confirmed via
+`ecs_query_entity`: the felled kubb landed at the EXACT computed
+sin-bin slot-0 position, tagged `OutOfPlay`; via `ecs_list_systems`'
+query entity counts: `standingKubbs` dropped from 10 to 9,
+`ToppleSystem.toppleable` stayed at 10 throughout (9 standing kubbs +
+1 now-`OutOfPlay`-but-still-in-query kubb — `OutOfPlay` was
+deliberately never added to `ToppleSystem`'s own exclusion list, since
+`felledReported` already no-ops a re-detected entity for free; the
+king staying excluded the whole time is the number that actually
+matters here, and it never appeared, confirming protection held).
+Clicked "Ny runda" for real and confirmed the full round-trip: position
+restored, `OutOfPlay` cleared, `standingKubbs` back to 10,
+`KingProtected` back on the king.
+
+**Real environment flakiness hit mid-verification, worth recording.**
+After a novel interaction pattern this session hadn't done before
+(dragging a GRABBED object in a fast lateral sweep near the menu
+panel's general area), every subsequent menu-button click silently
+stopped registering — `Hovered` still correctly appeared on the panel
+(the ray was reaching it fine), but no button's `Pressed`/click ever
+fired, across several different buttons and several different
+recalculated aim angles, ruling out an aiming-math regression. A full
+`browser_reload_page` (not just `ecs_pause`/`ecs_resume`) immediately
+and completely resolved it — the very next click landed correctly. Not
+investigated further (this is IWER/emulator-input-pipeline plumbing,
+not application code — nothing in `SimpleRulesSystem` or any file this
+session touched has any way to influence `GrabSystem`/`InputSystem`'s
+internal pointer state), but noting the specific trigger pattern here
+in case a future session hits the same "clicks stopped working" wall:
+try a full page reload before spending a long time debugging aim math.
+
+Mechanical pass green (tsc/eslint/prettier/vitest — 157 tests,
+build/smoke) plus the live verification above.

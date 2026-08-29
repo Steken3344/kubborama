@@ -222,7 +222,28 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
   writeup in docs/DECISIONS.md. Tagged `v0.5-m4` — no headset gate for
   this milestone.
 
-## M5 — Polish & performance `status: in progress — audio + positional audio + wind indicator slices done`
+## M5 — Polish & performance `status: in progress — audio + positional audio + wind indicator + Simple mode rules slices done`
+
+- [x] Simple mode's real-kubb rules (2026-08-29, Erik's request): a
+      felled kubb is teleported to a sin-bin row beside the court, out
+      of play, and the king is protected — literally excluded from
+      `ToppleSystem`'s query via a new `KingProtected` tag — until
+      every kubb is down. Advanced mode is untouched (still today's
+      free-throw-any-order). Two design questions resolved with Erik
+      via AskUserQuestion before writing code: king immunity (not
+      "falls but doesn't count," not "instant loss") and building this
+      into the existing Simple/Advanced toggle rather than a separate
+      setting — see docs/DECISIONS.md for the full reasoning,
+      including why a genuine new "jubel" audio asset was skipped
+      (Kenney's jingle packs have no win/lose distinction in their
+      filenames and this environment can't audition audio) in favor of
+      a reworked `kubbFelled` haptic pattern. Erik's larger 3-mode
+      (simple/normal/advance) vision is intentionally scoped down —
+      Normal is deferred, not stubbed. Live-verified with a real
+      physical topple (a horizontal stick sweep, not a vertical drop —
+      a squat kubb resists tipping from straight overhead) through the
+      full lifecycle: fell → sin-bin placement → Reset → fully
+      restored, king re-protected.
 
 - [x] Wind indicator (docs/PLAN.md §13's "cheapest possible" flourish —
       the M4 gap above, picked up as the last item on Erik's "remaining

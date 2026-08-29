@@ -63,12 +63,18 @@ export function scaleHapticPulse(
 
 // M3+ patterns — defined now (cheap, pure data) even though their
 // trigger systems don't exist yet.
+/** A small "jubel" (Erik's word) on every kubb felled — a peppy,
+ * quick ascending triple-tap, distinct from the flat equal-intensity
+ * double-thud this replaced and scaled clearly below kingFelled/
+ * roundCleared's bigger, slower ramps so the moment hierarchy still
+ * reads (kubb < king < round). */
 export const kubbFelled: HapticSequence = {
   pulses: [
-    { intensity: 0.4, durationMs: 15 },
-    { intensity: 0.4, durationMs: 15 },
+    { intensity: 0.35, durationMs: 12 },
+    { intensity: 0.5, durationMs: 12 },
+    { intensity: 0.6, durationMs: 25 },
   ],
-  gapMs: 60,
+  gapMs: 45,
 };
 
 export const kingFelled: HapticSequence = {

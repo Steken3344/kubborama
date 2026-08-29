@@ -1,6 +1,7 @@
 import { createSystem, PhysicsBody, Transform } from '@iwsdk/core';
 import type { Entity } from '@iwsdk/core';
 import { KingPiece } from '../components/king-piece.js';
+import { KingProtected } from '../components/king-protected.js';
 import { Resettable } from '../components/resettable.js';
 import { StickState } from '../components/stick-state.js';
 import { getGameMode, pieces } from '../config.js';
@@ -42,7 +43,11 @@ import { readBodySpeed } from './bodySpeed.js';
 export class ToppleSystem extends createSystem({
   toppleable: {
     required: [Resettable, Transform, PhysicsBody],
-    excluded: [StickState],
+    // KingProtected: Simple mode's rule that the king can't be felled
+    // until every kubb is down (SimpleRulesSystem owns the tag) — the
+    // king simply never enters this query while it's present, so no
+    // rest/angle tracking exists for it to fire early on.
+    excluded: [StickState, KingProtected],
   },
 }) {
   private restAccumS = new Map<number, number>();

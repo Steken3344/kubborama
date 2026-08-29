@@ -13,6 +13,7 @@ import gameModesData from './data/game-modes.json' with { type: 'json' };
 import piecesData from './data/pieces.json' with { type: 'json' };
 import cameraPosesData from './data/camera-poses.json' with { type: 'json' };
 import windIndicatorData from './data/wind-indicator.json' with { type: 'json' };
+import sinBinData from './data/sin-bin.json' with { type: 'json' };
 
 export const courtPresets = courtPresetsData.presets;
 export type CourtPresetName = keyof typeof courtPresets;
@@ -47,6 +48,7 @@ export const defaultMaterial = pieces.defaultMaterial as MaterialName;
 
 export const cameraPoses = cameraPosesData;
 export const windIndicator = windIndicatorData;
+export const sinBin = sinBinData;
 
 /**
  * Fixed seed for the static M1 stick-scatter layout — the same six

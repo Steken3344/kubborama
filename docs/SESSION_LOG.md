@@ -957,3 +957,44 @@ switching back.
 That closes every item on Erik's "remaining polish" list from this
 session: court size + game mode, positional audio (plus a real
 one-shot-entity leak fix found along the way), and the wind indicator.
+
+**Code review of all three (a fresh subagent, full diff since the
+segment before this one) came back clean — ready to merge, no
+Critical issues.** It independently re-derived `computeCourtLayout`'s
+output and diffed it byte-for-byte against the authored scene, and
+read IWSDK's actual audio-system source to confirm the leak claim,
+rather than trusting either at face value. One real Important finding
+(court-line `BoxGeometry` not disposed on the second-and-later resize
+per line — a slow GPU leak), fixed and re-verified same session.
+
+**New: Erik asked for Simple mode's real-kubb rules** — a felled kubb
+gets set aside beside the court, and the king can't be felled until
+every kubb is down. Asked two design questions before writing
+anything (king-immunity behavior; whether this repurposes the
+existing Simple/Advanced toggle or needs a new one) — both
+recommended options chosen. Also asked about the "jubel" cheer sound
+specifically: Kenney's ready-made jingle packs have no win/lose
+distinction in their filenames, and this environment can't audition
+audio, so guessing was a real coin flip — Erik chose to skip a new
+asset and reinforce the existing felled-sound haptic instead. New
+`SimpleRulesSystem`: felled kubbs teleport to a sin-bin row
+(`core/sinBin.ts`, unit tested) and get tagged out-of-play; the king
+gets a `KingProtected` tag that literally excludes it from
+`ToppleSystem`'s query until every kubb is down — enforced at the
+ECS-query level, not a runtime special-case. Confirmed IWSDK's
+`PhysicsSystem` has no live motion-type-change API (`state` is read
+once, at body creation), so felled kubbs and the protected king both
+stay ordinary DYNAMIC bodies the whole time — "out of play" and
+"protected" are pure ECS-membership effects, not physics ones.
+
+Live-verified the full lifecycle with a REAL physical topple (a
+horizontal stick sweep — a straight vertical drop mostly failed to tip
+the squat kubb): felled → landed at the exact computed sin-bin slot,
+tagged out-of-play, king still excluded from ToppleSystem's query
+throughout → clicked "Ny runda" for real → fully restored, king
+re-protected. Hit a genuine environment snag mid-verification: after
+a novel drag-a-grabbed-object-through-space maneuver, every menu click
+stopped registering (ray still correctly hovered the panel, clicks
+just silently didn't land) across several buttons and re-aimed angles
+— a full page reload fixed it instantly. Noted in docs/DECISIONS.md as
+a "try this first" for a future session that hits the same wall.
