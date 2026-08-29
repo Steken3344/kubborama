@@ -24,6 +24,15 @@ export function getGameMode(name: GameModeName) {
   return gameModes[name];
 }
 
+/** game-modes.json's courtPreset strings are authored to reference
+ * court-presets.json's keys, but a plain JSON import widens both to
+ * `string` — this is the one place that contract gets asserted back
+ * into `CourtPresetName`, so consumers (CourtLayoutSystem) don't each
+ * repeat the cast. */
+export function courtPresetForMode(name: GameModeName): CourtPresetName {
+  return gameModes[name].courtPreset as CourtPresetName;
+}
+
 /** Wind direction is fixed (lateral — across the court width, the X
  * axis) per docs/PLAN.md §1; only magnitude varies per game mode. */
 export function windVectorForMode(name: GameModeName): Vec3 {

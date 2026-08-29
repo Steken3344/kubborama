@@ -1,5 +1,6 @@
 import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
+import { CourtLayoutSystem } from './systems/courtLayout.js';
 import { CourtLinesSystem } from './systems/courtLines.js';
 import { GrabHighlightSystem } from './systems/grabHighlight.js';
 import { HandoffSystem } from './systems/handoff.js';
@@ -52,6 +53,9 @@ World.create(
   // core/haptics.ts defined back in M3/M4 but nothing fired until now.
   world.registerSystem(SfxSystem);
   world.registerSystem(MenuSystem);
+  // Reads GameModeChanged (SettingsSystem, registered above) and calls
+  // into MenuSystem's applyCourtLayout — must come after both.
+  world.registerSystem(CourtLayoutSystem);
   world.registerSystem(GrabHighlightSystem);
   // Erik's feedback: trigger should also grab a nearby stick, not
   // just squeeze — registered before StickPullSystem so a same-frame

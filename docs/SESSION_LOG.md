@@ -899,3 +899,26 @@ that coincided with the dev machine clearly under load — slow build,
 audio timeouts). Couldn't reproduce on a clean reload immediately
 after; filed as gh#8 rather than chased, since this session's changes
 don't touch physics at all.
+
+**Court size now changes with game mode — M4's last known gap,
+closed.** Added a `GameModeChanged` event (mirroring `LanguageChanged`)
+and a new `CourtLayoutSystem` that recomputes the layout with the
+already-tested `computeCourtLayout()` and repositions king/kubbs/
+sticks by folding into `MenuSystem`'s existing reset pipeline (new
+`applyCourtLayout()` method — switching mode mid-round IS a reset,
+just onto a different layout) plus resizing the 5 court-line meshes
+directly. Caught a real bug live before shipping: corner stakes have
+no `Resettable` tag (they're never reset mid-round in real play), so
+the reset-pipeline approach silently skipped them — fixed by having
+`CourtLayoutSystem` move stakes directly via `PhysicsSystem`. Fully
+live-verified in the emulator: entered XR, clicked the actual menu
+button, read back ECS positions before/after for king/kubb/stake/
+stick/court-line, all matching `computeCourtLayout`'s math exactly for
+both Simple and Advanced.
+
+Also found (and fixed, process-only) 24+ orphaned `vite` dev-server
+processes left running since 2026-08-27 — a strong candidate root
+cause for gh#8's "resource contention" theory. Killed them, dev server
+connected cleanly on the next `iwsdk dev up`. Positional audio and the
+wind indicator are the last two items on Erik's "remaining polish"
+list.

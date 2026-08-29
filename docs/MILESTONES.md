@@ -173,12 +173,12 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
 - [x] Game mode Simple (backyard, wind 0, topple 50°) / Advanced
       (tournament, wind 1.5 m/s lateral, topple 60°) — `ToppleSystem`'s
       topple angle and `WindSystem`'s wind vector both read the active
-      mode live (`src/data/game-modes.json`). **Known gap:** court
-      _size_ doesn't change yet — switching mode changes topple/wind
-      immediately but kubbs/king/stakes stay at whatever layout was
-      baked into the scene at load (a real re-layout system, reusing
-      `computeCourtLayout()`, is a fast-follow, not attempted this
-      session)
+      mode live (`src/data/game-modes.json`). Court _size_ now changes
+      too (fixed 2026-08-29 — `GameModeChanged` event + new
+      `CourtLayoutSystem`, reusing `computeCourtLayout()`; see
+      docs/DECISIONS.md): switching mode repositions king/kubbs/stakes/
+      sticks and resizes/repositions the court-line meshes, live-
+      verified in the emulator via direct ECS position reads
 - [x] Language (sv/en) toggle and game mode toggle wired into the
       existing "Ny runda" menu, verified live (screenshots: both
       toggles flip labels across both the menu and the HUD correctly).

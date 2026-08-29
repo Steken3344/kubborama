@@ -2409,3 +2409,98 @@ in passing while verifying a HUD text change.
 
 Mechanical pass green throughout (tsc/eslint/prettier/vitest — 154
 tests, unaffected/build/smoke).
+
+## 2026-08-29 — Court size now changes with game mode (M4's known gap)
+
+Root cause: `setGameMode()` never emitted anything (unlike
+`setLanguage()`'s `LanguageChanged`), so nothing could react to a mode
+switch — `computeCourtLayout()` (pure, tested since M1) was already
+capable of producing the right layout per preset, it just had exactly
+one caller anywhere in `src/` (`config.ts`'s own `courtLayout()`
+wrapper), which nothing else called either. The scene JSON's authored
+king/kubb/stake/stick/court-line positions were a one-time snapshot of
+`computeCourtLayout('backyard', ..., STICK_LAYOUT_SEED)`'s output,
+frozen at authoring time.
+
+Added `GameModeChanged` to the one event bus, emitted from
+`setGameMode()`. New `CourtLayoutSystem` subscribes and, on change,
+recomputes the layout for the new mode's preset (`game-modes.json` →
+`courtPreset`, asserted back from JSON's widened `string` to
+`CourtPresetName` by a new `courtPresetForMode()` — see `config.ts`)
+and:
+
+- hands king/kubb/stick positions to a new
+  `MenuSystem.applyCourtLayout(homePoses)`, which overwrites the
+  relevant entries in the existing `homePoses` cache and calls the
+  existing private `resetAll()` — reusing the release/rack/teleport +
+  `Reset`-event/round-abandon path instead of duplicating it (switching
+  mode mid-round IS a reset, just onto a different layout);
+- moves the 4 corner stakes directly via `PhysicsSystem
+  .setBodyTransform()` — **real bug caught live, not guessed**: stakes
+  have no `Resettable` tag (real stakes are never knocked over/reset
+  mid-round) so the first version silently no-opped on them —
+  `applyCourtLayout()`'s home-pose overwrite only affects entities
+  `resetAll()` actually iterates, i.e. `Resettable` ones. Verified via
+  `ecs_query_entity`: switching to Advanced moved king/kubbs correctly
+  but left a stake at the backyard preset's x=-1.5 instead of
+  tournament's -2.5, until `CourtLayoutSystem` got its own
+  `PhysicsSystem` reference and moved stakes itself;
+- resizes and repositions the 5 court-line meshes (also outside the
+  Resettable pipeline — static decoration, no physics body) by
+  swapping in a new `BoxGeometry` sized for the new preset. Per
+  `.claude/rules/assets-and-manifest.md` ("every placement is a
+  distinct hierarchy clone, but geometry stays shared... never dispose
+  from a placed clone"), the old geometry is intentionally NOT
+  disposed — near/far/center lines share one prototype geometry, and
+  disposing it from one clone while the others still reference it
+  would be exactly the mistake that rule warns about. The orphaned
+  BoxGeometry objects are tiny (24 verts) and mode-switching is a rare
+  user action, not a per-frame allocation.
+
+Extracted the court-line thickness/height (previously copy-pasted
+identically into both `court-line-{short,long}.scene-asset.ts`) into
+`pieces.json`'s new `courtLine` block, now the single source both
+scene-asset files AND `CourtLayoutSystem` read from.
+
+**Live-verified end to end** in the emulator (not just unit tests):
+entered XR, opened the menu (B button), clicked the game-mode button,
+and read back `ecs_query_entity` positions before/after — king moved
+from `z=-3` (backyard centerZ) to exactly `z=-4` (tournament centerZ),
+`kubb-0` to `x=-2, z=-8` (tournament far corner, matches
+`computeCourtLayout`'s formula exactly), stakes to `x=±2.5`, a stick
+to a correctly-scaled scatter position with `StickState.phase` back to
+`RACKED`, and `court-line-left` to `x=-2.5, z=-4`. Toggled back to
+Simple and confirmed everything returns to the backyard layout.
+
+**UIKitML button hit-testing has no per-element mesh to target.**
+`scene_get_runtime_hierarchy` under the panel shows nothing named after
+element ids — UIKitML panels are single-sided quads (per the UI
+skill), so a controller ray must land in the right on-panel 2D region,
+not on a named sub-object. Worked out empirically + from the Horizon
+kit source (`@pmndrs/uikit-horizon/dist/button/index.js`: default
+`size: 'lg'` → `height: 44` units, i.e. cm) that a `reset-menu.uikitml`
+button's world-Y center is
+`panelY + panelHeightWorld/2 - (offsetFromTopUnits * 0.01 * panelScale)`
+— the panel entity's `Transform.position` is its vertical **center**,
+not its top edge (confirmed by matching predicted vs. actual hit
+ranges for the language button). Worth reusing next time a skill needs
+to click a specific `reset-menu.uikitml` button via `xr_look_at` +
+`xr_select` rather than re-deriving this from scratch.
+
+**Unrelated but real environment finding, fixed in passing**: found
+24+ orphaned `vite` dev-server processes accumulated since 2026-08-27
+(never cleaned up across sessions — each `iwsdk dev up`/reload
+apparently left its old process running), which had left the CURRENT
+dev server stuck in `starting: true` indefinitely. This is a strong
+candidate root cause for gh#8's unreproduced physics-tunneling
+anomaly and that session's abnormally slow builds/audio timeouts,
+both attributed at the time to vague "resource contention" — 24
+idle-but-resident node processes is a concrete, unambiguous contention
+source. `pkill -f node.*node_modules/.bin/vite` cleared them; a fresh
+`iwsdk dev up` connected immediately after. No code change from this
+(process hygiene, not a bug in the app) — noting here so a future
+session recognizes the same "dev status stuck starting forever" or
+"physics acts up right after a reload" symptom faster.
+
+Mechanical pass green (tsc/eslint/prettier/vitest — 154 tests,
+build/smoke) plus the live emulator verification above.

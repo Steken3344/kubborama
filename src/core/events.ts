@@ -1,5 +1,6 @@
 import type { Language } from './i18n.js';
 import type { RoundResult } from './scoring.js';
+import type { Settings } from './settings.js';
 import type { Vec3 } from './vec3.js';
 import type { ThrowStyle } from './underhandClassifier.js';
 
@@ -92,6 +93,9 @@ export interface GameEvents {
   };
   LanguageChanged: {
     language: Language;
+  };
+  GameModeChanged: {
+    gameMode: Settings['gameMode'];
   };
 }
 

@@ -24,6 +24,11 @@
     "radiusM": 0.01,
     "heightM": 0.3
   },
+  "courtLine": {
+    "thicknessM": 0.05,
+    "heightM": 0.005,
+    "yOffsetM": 0.003
+  },
   "visualSinkM": 0.0025,
   "wind": {
     "dragFactor": 0.02

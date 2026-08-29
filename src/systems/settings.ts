@@ -64,6 +64,7 @@ export class SettingsSystem extends createSystem({}) {
   setGameMode(gameMode: Settings['gameMode']): void {
     settingsState.current = { ...settingsState.current, gameMode };
     this.persist();
+    gameEvents.emit('GameModeChanged', { gameMode });
   }
 
   toggleGameMode(): void {

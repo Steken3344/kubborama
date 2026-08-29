@@ -23,7 +23,7 @@ import { playSfxVariant } from './playSfx.js';
 import { SettingsSystem } from './settings.js';
 import { StatsSystem } from './stats.js';
 
-interface HomePose {
+export interface HomePose {
   position: Vec3;
   quaternion: [number, number, number, number];
 }
@@ -330,6 +330,22 @@ export class MenuSystem extends createSystem({
     this.menuOpen = open;
     const root = this.menuPanel.requireElementById('menu-root');
     root.setProperties({ display: open ? 'flex' : 'none' });
+  }
+
+  /**
+   * CourtLayoutSystem calls this after a GameModeChanged relayout: the
+   * new positions become each affected piece's home pose (so a later
+   * "Ny runda" restores to the NEW court, not the one authored in the
+   * scene JSON), then reuses resetAll()'s existing
+   * release/rack/teleport + Reset-event/round-abandon path instead of
+   * duplicating it — switching mode mid-round is exactly a reset, just
+   * onto a different layout.
+   */
+  applyCourtLayout(homePoses: ReadonlyMap<number, HomePose>): void {
+    for (const [entityIndex, pose] of homePoses) {
+      this.homePoses.set(entityIndex, pose);
+    }
+    this.resetAll();
   }
 
   private resetAll(): void {
