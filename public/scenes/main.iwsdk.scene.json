@@ -598,8 +598,8 @@
       "id": "stick-rack",
       "name": "Pinnstall",
       "transform": {
-        "position": [1.7313, 0, 0.468],
-        "rotationDeg": [0, -90, 0],
+        "position": [0.0157, 0, 1.0896],
+        "rotationDeg": [0, -180, 0],
         "scale": 1
       }
     },
@@ -621,8 +621,8 @@
       "id": "stick-rack-collider",
       "name": "Stick rack collider",
       "transform": {
-        "position": [1.7313, 0.935, 0.468],
-        "rotationDeg": [0, -90, 0],
+        "position": [0.0157, 0.935, 1.0896],
+        "rotationDeg": [0, -180, 0],
         "scale": 1
       }
     },
@@ -658,8 +658,8 @@
       "id": "stick-0",
       "name": "Kastpinne 0",
       "transform": {
-        "position": [1.7313, 0.972, 0.268],
-        "rotationDeg": [0, 0, 90],
+        "position": [0.2157, 0.972, 1.0896],
+        "rotationDeg": [0, -90, 90],
         "scale": 1
       }
     },
@@ -695,8 +695,8 @@
       "id": "stick-1",
       "name": "Kastpinne 1",
       "transform": {
-        "position": [1.7313, 0.972, 0.348],
-        "rotationDeg": [0, 0, 90],
+        "position": [0.1357, 0.972, 1.0896],
+        "rotationDeg": [0, -90, 90],
         "scale": 1
       }
     },
@@ -732,8 +732,8 @@
       "id": "stick-2",
       "name": "Kastpinne 2",
       "transform": {
-        "position": [1.7313, 0.972, 0.428],
-        "rotationDeg": [0, 0, 90],
+        "position": [0.0557, 0.972, 1.0896],
+        "rotationDeg": [0, -90, 90],
         "scale": 1
       }
     },
@@ -769,8 +769,8 @@
       "id": "stick-3",
       "name": "Kastpinne 3",
       "transform": {
-        "position": [1.7313, 0.972, 0.508],
-        "rotationDeg": [0, 0, 90],
+        "position": [-0.0243, 0.972, 1.0896],
+        "rotationDeg": [0, -90, 90],
         "scale": 1
       }
     },
@@ -806,8 +806,8 @@
       "id": "stick-4",
       "name": "Kastpinne 4",
       "transform": {
-        "position": [1.7313, 0.972, 0.588],
-        "rotationDeg": [0, 0, 90],
+        "position": [-0.1043, 0.972, 1.0896],
+        "rotationDeg": [0, -90, 90],
         "scale": 1
       }
     },
@@ -843,8 +843,8 @@
       "id": "stick-5",
       "name": "Kastpinne 5",
       "transform": {
-        "position": [1.7313, 0.972, 0.668],
-        "rotationDeg": [0, 0, 90],
+        "position": [-0.1843, 0.972, 1.0896],
+        "rotationDeg": [0, -90, 90],
         "scale": 1
       }
     },

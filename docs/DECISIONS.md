@@ -3211,3 +3211,22 @@ manual edit, both fixed same session:
    spaced row along the rotated plank (screenshot). Full mechanical
    pass green (161 tests, tsc/eslint/prettier/build/smoke) after the
    fix.
+
+### 2026-08-30 (later still) — rack relocated again, same collider bug recurred
+
+Erik moved the rack a second time, now to sit just behind the player's
+spawn point (`(0.0157, 0, 1.0896)`, rotated `-180°` instead of `-90°`).
+`stick-rack-collider` again failed to rotate with it — the exact same
+class of bug as the first relocation. Fixed the same way (collider
+transform snapped to match the plank exactly) and re-promoted the new
+placement into `stick-rack.json` (`yawRad: -π`), recomputing all 6
+stick positions from `computeStickRackPositions()` rather than the
+approximate drag values. 161 tests green, full mechanical pass clean,
+live-verified via screenshot.
+
+**This has now happened twice.** If Erik relocates the rack a third
+time, worth considering whether `stick-rack-collider` should be
+derived automatically from the rack node's transform at load time (a
+small system) instead of being a second manually-authored node that
+can drift — flagged, not yet built, since it's an architecture change
+and this is only the second occurrence.
