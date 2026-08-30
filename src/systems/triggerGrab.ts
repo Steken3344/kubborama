@@ -1,5 +1,10 @@
 import { createSystem, InputComponent } from '@iwsdk/core';
 
+/** Hoisted out of update() — `['left', 'right'] as const` inside the
+ * loop allocated a fresh array every single frame (M5 adversarial
+ * review gate, docs/DECISIONS.md). */
+const HANDS = ['left', 'right'] as const;
+
 /**
  * Lets the trigger ALSO grab a nearby stick, not just squeeze (Erik's
  * feedback, 2026-08-29). Routes trigger down/up as a squeeze event on
@@ -19,7 +24,7 @@ import { createSystem, InputComponent } from '@iwsdk/core';
 export class TriggerGrabSystem extends createSystem({}) {
   update(_delta: number, time: number): void {
     const timeStamp = time * 1000;
-    for (const hand of ['left', 'right'] as const) {
+    for (const hand of HANDS) {
       const gamepad = this.input.xr.gamepads[hand];
       if (!gamepad) {
         continue;

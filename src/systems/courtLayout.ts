@@ -26,6 +26,14 @@ const STAKE_NODE_IDS = [
   'corner-stake-far-right',
 ] as const;
 
+const COURT_LINE_IDS = [
+  'court-line-left',
+  'court-line-right',
+  'court-line-near',
+  'court-line-far',
+  'court-line-center',
+] as const;
+
 const IDENTITY_QUATERNION: [number, number, number, number] = [0, 0, 0, 1];
 
 /** Sticks lie flat with a fixed 90° tip (see stick.scene-asset.ts) plus
@@ -60,6 +68,13 @@ function stickQuaternion(yawRad: number): [number, number, number, number] {
  *     start out pointing at the SAME object), but every swap after
  *     that replaces a geometry that is by then private to just this
  *     one mesh, so it IS disposed (resizedLineIds tracks which).
+ *
+ * All 21 scene-entity/object lookups (`requireSceneEntity`, which
+ * throws synchronously on a missing node id) happen FIRST, before any
+ * live mutation — a missing/renamed id (plausible after a hand-edit
+ * to main.iwsdk.scene.json, an established workflow here) fails
+ * clean instead of leaving the court half-migrated between the old
+ * and new preset (M5 adversarial review gate, docs/DECISIONS.md).
  */
 export class CourtLayoutSystem extends createSystem({}) {
   private menuSystem!: MenuSystem;
@@ -96,83 +111,118 @@ export class CourtLayoutSystem extends createSystem({}) {
     const preset = getCourtPreset(presetName);
     const layout = courtLayout(presetName);
 
-    const homePoses = new Map<number, HomePose>();
+    // Resolve phase — every lookup that can throw, none of it mutates
+    // anything yet.
+    const kingEntity = this.world.requireSceneEntity('king');
+    const kubbEntities = layout.kubbPositions.map((_, i) =>
+      this.world.requireSceneEntity(`kubb-${i}`),
+    );
+    const stakeEntities = STAKE_NODE_IDS.map((nodeId) =>
+      this.world.requireSceneEntity(nodeId),
+    );
+    const stickEntities = layout.stickSpawnPositions.map((_, i) =>
+      this.world.requireSceneEntity(`stick-${i}`),
+    );
+    const lineMeshes = COURT_LINE_IDS.map(
+      (nodeId) => this.world.requireSceneEntity(nodeId).object3D as Mesh,
+    );
 
-    homePoses.set(this.world.requireSceneEntity('king').index, {
+    // Mutation phase — everything below only writes to already-
+    // resolved objects, so nothing here can throw partway through.
+    const homePoses = new Map<number, HomePose>();
+    homePoses.set(kingEntity.index, {
       position: layout.kingPosition,
       quaternion: IDENTITY_QUATERNION,
     });
 
     layout.kubbPositions.forEach((position, i) => {
-      homePoses.set(this.world.requireSceneEntity(`kubb-${i}`).index, {
+      const entity = kubbEntities[i];
+      if (!entity) {
+        return;
+      }
+      homePoses.set(entity.index, {
         position,
         quaternion: IDENTITY_QUATERNION,
       });
     });
 
-    STAKE_NODE_IDS.forEach((nodeId, i) => {
-      const position = layout.stakePositions[i];
-      if (!position) {
+    layout.stakePositions.forEach((position, i) => {
+      const entity = stakeEntities[i];
+      if (!entity) {
         return;
       }
-      this.physicsSystem.setBodyTransform(
-        this.world.requireSceneEntity(nodeId),
-        { position, quaternion: IDENTITY_QUATERNION },
-      );
+      this.physicsSystem.setBodyTransform(entity, {
+        position,
+        quaternion: IDENTITY_QUATERNION,
+      });
     });
 
     layout.stickSpawnPositions.forEach((spawn, i) => {
-      homePoses.set(this.world.requireSceneEntity(`stick-${i}`).index, {
+      const entity = stickEntities[i];
+      if (!entity) {
+        return;
+      }
+      homePoses.set(entity.index, {
         position: spawn.position,
         quaternion: stickQuaternion(spawn.yawRad),
       });
     });
 
-    this.resizeCourtLines(preset);
+    this.resizeCourtLines(preset, lineMeshes);
     this.menuSystem.applyCourtLayout(homePoses);
   }
 
-  private resizeCourtLines(preset: CourtPreset): void {
+  private resizeCourtLines(preset: CourtPreset, lineMeshes: Mesh[]): void {
+    const [left, right, near, far, center] = lineMeshes;
+    if (!left || !right || !near || !far || !center) {
+      return; // unreachable — resolved from COURT_LINE_IDS's fixed 5 ids
+    }
     const { thicknessM, heightM, yOffsetM } = pieces.courtLine;
     const halfWidthM = preset.widthM / 2;
     const centerZ = -preset.lengthM / 2;
     const farZ = -preset.lengthM;
 
-    this.setLine('court-line-left', thicknessM, heightM, preset.lengthM, [
+    this.setLine('court-line-left', left, thicknessM, heightM, preset.lengthM, [
       -halfWidthM,
       yOffsetM,
       centerZ,
     ]);
-    this.setLine('court-line-right', thicknessM, heightM, preset.lengthM, [
-      halfWidthM,
-      yOffsetM,
-      centerZ,
-    ]);
-    this.setLine('court-line-near', thicknessM, heightM, preset.widthM, [
+    this.setLine(
+      'court-line-right',
+      right,
+      thicknessM,
+      heightM,
+      preset.lengthM,
+      [halfWidthM, yOffsetM, centerZ],
+    );
+    this.setLine('court-line-near', near, thicknessM, heightM, preset.widthM, [
       0,
       yOffsetM,
       0,
     ]);
-    this.setLine('court-line-far', thicknessM, heightM, preset.widthM, [
+    this.setLine('court-line-far', far, thicknessM, heightM, preset.widthM, [
       0,
       yOffsetM,
       farZ,
     ]);
-    this.setLine('court-line-center', thicknessM, heightM, preset.widthM, [
-      0,
-      yOffsetM,
-      centerZ,
-    ]);
+    this.setLine(
+      'court-line-center',
+      center,
+      thicknessM,
+      heightM,
+      preset.widthM,
+      [0, yOffsetM, centerZ],
+    );
   }
 
   private setLine(
     nodeId: string,
+    mesh: Mesh,
     thicknessM: number,
     heightM: number,
     lengthM: number,
     position: Vec3,
   ): void {
-    const mesh = this.world.requireSceneEntity(nodeId).object3D as Mesh;
     if (this.resizedLineIds.has(nodeId)) {
       mesh.geometry.dispose();
     }

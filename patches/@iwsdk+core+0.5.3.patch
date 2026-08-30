@@ -1,8 +1,8 @@
 diff --git a/node_modules/@iwsdk/core/dist/init/world-initializer.js b/node_modules/@iwsdk/core/dist/init/world-initializer.js
-index 1cc8f6b..f21b840 100644
+index 1cc8f6b..153c546 100644
 --- a/node_modules/@iwsdk/core/dist/init/world-initializer.js
 +++ b/node_modules/@iwsdk/core/dist/init/world-initializer.js
-@@ -559,9 +559,22 @@ async function registerFeatureSystems(world, config) {
+@@ -559,9 +559,32 @@ async function registerFeatureSystems(world, config) {
   */
  function setupRenderLoop(world, renderer) {
      const clock = new Clock();
@@ -22,7 +22,17 @@ index 1cc8f6b..f21b840 100644
      const render = () => {
          var _a, _b, _c, _d;
 -        const delta = clock.getDelta();
-+        const delta = Math.min(clock.getDelta(), MAX_DELTA_S);
++        const rawDelta = clock.getDelta();
++        // M5 adversarial review gate (docs/DECISIONS.md, 2026-08-30): the
++        // clamp below had no signal when it actually engages, so a real
++        // production hitch (as opposed to a routine sub-frame delta) was
++        // invisible in the console. A genuinely normal frame is nowhere
++        // near MAX_DELTA_S, so this only ever logs on an anomaly worth
++        // knowing about.
++        if (rawDelta > MAX_DELTA_S) {
++            console.warn(`[KubbOrama patch/gh#8] frame delta clamped: ${rawDelta.toFixed(3)}s -> ${MAX_DELTA_S}s`);
++        }
++        const delta = Math.min(rawDelta, MAX_DELTA_S);
          const elapsedTime = clock.elapsedTime;
          world.visibilityState.value = ((_b = (_a = world.session) === null || _a === void 0 ? void 0 : _a.visibilityState) !== null && _b !== void 0 ? _b : VisibilityState.NonImmersive);
          // Run ECS systems in priority order (InputSystem => LocomotionSystem => GrabSystem)

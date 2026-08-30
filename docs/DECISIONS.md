@@ -3006,3 +3006,119 @@ or deferred, not ignored):**
 - My own uncommitted wind-tuning-panel work-in-progress was correctly
   identified by the reviewer as out of scope for the M5 review (it
   postdates the reviewed range) and excluded from findings.
+
+### Adversarial pass (second, more skeptical review) — 4 real findings, all fixed
+
+Dispatched a second reviewer with explicit instructions to actively
+try to break things, not just read for correctness — race conditions,
+boundary behavior, "works because I tested it this one way" gaps.
+Traced end-to-end and confirmed as SAFE (didn't break, worth recording
+since a review that only reports problems is less trustworthy than
+one that shows its work both ways): double-fire of `KubbFelled` for
+an already-`OutOfPlay` kubb (independent `hasComponent(OutOfPlay)`
+guard, not just reliance on `ToppleSystem.felledReported`); a stale
+entity reference in `SimpleRulesSystem.onKubbFelled` (`gameEvents.emit`
+is fully synchronous, no async gap exists for an entity to be disposed
+in between); `Reset` handler ordering across systems (touches disjoint
+state, order-independent); rapid double-toggling `GameModeChanged`
+(the whole handler chain is synchronous, no interleaving possible in
+a single-threaded event loop); entity-index reuse in
+`OneShotAudioSystem` (confirmed via reading `elics`'s entity-manager
+source that this system is the ONLY disposer of `OneShotAudio`
+entities, so no other code path can leave a stale index in
+`startedPlaying` while Havok/elics recycles it back out from under —
+safe today, but a fragile invariant nobody had written down until now).
+
+Four real findings, all fixed same session:
+
+1. **`src/systems/triggerGrab.ts`** — `for (const hand of ['left',
+'right'] as const)` allocated a fresh array every single frame,
+   unconditionally, for the life of the session. `as const` only
+   narrows the TYPE, it doesn't hoist the array. A genuine 3rd
+   instance of the exact bug class both prior review passes were
+   hunting for — this one slipped through because `TriggerGrabSystem`
+   was added mid-milestone (`ca568f3`) and simply never got the same
+   scrutiny its neighbors (`wind.ts`, `stickPull.ts`) got. Fixed:
+   hoisted to a module-level `const HANDS = ['left', 'right'] as const`.
+2. **`src/systems/oneShotAudio.ts`** — a one-shot sound that never
+   starts playing (autoplay blocked pending a user gesture — genuinely
+   common in browsers before the first interaction resolves; a 404; a
+   decode failure) was never disposed: the system's only disposal
+   condition is "was playing, now isn't," which such an entity never
+   satisfies. This is the SAME leak this system exists to prevent,
+   approached from the opposite direction. Fixed: added a
+   `firstSeenTimeS: Map<number, number>` and a generous
+   `MAX_LIFETIME_S = 5` force-dispose fallback for an entity that's
+   gone that long without ever starting to play.
+3. **`src/systems/courtLayout.ts`** — `applyGameMode` mutated live
+   state (stake teleports, court-line geometry swaps) interleaved
+   with `requireSceneEntity`/`requireSceneObject` lookups that throw
+   SYNCHRONOUSLY on a missing node id. A missing/renamed id partway
+   through (plausible: Erik hand-edits `main.iwsdk.scene.json` in the
+   editor most sessions) would throw mid-migration, leaving some
+   stakes/lines on the new preset and the rest on the old one, with no
+   `Reset` ever firing to signal or recover. Restructured into two
+   phases: resolve ALL 21 scene entities/objects first (any throw here
+   happens before any mutation), then apply every transform/geometry
+   change from the already-resolved set — nothing in the mutation
+   phase can throw anymore.
+4. **Redundant clamp + no observability** — `patches/@iwsdk+core+0.5.3
+.patch`'s `MAX_DELTA_S` and `core/restState.ts`'s
+   `MAX_FRAME_DELTA_S` are the same value (0.1) for the same physical
+   concern, a literal DRY violation now that the patch clamps at the
+   source (making `restState.ts`'s own clamp mathematically
+   unreachable in practice). Kept BOTH rather than unifying — a
+   patched `node_modules` file and project source can't cleanly share
+   one constant across that boundary, and `restState.ts`'s clamp is
+   legitimate defense-in-depth against the patch itself ever failing
+   to apply (a dependency bump, a lost patch file) — but added a
+   comment cross-referencing the two so the duplication reads as
+   intentional, not an oversight. Separately: the patch's clamp had no
+   signal when it actually engages, so a real production hitch (as
+   opposed to a routine sub-frame delta) was invisible in the console.
+   Added a `console.warn` in the patch itself, gated on the raw delta
+   actually exceeding the clamp — silent on every normal frame,
+   informative on the one that matters.
+
+Also acted on two Minor findings while in this code (cheap, worth
+doing rather than filing):
+
+- `SimpleRulesSystem.applyKingProtection()` silently no-op'd on 0
+  kings and silently picked an arbitrary one of >1 — structurally
+  impossible today (exactly one `KingPiece` in the scene) but
+  undiagnosable if a future scene-authoring mistake ever created one.
+  Added a `log('warn', 'state', ...)` when the count isn't exactly 1;
+  behavior unchanged, just visible now.
+- `core/sinBin.test.ts` had no boundary coverage (negative index,
+  index past the current 10-kubb design). Added two tests documenting
+  the deliberate "no clamping, caller's job" contract rather than
+  leaving it implicit.
+
+**Live-verified all of it in the same session**, not just by
+inspection: confirmed both patches reapply cleanly from a fresh
+install; switched game mode twice for real through the refactored
+`CourtLayoutSystem` (court-line position matched the new preset
+exactly, zero console errors, zero false-positive king-count
+warnings); trigger-grabbed a stick for real (confirms `TriggerGrabSystem`
+still works post-hoist); dropped a stick and confirmed a normal
+impact sound still plays and disposes cleanly (zero `OneShotAudio`
+entities lingering afterward); confirmed the new patch warning never
+fires during ordinary play (a normal 11-14ms frame is nowhere near
+the 0.1s threshold).
+
+Mechanical pass green (tsc/eslint/prettier/vitest — 159 tests,
+build/smoke) plus the live verification above.
+
+### Go/no-go
+
+**M5 milestone review gate: GO, with fixes already applied.** Both
+review passes are complete. No Critical issues were found by either
+pass. Important issues found across both passes (2 per-frame
+allocations from fresh-eyes; 3 correctness/robustness gaps plus a DRY
+violation from the adversarial pass) have all been fixed and
+live-verified in this same session — nothing is being deferred that
+should block Erik's headset test. Remaining M5 checklist items (72Hz
+verification on real hardware, the full in-headset perf/comfort/
+experience pass) require the physical headset and are Erik's gate, not
+something further code changes can satisfy. Recommend: proceed to
+that headset test; tag `v0.6-m5` once it comes back clean.

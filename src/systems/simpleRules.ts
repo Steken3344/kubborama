@@ -7,6 +7,7 @@ import { StickState } from '../components/stick-state.js';
 import { pieces, sinBin } from '../config.js';
 import { sinBinSlotPosition } from '../core/sinBin.js';
 import { gameEvents } from '../core/events.js';
+import { log } from '../core/log.js';
 import { settingsState } from '../settingsState.js';
 
 const IDENTITY_QUATERNION: [number, number, number, number] = [0, 0, 0, 1];
@@ -106,7 +107,19 @@ export class SimpleRulesSystem extends createSystem({
   }
 
   private applyKingProtection(): void {
-    const kingEntity = [...this.queries.king.entities][0];
+    const kingEntities = this.queries.king.entities;
+    if (kingEntities.size !== 1) {
+      // Should be structurally impossible (exactly one KingPiece is
+      // authored in the scene) — logged rather than silently no-op'd
+      // or picking an arbitrary entity, so a future scene-authoring
+      // mistake (e.g. a duplicated king node) is diagnosable instead
+      // of silently breaking Simple mode's rules (M5 adversarial
+      // review gate, docs/DECISIONS.md).
+      log('warn', 'state', 'expected exactly one KingPiece entity', {
+        count: kingEntities.size,
+      });
+    }
+    const kingEntity = kingEntities.values().next().value;
     if (!kingEntity) {
       return;
     }

@@ -231,7 +231,23 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
   writeup in docs/DECISIONS.md. Tagged `v0.5-m4` — no headset gate for
   this milestone.
 
-## M5 — Polish & performance `status: in progress — audio + positional audio + wind indicator + Simple mode rules + physics-tunneling fix slices done`
+## M5 — Polish & performance `status: review gate GO (2026-08-30) — awaiting Erik's headset pass to tag v0.6-m5`
+
+- [x] Formal milestone review gate (2026-08-30): mechanical pass →
+      fresh-eyes subagent review → adversarial pass, per CLAUDE.md's
+      workflow, over the whole of M5 (`v0.5-m4`..HEAD, 27+ commits).
+      No Critical issues either pass. Fresh-eyes found 2 real per-
+      frame allocations (`StickPullSystem`, `WindIndicatorSystem`);
+      the adversarial pass found a 3rd (`TriggerGrabSystem`) plus a
+      real audio-entity leak vector (`OneShotAudioSystem` never
+      disposing a clip that never starts playing), a partial-mutation
+      risk in `CourtLayoutSystem` (a missing scene node id could throw
+      mid-migration, leaving the court half old-preset/half new), and
+      a documented-but-unfixed DRY violation (duplicate delta-clamp
+      constant across the gh#8 patch and `core/restState.ts`). All
+      fixed and live-verified same session — see docs/DECISIONS.md for
+      the full writeup and go/no-go. Nothing deferred that blocks
+      Erik's headset test.
 
 - [x] gh#8 root-caused and fixed (2026-08-30): `@iwsdk/core`'s render
       loop feeds an uncapped `THREE.Clock.getDelta()` straight into
