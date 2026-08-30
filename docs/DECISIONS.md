@@ -3271,3 +3271,38 @@ fix as before. This has now recurred at least twice across sessions —
 worth a standing habit of checking `ps aux | grep vite` when `dev up`
 reports success but the bridge still won't come ready, rather than
 retrying `dev up` repeatedly.
+
+## 2026-08-30 — HUD frame ("en tavla")
+
+Erik: wanted a proper frame around the HUD, like a mounted board.
+
+Added `src/scene-assets/hud-frame.scene-asset.ts`: a flat wooden board
+(darker `kingWoodMaterial`, distinct from the pale `woodMaterial` used
+for the sign posts/stick-rack, so the frame reads as a deliberate
+mount rather than matching furniture) sized `PANEL_WIDTH_M +
+2×FRAME_MARGIN_M` by `PANEL_HEIGHT_M + 2×FRAME_MARGIN_M`, placed as a
+sibling scene node sharing `hud-panel`'s exact transform, same pattern
+as the sign posts.
+
+**Real bug caught before committing**: the first version exported a
+bare `Mesh` as the asset root with the "sit behind the panel" Z offset
+baked into that root's own `position.z`. It had zero effect regardless
+of the offset's sign — the frame fully occluded the panel either way.
+Root cause: a bare-Mesh asset root has its transform overwritten
+entirely by the scene node that places it (the node's authored
+position/rotation replaces the prototype's own), so any offset
+authored on the root itself is silently discarded. `stick-rack` and
+`hud-sign-posts` never hit this because they already wrap their
+content in a `Group` and set offsets on children, not the root. Fixed
+by doing the same here — wrapped the board `Mesh` inside a `Group`
+root and moved the Z offset onto the child. Live re-verified after the
+fix: frame renders correctly behind the panel with the score text
+fully readable, both in the scene editor and the application runtime
+(`browser_screenshot`), no console errors. Full mechanical pass green
+(161 tests, tsc/eslint/prettier/build/smoke).
+
+**Worth remembering for future single-mesh procedural assets**: always
+wrap in a `Group`, even for a single mesh, if the asset needs any
+internal local-space offset — a bare Mesh root only works when its own
+origin should coincide exactly with the scene node's authored
+transform.
