@@ -222,7 +222,25 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
   writeup in docs/DECISIONS.md. Tagged `v0.5-m4` — no headset gate for
   this milestone.
 
-## M5 — Polish & performance `status: in progress — audio + positional audio + wind indicator + Simple mode rules slices done`
+## M5 — Polish & performance `status: in progress — audio + positional audio + wind indicator + Simple mode rules + physics-tunneling fix slices done`
+
+- [x] gh#8 root-caused and fixed (2026-08-30): `@iwsdk/core`'s render
+      loop feeds an uncapped `THREE.Clock.getDelta()` straight into
+      physics with no substep protection — a large single-frame delta
+      (a real multi-second main-thread/OS stall) integrates gravity
+      far enough in one step to tunnel a moving body clean through a
+      thin collider. Reproduced directly (not inferred): a lifted
+      stick released with a synthetic 5-second step went from y=5 to
+      y=-148 in one step — the exact symptom pattern gh#8 reported.
+      Fixed via `patch-package` (clamps the single delta-producing
+      call site to 0.1s, same technique/value as `core/restState.ts`'s
+      existing precedent for the same class of problem), verified to
+      reapply cleanly from a fresh install matching CI. Full writeup
+      and the one thing that couldn't be directly live-verified
+      (a real wall-clock stall hitting the exact patched code path,
+      as opposed to the debug tool's own separate delta-injection
+      path used to confirm the underlying mechanism) in
+      docs/DECISIONS.md.
 
 - [x] Simple mode's real-kubb rules (2026-08-29, Erik's request): a
       felled kubb is teleported to a sin-bin row beside the court, out

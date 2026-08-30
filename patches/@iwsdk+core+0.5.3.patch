@@ -1,0 +1,28 @@
+diff --git a/node_modules/@iwsdk/core/dist/init/world-initializer.js b/node_modules/@iwsdk/core/dist/init/world-initializer.js
+index 1cc8f6b..f21b840 100644
+--- a/node_modules/@iwsdk/core/dist/init/world-initializer.js
++++ b/node_modules/@iwsdk/core/dist/init/world-initializer.js
+@@ -559,9 +559,22 @@ async function registerFeatureSystems(world, config) {
+  */
+ function setupRenderLoop(world, renderer) {
+     const clock = new Clock();
++    // KubbOrama patch (gh#8, docs/DECISIONS.md 2026-08-30): Clock.getDelta()
++    // is unbounded — a multi-second main-thread stall (a blocked asset
++    // decode, a GC pause, tab backgrounding) hands PhysicsSystem.update() a
++    // huge delta with no clamp anywhere in this package. HP_World_Step
++    // integrates that in ONE step with no substepping protection (verified:
++    // HP_World_SetIdealStepTime is called with the SAME delta as HP_World_Step,
++    // so Havok's substep count is always 1 regardless of size), so gravity
++    // alone can tunnel a falling body clean through a thin collider before
++    // any contact is ever detected. Reproduced directly: a single
++    // world.update(5, ...) call sent a falling stick from y=5 to y=-148 in
++    // one step. Clamping here (the single delta-producing call site) protects
++    // every system that consumes delta, not just physics.
++    const MAX_DELTA_S = 0.1;
+     const render = () => {
+         var _a, _b, _c, _d;
+-        const delta = clock.getDelta();
++        const delta = Math.min(clock.getDelta(), MAX_DELTA_S);
+         const elapsedTime = clock.elapsedTime;
+         world.visibilityState.value = ((_b = (_a = world.session) === null || _a === void 0 ? void 0 : _a.visibilityState) !== null && _b !== void 0 ? _b : VisibilityState.NonImmersive);
+         // Run ECS systems in priority order (InputSystem => LocomotionSystem => GrabSystem)

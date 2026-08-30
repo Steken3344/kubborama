@@ -2807,3 +2807,87 @@ try a full page reload before spending a long time debugging aim math.
 
 Mechanical pass green (tsc/eslint/prettier/vitest — 157 tests,
 build/smoke) plus the live verification above.
+
+## 2026-08-30 — gh#8 root-caused and fixed: uncapped physics delta, patched via patch-package
+
+Followed `superpowers:systematic-debugging`'s process rather than
+guessing. Root cause, confirmed by reading `@iwsdk/core`'s own source
+(not assumed): `node_modules/@iwsdk/core/dist/init/world-initializer.js`'s
+`setupRenderLoop()` computes `delta = clock.getDelta()`
+(`THREE.Clock`) with **zero clamping** and feeds it straight into
+`world.update(delta, elapsedTime)` every frame. `PhysicsSystem.update()`
+then does `HP_World_SetIdealStepTime(havokWorld, delta)` immediately
+followed by `HP_World_Step(havokWorld, delta)` — **the same
+uncapped `delta` for both calls**, meaning Havok's substep count is
+always exactly 1 regardless of how large `delta` gets (a genuine
+substep-based implementation would set `IdealStepTime` to a small
+FIXED value once and let `Step` compute `elapsedDelta / idealStepTime`
+internal substeps — this package doesn't do that). So a delta large
+enough for gravity to integrate a falling body's velocity+position
+past a thin collider's thickness in one step tunnels it clean through,
+with nothing to catch it.
+
+**Reproduced directly, not inferred.** `ecs_step`'s own `delta`
+parameter turned out to call `world.update()` from the MCP debug
+harness directly, bypassing `setupRenderLoop`'s render-loop closure
+entirely (confirmed by testing: my patch, once applied, had zero
+effect on an `ecs_step`-driven repro — see below) — so I couldn't use
+it to validate the eventual fix, but it WAS the right tool to first
+confirm the underlying vulnerable mechanism exists at all, independent
+of exactly how a large delta arises in production: lifted a stick to
+y=5 while grabbed (kinematic, unaffected by integration), paused,
+released the grab (queued, not yet processed since paused), then
+`ecs_step({count:1, delta:5})`. Result: position.y went from 5 to
+**-148.28** in that single step, `_linearVelocity.y` = **-36.79 m/s**
+— textbook match for gh#8's original symptom (y ≈ -39000 → -51000,
+velocity ≈ -195 m/s and climbing). Confirmed this ISN'T specific to a
+resting body either way: an EARLIER attempt at the same delta=5 step
+on an already-resting, already-settled kubb produced NO visible
+change at all (Havok's contact solver evidently re-projects a body
+already in stable resting contact regardless of step size) — the bug
+only manifests for a body genuinely in free motion when the huge
+delta lands, exactly matching the original report's "a stick's
+physics body fell straight through" (a stick that had presumably just
+been released, not one already resting).
+
+**Fix**: patched the single delta-producing call site (not
+`PhysicsSystem`'s consuming side — clamping at the source protects
+every delta-consuming system uniformly, including our own future
+code, not just physics) —
+`Math.min(clock.getDelta(), MAX_DELTA_S)` with `MAX_DELTA_S = 0.1`,
+matching this project's own existing precedent for the exact same
+class of problem (`core/restState.ts`'s `MAX_FRAME_DELTA_S`, chosen
+independently for a different purpose — rest-duration accumulation,
+not physics integration — but the same "don't let one anomalous
+frame's elapsed time overstate reality" reasoning). Applied via
+`patch-package` (`patches/@iwsdk+core+0.5.3.patch`), the same
+established mechanism already used for the UIKitML font-charset fix —
+verified reapplication from a truly fresh install
+(`rm -rf node_modules/@iwsdk/core && npm install @iwsdk/core@0.5.3
+--no-save && npx patch-package`), which is what CI's `npm ci` +
+`postinstall: patch-package` will actually run.
+
+**What I could NOT directly verify**: a live repro of a REAL
+multi-second wall-clock stall hitting the actual patched render-loop
+code path (as opposed to `ecs_step`'s separate, bypassing path). No
+available tool blocks the browser's main thread or backgrounds the
+tab long enough to force a naturally large `Clock.getDelta()`. What
+IS verified: the patch reapplies cleanly from a fresh install
+(matching CI exactly), a full mechanical pass is green, the production
+build boots with zero console errors, and normal gameplay (grab/drop,
+settle) is bit-for-bit unaffected — expected, since real frame deltas
+(11-14ms at 72-90fps) are nowhere near the 0.1s clamp threshold. The
+fix is applied at the objectively correct, sole chokepoint for this
+class of bug; the gap is specifically in reproducing the EXACT
+triggering condition end-to-end, not in confidence about the fix
+itself.
+
+Left `patch-package @iwsdk/core --create-issue`'s upstream-issue offer
+untaken for now — filing against a third party's public repo under
+Erik's own GitHub identity is worth a deliberate yes/no from him
+rather than doing it silently; flagged to him separately.
+
+Commented gh#8 with this full writeup and closed it as fixed.
+
+Mechanical pass green (tsc/eslint/prettier/vitest — 157 tests,
+build/smoke) plus the live verification above.
