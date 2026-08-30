@@ -141,6 +141,28 @@ export function createTuningPanel(tuningLab: TuningLabSystem): void {
   // threading a UI-refresh callback through the event bus.
   setInterval(refreshLastThrowMeters, 500);
 
+  // Wind knobs (docs/PLAN.md's original debug-panel spec) — separate
+  // from the A/B/C feel presets above since wind is an environmental
+  // experiment, not a throw-feel parameter. "Auto" (checked by
+  // default) leaves wind exactly as the active game mode sets it;
+  // unchecking lets the slider override it live for testing.
+  const windFolder = pane.addFolder({ title: 'Wind (dev override)' });
+  const windState = { auto: true, windMps: 1.5 };
+  function applyWindOverride(): void {
+    tuningLab.setWindOverride(windState.auto ? null : windState.windMps);
+  }
+  windFolder
+    .addBinding(windState, 'auto', { label: 'Auto (game mode)' })
+    .on('change', applyWindOverride);
+  windFolder
+    .addBinding(windState, 'windMps', {
+      label: 'Wind strength (m/s)',
+      min: 0,
+      max: 3,
+      step: 0.1,
+    })
+    .on('change', applyWindOverride);
+
   const actionsFolder = pane.addFolder({ title: 'Presets & telemetry' });
   actionsFolder
     .addButton({ title: 'Export preset JSON (console + clipboard)' })

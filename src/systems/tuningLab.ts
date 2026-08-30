@@ -27,6 +27,7 @@ import { length, sub } from '../core/vec3.js';
 import type { Vec3 } from '../core/vec3.js';
 import { presetBank } from '../tuningState.js';
 import { createTuningPanel } from '../ui/tuningPanel.js';
+import { WindSystem } from './wind.js';
 
 const TELEMETRY_STORAGE_KEY = 'kubborama.telemetry.v1';
 
@@ -71,6 +72,7 @@ export class TuningLabSystem extends createSystem({
   telemetryStore: TelemetryStore = emptyStore();
   private pendingThrows = new Map<string, PendingThrow>();
   private physicsSystem!: PhysicsSystem;
+  private windSystem!: WindSystem;
   private unsubscribeThrown?: () => void;
   private unsubscribeSettled?: () => void;
 
@@ -82,6 +84,11 @@ export class TuningLabSystem extends createSystem({
       );
     }
     this.physicsSystem = physicsSystem;
+    const windSystem = this.world.getSystem(WindSystem);
+    if (!windSystem) {
+      throw new Error('TuningLabSystem requires WindSystem to be registered');
+    }
+    this.windSystem = windSystem;
     this.telemetryStore = loadTelemetry();
 
     this.unsubscribeThrown = gameEvents.on('Thrown', (e) => {
@@ -131,6 +138,18 @@ export class TuningLabSystem extends createSystem({
   setParam(id: TuningParamId, percent: number): void {
     activePreset(presetBank)[id] = Math.min(100, Math.max(0, percent));
     this.applyTuningToPhysics();
+  }
+
+  /** Dev-only wind override (docs/PLAN.md's original "wind
+   * strength/direction, gravity" debug-panel sliders — direction is
+   * deliberately not exposed, it's a fixed cross-court lateral axis
+   * per docs/PLAN.md §1, only magnitude ever varies). `null` restores
+   * the active game mode's own wind — the default, untouched unless
+   * the panel's slider is moved. Not part of the A/B/C throw-feel
+   * preset system: wind is an environmental experiment, not a "feel"
+   * parameter, so it doesn't belong in TuningPreset/tuning-params.json. */
+  setWindOverride(windMps: number | null): void {
+    this.windSystem.setForceOverride(windMps === null ? null : [windMps, 0, 0]);
   }
 
   switchPreset(id: PresetId): void {

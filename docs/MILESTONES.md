@@ -211,11 +211,20 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       repeatedly missed. Full writeup, including a fresh-eyes review
       that caught a real volume-cycling bug (fixed before tagging),
       in docs/DECISIONS.md
-- [ ] Dev debug panel (tweakpane reuse) for wind knobs — not built, low
-      priority, deferred past this milestone (not part of Erik's
-      approved M4 scope). The optional leaf wind indicator noted here
-      was built in M5 (see below) once it came up on Erik's own
-      "remaining polish" list.
+- [x] Dev debug panel (tweakpane reuse) for wind knobs (2026-08-30) —
+      deferred here as low priority, built in M5 alongside the leaf
+      wind indicator below. `WindSystem` gained a nullable force
+      override (`null` = today's exact game-mode-driven behavior,
+      untouched by default); the existing Tuning Lab panel gained a
+      "Wind (dev override)" folder — an Auto checkbox plus a 0-3 m/s
+      slider, kept deliberately out of the A/B/C throw-feel preset
+      system since wind is an environmental experiment, not a feel
+      parameter. Direction is not exposed — it's a fixed cross-court
+      axis by design. See docs/DECISIONS.md for why the override path
+      itself couldn't be directly clicked/verified (the panel is a
+      desktop DOM overlay outside the WebXR canvas, no available tool
+      can interact with it) though the regression side (default
+      behavior unaffected) was live-confirmed.
 - Review gate: fresh-eyes found one real bug (`nextVolumeStep` could
   drift a volume setting out of its valid range and silently reset
   all settings on next load) — fixed and re-verified live. Full

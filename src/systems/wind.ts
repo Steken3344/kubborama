@@ -51,13 +51,30 @@ export class WindSystem extends createSystem({
     where: [eq(StickState, 'phase', StickPhase.Flying)],
   },
 }) {
+  // Dev-tooling escape hatch (Tuning Lab's Wind folder): null means
+  // "use the active game mode's own wind" (the only behavior until
+  // this existed, and still the default — nothing touches this unless
+  // Erik moves the tuning-panel slider). Set rarely (a UI change, not
+  // per-frame), so allocating the paired options object here rather
+  // than in update() is fine — matches MANIPULATION_OPTIONS_BY_MODE's
+  // own "elics copies the Vec3 on addComponent, never retains this
+  // wrapper" reasoning.
+  private forceOverride: Vec3 | null = null;
+  private overrideOptions: { force: Vec3 } | null = null;
+
+  setForceOverride(force: Vec3 | null): void {
+    this.forceOverride = force;
+    this.overrideOptions = force ? { force } : null;
+  }
+
   update(): void {
     const gameMode = settingsState.current.gameMode;
-    const force = FORCE_BY_MODE[gameMode];
+    const force = this.forceOverride ?? FORCE_BY_MODE[gameMode];
     if (force[0] === 0 && force[1] === 0 && force[2] === 0) {
       return;
     }
-    const options = MANIPULATION_OPTIONS_BY_MODE[gameMode];
+    const options =
+      this.overrideOptions ?? MANIPULATION_OPTIONS_BY_MODE[gameMode];
     for (const entity of this.queries.flyingSticks.entities) {
       if (entity.hasComponent(PhysicsManipulation)) {
         continue;

@@ -2891,3 +2891,51 @@ Commented gh#8 with this full writeup and closed it as fixed.
 
 Mechanical pass green (tsc/eslint/prettier/vitest — 157 tests,
 build/smoke) plus the live verification above.
+
+## 2026-08-30 — Dev debug panel wind knobs (last of the three "what next" items)
+
+docs/PLAN.md's original vision named this explicitly:
+`debugPanel.ts # dev-only sliders: wind strength/direction, gravity`
+— gravity already exists as a Tuning Lab (tweakpane) param; wind never
+got one. Direction is deliberately NOT exposed as a knob: wind's
+direction is a fixed cross-court lateral axis by design
+(`windVectorForMode()`'s own doc comment), not something the game
+should ever vary, so a direction slider would just invite testing a
+combination the shipped game can never produce.
+
+Kept OUT of the existing `TuningPreset`/`tuning-params.json` A/B/C
+system on purpose: those are throw-FEEL parameters (gravity, spin,
+mass, damping) meant to be exported/imported/compared as a preset.
+Wind is an environmental experiment, not a feel parameter, and
+forcing it into that schema would mean every preset export now
+carries a wind value that has nothing to do with feel tuning.
+
+Added `WindSystem.setForceOverride(force: Vec3 | null)` — `null` is
+the default and only state until a human touches the new panel
+slider, and reproduces today's exact behavior (wind purely derived
+from the active game mode). `TuningLabSystem.setWindOverride()` wraps
+it; `tuningPanel.ts` gained a "Wind (dev override)" folder: an "Auto
+(game mode)" checkbox (default checked) plus a 0-3 m/s slider that
+only takes effect once unchecked.
+
+**Live-verified the regression side, not the override side.** The
+tweakpane panel is a real desktop DOM overlay, not part of the WebXR
+scene graph — none of the available tools (`xr_select` and friends
+work only inside the WebXR canvas via ray interaction; `chrome-
+devtools-mcp`'s own click/DOM tools can't attach to this managed
+browser, it tried to launch its own separate Chrome and failed) can
+click an HTML checkbox/slider outside the canvas, so I could not
+directly flip the "Auto" toggle and observe the override taking
+effect. What IS verified: switched to Advanced mode for real, threw a
+stick for real, and confirmed via `ecs_query_entity` that
+`PhysicsManipulation.force` is exactly `[0.03, 0, 0]` —
+`windVectorForMode('advanced')[0] (1.5) * pieces.wind.dragFactor
+(0.02)`, bit-for-bit the pre-existing value — proving the new
+nullable-override plumbing didn't disturb the default path. The
+override branch itself (`this.forceOverride ?? FORCE_BY_MODE[gameMode]`)
+is a two-line ternary using the exact same downstream `options`/`force`
+variables the confirmed-working default branch already uses, so this
+gap is a tooling limitation, not a real doubt about correctness.
+
+Mechanical pass green (tsc/eslint/prettier/vitest — 157 tests,
+build/smoke) plus the live verification above.
