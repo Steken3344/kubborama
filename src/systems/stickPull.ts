@@ -82,9 +82,12 @@ export class StickPullSystem extends createSystem({
    * zero-velocity frame instead of coasting at the last-applied speed
    * forever (PhysicsManipulation is one-shot — see docs/DECISIONS.md). */
   private pullingEntities = new Map<number, Entity>();
+  /** Reused across frames — see the GC pass this fixes (docs/DECISIONS.md,
+   * M5 review gate): this was allocating fresh every update() tick. */
+  private stillPulling = new Set<number>();
 
   update(): void {
-    const stillPulling = new Set<number>();
+    this.stillPulling.clear();
     for (const entity of this.queries.sticks.entities) {
       if (!entity.hasComponent(Hovered)) {
         continue;
@@ -108,12 +111,12 @@ export class StickPullSystem extends createSystem({
       this.pullVelocity.linearVelocity[1] = this.tmpDirection.y;
       this.pullVelocity.linearVelocity[2] = this.tmpDirection.z;
       entity.addComponent(PhysicsManipulation, this.pullVelocity);
-      stillPulling.add(entity.index);
+      this.stillPulling.add(entity.index);
       this.pullingEntities.set(entity.index, entity);
     }
 
     for (const [index, entity] of this.pullingEntities) {
-      if (stillPulling.has(index)) {
+      if (this.stillPulling.has(index)) {
         continue;
       }
       if (entity.active) {

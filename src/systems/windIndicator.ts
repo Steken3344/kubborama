@@ -84,18 +84,33 @@ export class WindIndicatorSystem extends createSystem({}) {
       );
 
       if (object3D.position.x > halfWidthM) {
-        const nextState = this.randomLeafState();
-        this.placeLeaf(object3D, nextState, { edgeX: -halfWidthM });
-        this.leafStates[i] = nextState;
+        this.randomizeLeafState(state);
+        this.placeLeaf(object3D, state, { edgeX: -halfWidthM });
       } else if (object3D.position.x < -halfWidthM) {
-        const nextState = this.randomLeafState();
-        this.placeLeaf(object3D, nextState, { edgeX: halfWidthM });
-        this.leafStates[i] = nextState;
+        this.randomizeLeafState(state);
+        this.placeLeaf(object3D, state, { edgeX: halfWidthM });
       }
     }
   }
 
   private randomLeafState(): LeafState {
+    const state: LeafState = {
+      bobPhase: 0,
+      bobSpeedRadPerS: 0,
+      spinAxis: new Vector3(),
+      spinSpeedRadPerS: 0,
+      baseHeightM: 0,
+    };
+    this.randomizeLeafState(state);
+    return state;
+  }
+
+  /** Mutates an existing state in place (init still allocates one
+   * fresh per leaf via randomLeafState(), but a recycle — a leaf
+   * drifting past the spawn area's edge — reuses the same object and
+   * Vector3 rather than allocating new ones each time; GC pass,
+   * docs/DECISIONS.md M5 review gate). */
+  private randomizeLeafState(state: LeafState): void {
     const {
       bobSpeedRadPerSMin,
       bobSpeedRadPerSMax,
@@ -104,21 +119,17 @@ export class WindIndicatorSystem extends createSystem({}) {
       heightMinM,
       heightMaxM,
     } = windIndicator;
-    return {
-      bobPhase: this.rng() * Math.PI * 2,
-      bobSpeedRadPerS:
-        bobSpeedRadPerSMin +
-        this.rng() * (bobSpeedRadPerSMax - bobSpeedRadPerSMin),
-      spinAxis: new Vector3(
-        this.rng() * 2 - 1,
-        this.rng() * 2 - 1,
-        this.rng() * 2 - 1,
-      ).normalize(),
-      spinSpeedRadPerS:
-        spinSpeedRadPerSMin +
-        this.rng() * (spinSpeedRadPerSMax - spinSpeedRadPerSMin),
-      baseHeightM: heightMinM + this.rng() * (heightMaxM - heightMinM),
-    };
+    state.bobPhase = this.rng() * Math.PI * 2;
+    state.bobSpeedRadPerS =
+      bobSpeedRadPerSMin +
+      this.rng() * (bobSpeedRadPerSMax - bobSpeedRadPerSMin);
+    state.spinAxis
+      .set(this.rng() * 2 - 1, this.rng() * 2 - 1, this.rng() * 2 - 1)
+      .normalize();
+    state.spinSpeedRadPerS =
+      spinSpeedRadPerSMin +
+      this.rng() * (spinSpeedRadPerSMax - spinSpeedRadPerSMin);
+    state.baseHeightM = heightMinM + this.rng() * (heightMaxM - heightMinM);
   }
 
   private placeLeaf(

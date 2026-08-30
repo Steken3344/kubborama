@@ -351,12 +351,17 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       rocks (previously pure decoration, nothing rolling stopped for
       them)
 - [x] GC/pooling pass: found and fixed 3 real per-frame allocations
-      across all 17 systems (`ImpactSystem`'s velocity-delta check ran
-      unconditionally every frame for every dynamic body — the highest-
-      impact one; `ThrowingSystem`'s pose-sampling ring buffer; a
-      `WindSystem` options-object literal). Full detail and the
-      remaining 14 systems confirmed clean in docs/DECISIONS.md.
-      Optional king-cam slow-mo not attempted (low priority, cut)
+      across all 17 systems that existed at the time (2026-08-28)
+      (`ImpactSystem`'s velocity-delta check ran unconditionally every
+      frame for every dynamic body — the highest-impact one;
+      `ThrowingSystem`'s pose-sampling ring buffer; a `WindSystem`
+      options-object literal). **A point-in-time snapshot, not a
+      standing guarantee**: the milestone's formal review gate
+      (2026-08-30) found 2 more of the exact same bug class in systems
+      added AFTER this pass ran (`StickPullSystem`'s per-frame `Set`,
+      `WindIndicatorSystem`'s per-recycle `Vector3`) — both fixed, see
+      docs/DECISIONS.md. Optional king-cam slow-mo not attempted (low
+      priority, cut)
 - [x] Fixed the grab-always-centers regression (2026-08-28): removed
       `DistanceGrabbable` from all 6 sticks — it conflicted with
       `OneHandGrabbable` over a single per-entity `Handle`, so every

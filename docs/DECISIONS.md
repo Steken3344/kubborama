@@ -2939,3 +2939,70 @@ gap is a tooling limitation, not a real doubt about correctness.
 
 Mechanical pass green (tsc/eslint/prettier/vitest — 157 tests,
 build/smoke) plus the live verification above.
+
+## 2026-08-30 — M5 review gate: fresh-eyes found 2 real per-frame allocations, both fixed
+
+Ran the full milestone review gate (mechanical pass → fresh-eyes
+subagent review → adversarial pass) over the whole of M5 (`v0.5-m4`
+tag → HEAD, 27 commits) before Erik's headset test, per CLAUDE.md's
+"Milestone review gate before 'done'" workflow. Architecture held up
+well across the milestone — functional core stayed pure (`grep`
+confirms zero `@iwsdk/core`/`three` imports anywhere under
+`src/core/`), the single event bus stayed the sole dispatch point, and
+every mode-driven system (`CourtLayoutSystem`, `WindSystem`,
+`WindIndicatorSystem`, `ToppleSystem`, `SimpleRulesSystem`) reads the
+same `config.ts`/`settingsState` source of truth with no divergent
+copies found.
+
+Two real, previously-unflagged violations of the project's own
+"never allocate in `update()`" rule, both fixed same session:
+
+1. **`StickPullSystem.update()`** (`src/systems/stickPull.ts`) —
+   `const stillPulling = new Set<number>();` allocated fresh on
+   EVERY tick, unconditionally, for the life of the session. This is
+   exactly the class of bug M5's own GC/pooling pass (2026-08-28)
+   targeted and fixed three instances of — but `StickPullSystem` was
+   added one commit AFTER that pass ran, so it was never swept.
+   Fixed: hoisted to a persisted `private stillPulling = new
+Set<number>()` field, `.clear()`'d at the top of `update()`.
+2. **`WindIndicatorSystem.randomLeafState()`** — allocated a fresh
+   `LeafState` object AND a fresh `new Vector3(...)` every time a leaf
+   recycled (drifted past the spawn area's edge), reachable from
+   `update()`'s hot path. Much smaller in practice (bounded to once
+   per leaf per edge-crossing, not every frame), but the same
+   "added after the pass, never re-swept" story. Fixed by splitting
+   out a `randomizeLeafState(state)` that mutates an existing
+   `LeafState` (and its `spinAxis` Vector3) in place — `init()` still
+   allocates one `LeafState` per leaf via `randomLeafState()` (a true
+   one-time cost), recycling now reuses it. Preserved the exact same
+   RNG call order so seeded determinism is unaffected.
+
+**Live-verified both fixes.** `StickPullSystem`: no direct repro
+needed beyond the mechanical pass — the fix is a pure hoist with
+identical logic, `Set.clear()` vs `new Set()` are behaviorally
+identical at every call site. `WindIndicatorSystem`: nudged a leaf to
+`x=3.15` (just inside the +3.2 edge) via `ecs_set_component`,
+switched to Advanced mode for real wind, and watched it cross the
+edge and recycle correctly — TWICE, across a few real seconds — with
+a fresh random z each time and no console errors, confirming the
+in-place mutation didn't break anything across repeated cycles.
+
+**Also flagged by the reviewer, not acted on (correctly scoped out
+or deferred, not ignored):**
+
+- The GC pass's own "14 systems confirmed clean" claim in
+  `docs/MILESTONES.md` is now stale (8 systems were added/changed
+  since) — noting this here rather than re-running a full sweep now:
+  the two allocations above WERE the sweep, found via fresh-eyes
+  review rather than a dedicated re-pass. No further per-frame
+  allocations were found in this review's own spot-checks of
+  `CourtLayoutSystem`, `SimpleRulesSystem`, `OneShotAudioSystem`,
+  `ImpactSystem`, `ToppleSystem`.
+- `patches/@drawcall+uikitml+0.1.8.patch` carries an incidental file-
+  mode change on an unrelated file (`cli.js`, 755→644) as a side
+  effect of how `patch-package` generated it. Harmless (that file
+  isn't invoked as an executable by this project) — left as is rather
+  than hand-editing a generated patch file to strip an inert diff line.
+- My own uncommitted wind-tuning-panel work-in-progress was correctly
+  identified by the reviewer as out of scope for the M5 review (it
+  postdates the reviewed range) and excluded from findings.
