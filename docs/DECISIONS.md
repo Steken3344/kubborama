@@ -3230,3 +3230,44 @@ derived automatically from the rack node's transform at load time (a
 small system) instead of being a second manually-authored node that
 can drift — flagged, not yet built, since it's an architecture change
 and this is only the second occurrence.
+
+## 2026-08-30 — HUD sign posts (Erik's request)
+
+Erik: the HUD scoreboard read as "a dashboard hanging in the air" —
+asked for it to look like a real sign on two posts instead.
+
+Added `src/scene-assets/hud-sign-posts.scene-asset.ts`: two wooden
+`CylinderGeometry` posts (`woodMaterial`, matching the stick-rack/stake
+style), placed as a scene node that shares `hud-panel`'s exact X/Z
+position and Y-rotation (so no rotation math is needed — the posts
+inherit the panel's facing) but with its own Y=0 (ground-anchored,
+unlike the panel's Y=1.6 eye-height position — a first attempt copied
+the panel's Y verbatim and left the posts floating near the treetops
+instead of reaching the ground; fixed once caught live).
+
+Panel real-world size isn't queryable at authoring time (UIKitML
+auto-layout height has no static answer), so post height/inset were
+estimated from the panel's CSS (`width: 220` UIKit units = 2.2m ×
+the `hud-panel` node's `scale: 1.3` ≈ 2.86m wide) cross-checked against
+a measured screenshot, then tuned by live iteration: `POST_HEIGHT_M`
+raised slightly so the post visibly overlaps the panel's underside
+rather than leaving a gap, and `POST_Z_OFFSET_M: -0.05` added so the
+posts sit just behind the panel's single-sided front face instead of
+sharing its exact depth (which read as poking through the score
+numbers, since UIKit right-aligns them close to the panel's right
+edge via `justify-content: space-between`).
+
+Live-verified in both the scene editor and the application runtime
+(`browser_screenshot`) — this is pure static geometry with no system
+behind it, so both should (and do) match. No console errors. Full
+mechanical pass green (161 tests, tsc/eslint/prettier/build/smoke).
+
+**Unrelated environment finding, fixed in passing**: hit the same
+24+-orphaned-`vite`-process issue from the gh#8 investigation again
+(`dev up`/`dev status` stuck reporting `browserCommandReady: false`
+indefinitely; `ps aux` showed 6 stray `vite` processes going back to
+this morning). `pkill -f node.*node_modules/.bin/vite` cleared it, same
+fix as before. This has now recurred at least twice across sessions —
+worth a standing habit of checking `ps aux | grep vite` when `dev up`
+reports success but the bridge still won't come ready, rather than
+retrying `dev up` repeatedly.

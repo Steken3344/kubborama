@@ -862,6 +862,20 @@
       }
     },
     {
+      "content": {
+        "asset": "hud-sign-posts",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "hud-sign-posts",
+      "name": "HUD sign posts",
+      "transform": {
+        "position": [2.6406, 0, -2.6406],
+        "rotationDeg": [0, -90, 0],
+        "scale": 1
+      }
+    },
+    {
       "components": {
         "RayInteractable": {}
       },

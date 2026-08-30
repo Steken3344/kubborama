@@ -8,6 +8,7 @@ import leaf from './scene-assets/leaf.scene-asset.js';
 import stake from './scene-assets/stake.scene-asset.js';
 import stick from './scene-assets/stick.scene-asset.js';
 import stickRack from './scene-assets/stick-rack.scene-asset.js';
+import hudSignPosts from './scene-assets/hud-sign-posts.scene-asset.js';
 
 const publicAssetUrl = (filePath: string): string =>
   `${import.meta.env.BASE_URL}${filePath.replace(/^\/+/u, '')}`;
@@ -26,6 +27,7 @@ export default defineAssets({
   stake,
   leaf,
   'stick-rack': stickRack,
+  'hud-sign-posts': hudSignPosts,
   'court-line-long': courtLineLong,
   'court-line-short': courtLineShort,
   'reset-menu': {
