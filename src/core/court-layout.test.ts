@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { computeCourtLayout } from './court-layout.js';
-import type { CourtPreset, PieceDims } from './court-layout.js';
+import {
+  computeCourtLayout,
+  computeStickRackPositions,
+} from './court-layout.js';
+import type {
+  CourtPreset,
+  PieceDims,
+  StickRackConfig,
+} from './court-layout.js';
 
 const backyard: CourtPreset = { widthM: 3, lengthM: 6 };
 const dims: PieceDims = {
@@ -12,12 +19,12 @@ const dims: PieceDims = {
 
 describe('computeCourtLayout', () => {
   it('places the king at court center, on the far baseline axis', () => {
-    const layout = computeCourtLayout(backyard, dims, 1);
+    const layout = computeCourtLayout(backyard, dims);
     expect(layout.kingPosition).toEqual([0, dims.kingHeightM / 2, -3]);
   });
 
   it('places 10 kubbs, 5 evenly spaced on each (short) baseline', () => {
-    const layout = computeCourtLayout(backyard, dims, 1);
+    const layout = computeCourtLayout(backyard, dims);
     expect(layout.kubbPositions).toHaveLength(10);
     for (const [x, y] of layout.kubbPositions) {
       expect(y).toBeCloseTo(dims.kubbHeightM / 2);
@@ -61,7 +68,7 @@ describe('computeCourtLayout', () => {
   });
 
   it('places 4 corner stakes at the court corners, not along the lines', () => {
-    const layout = computeCourtLayout(backyard, dims, 1);
+    const layout = computeCourtLayout(backyard, dims);
     expect(layout.stakePositions).toHaveLength(4);
     const xs = layout.stakePositions.map(([x]) => x);
     const zs = layout.stakePositions.map(([, , z]) => z);
@@ -76,36 +83,15 @@ describe('computeCourtLayout', () => {
     );
   });
 
-  it('scatters 6 sticks near the player (near) baseline, inside the court width', () => {
-    const layout = computeCourtLayout(backyard, dims, 1);
-    expect(layout.stickSpawnPositions).toHaveLength(6);
-    for (const { position, yawRad } of layout.stickSpawnPositions) {
-      const [x, y, z] = position;
-      expect(y).toBeCloseTo(dims.stickRadiusM);
-      expect(z).toBeLessThan(0);
-      expect(z).toBeGreaterThan(-1.0);
-      expect(x).toBeGreaterThan(-backyard.widthM / 2);
-      expect(x).toBeLessThan(backyard.widthM / 2);
-      expect(yawRad).toBeGreaterThanOrEqual(0);
-      expect(yawRad).toBeLessThan(Math.PI * 2);
-    }
-  });
-
-  it('is deterministic for a given seed', () => {
-    const a = computeCourtLayout(backyard, dims, 7);
-    const b = computeCourtLayout(backyard, dims, 7);
+  it('is deterministic (no randomness in court/kubb/stake geometry)', () => {
+    const a = computeCourtLayout(backyard, dims);
+    const b = computeCourtLayout(backyard, dims);
     expect(a).toEqual(b);
-  });
-
-  it('produces a different stick scatter for a different seed', () => {
-    const a = computeCourtLayout(backyard, dims, 7);
-    const b = computeCourtLayout(backyard, dims, 8);
-    expect(a.stickSpawnPositions).not.toEqual(b.stickSpawnPositions);
   });
 
   it('scales with a different court preset (tournament 8x5)', () => {
     const tournament: CourtPreset = { widthM: 5, lengthM: 8 };
-    const layout = computeCourtLayout(tournament, dims, 1);
+    const layout = computeCourtLayout(tournament, dims);
     expect(layout.kingPosition).toEqual([0, dims.kingHeightM / 2, -4]);
     for (const [, , z] of layout.kubbPositions.slice(0, 5)) {
       expect(z).toBeCloseTo(-8);
@@ -114,5 +100,41 @@ describe('computeCourtLayout', () => {
       expect(z).toBeGreaterThan(-1);
       expect(z).toBeLessThan(0);
     }
+  });
+});
+
+describe('computeStickRackPositions', () => {
+  const rackConfig: StickRackConfig = {
+    xM: 0.7,
+    zM: -0.15,
+    plankTopM: 0.95,
+    spacingM: 0.08,
+  };
+
+  it('places 6 sticks resting on the plank surface, all facing the same way', () => {
+    const sticks = computeStickRackPositions(rackConfig, dims.stickRadiusM);
+    expect(sticks).toHaveLength(6);
+    for (const { position, yawRad } of sticks) {
+      const [, y, z] = position;
+      expect(y).toBeCloseTo(rackConfig.plankTopM + dims.stickRadiusM);
+      expect(z).toBe(rackConfig.zM);
+      expect(yawRad).toBe(Math.PI / 2);
+    }
+  });
+
+  it('spaces the row evenly, centered on the configured x', () => {
+    const sticks = computeStickRackPositions(rackConfig, dims.stickRadiusM);
+    const xs = sticks.map(({ position }) => position[0]);
+    for (let i = 1; i < xs.length; i++) {
+      expect((xs[i] ?? 0) - (xs[i - 1] ?? 0)).toBeCloseTo(rackConfig.spacingM);
+    }
+    const meanX = xs.reduce((sum, x) => sum + x, 0) / xs.length;
+    expect(meanX).toBeCloseTo(rackConfig.xM);
+  });
+
+  it('is deterministic — no randomness, a real rack has no scatter', () => {
+    const a = computeStickRackPositions(rackConfig, dims.stickRadiusM);
+    const b = computeStickRackPositions(rackConfig, dims.stickRadiusM);
+    expect(a).toEqual(b);
   });
 });

@@ -1,10 +1,4 @@
-import {
-  BoxGeometry,
-  createSystem,
-  Euler,
-  PhysicsSystem,
-  Quaternion,
-} from '@iwsdk/core';
+import { BoxGeometry, createSystem, PhysicsSystem } from '@iwsdk/core';
 import type { Mesh } from '@iwsdk/core';
 import type { CourtPreset } from '../core/court-layout.js';
 import {
@@ -36,25 +30,21 @@ const COURT_LINE_IDS = [
 
 const IDENTITY_QUATERNION: [number, number, number, number] = [0, 0, 0, 1];
 
-/** Sticks lie flat with a fixed 90° tip (see stick.scene-asset.ts) plus
- * their scattered yaw — matches how the authored scene's rotationDeg
- * values were originally produced from computeCourtLayout's yawRad. */
-function stickQuaternion(yawRad: number): [number, number, number, number] {
-  const q = new Quaternion().setFromEuler(new Euler(0, yawRad, Math.PI / 2));
-  return [q.x, q.y, q.z, q.w];
-}
-
 /**
  * Repositions the court to the active game mode's preset (M4's known
  * gap: court size never changed with mode — docs/DECISIONS.md).
  * Subscribes to GameModeChanged (emitted by SettingsSystem.setGameMode)
  * and:
- *  1. recomputes king/kubb/stake/stick positions with the SAME pure
+ *  1. recomputes king/kubb/stake positions with the SAME pure
  *     computeCourtLayout() the scene was originally authored from, and
- *     hands them to MenuSystem.applyCourtLayout() — reusing its
- *     existing release/rack/teleport + Reset-event path instead of
- *     duplicating it (switching mode mid-round IS a reset, just onto a
- *     different layout);
+ *     hands king/kubb positions to MenuSystem.applyCourtLayout() —
+ *     reusing its existing release/rack/teleport + Reset-event path
+ *     instead of duplicating it (switching mode mid-round IS a reset,
+ *     just onto a different layout). Sticks are NOT repositioned here
+ *     — they live on a fixed physical rack beside the player (Erik's
+ *     feedback, 2026-08-30, see core/court-layout.ts's
+ *     computeStickRackPositions) that has nothing to do with the
+ *     active court preset;
  *  2. moves the 4 corner stakes directly via PhysicsSystem — they're
  *     STATIC bodies with no Resettable tag (real stakes are never
  *     knocked over/reset mid-round), so they sit outside MenuSystem's
@@ -69,7 +59,7 @@ function stickQuaternion(yawRad: number): [number, number, number, number] {
  *     that replaces a geometry that is by then private to just this
  *     one mesh, so it IS disposed (resizedLineIds tracks which).
  *
- * All 21 scene-entity/object lookups (`requireSceneEntity`, which
+ * All 20 scene-entity/object lookups (`requireSceneEntity`, which
  * throws synchronously on a missing node id) happen FIRST, before any
  * live mutation — a missing/renamed id (plausible after a hand-edit
  * to main.iwsdk.scene.json, an established workflow here) fails
@@ -120,9 +110,6 @@ export class CourtLayoutSystem extends createSystem({}) {
     const stakeEntities = STAKE_NODE_IDS.map((nodeId) =>
       this.world.requireSceneEntity(nodeId),
     );
-    const stickEntities = layout.stickSpawnPositions.map((_, i) =>
-      this.world.requireSceneEntity(`stick-${i}`),
-    );
     const lineMeshes = COURT_LINE_IDS.map(
       (nodeId) => this.world.requireSceneEntity(nodeId).object3D as Mesh,
     );
@@ -154,17 +141,6 @@ export class CourtLayoutSystem extends createSystem({}) {
       this.physicsSystem.setBodyTransform(entity, {
         position,
         quaternion: IDENTITY_QUATERNION,
-      });
-    });
-
-    layout.stickSpawnPositions.forEach((spawn, i) => {
-      const entity = stickEntities[i];
-      if (!entity) {
-        return;
-      }
-      homePoses.set(entity.index, {
-        position: spawn.position,
-        quaternion: stickQuaternion(spawn.yawRad),
       });
     });
 

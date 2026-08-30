@@ -3122,3 +3122,53 @@ verification on real hardware, the full in-headset perf/comfort/
 experience pass) require the physical headset and are Erik's gate, not
 something further code changes can satisfy. Recommend: proceed to
 that headset test; tag `v0.6-m5` once it comes back clean.
+
+## 2026-08-30 — Stick rack (Erik's ergonomics feedback)
+
+Erik: sticks used to spawn scattered on the ground, and bending down
+for each one repeatedly got tiring in VR. Asked via AskUserQuestion
+where a rack should go — chose beside the player, right side
+(recommended), at a comfortable hip-level reach height rather than
+behind (would require turning around) or on the ground.
+
+Replaced ground-scatter with a fixed physical rack: a fixed 6-slot
+rack (`core/court-layout.ts`'s new `computeStickRackPositions()`, a
+config-driven, non-random pure function — a real rack holds sticks in
+tidy parallel slots, nothing to randomize) at `(0.7, 0, -0.15)`,
+plank-top height 0.95m, sticks lying flat, evenly spaced. This is
+**not court-preset-dependent** (the rack's position has nothing to do
+with court size) and **not seeded/random** — both the old `seed`
+parameter and all RNG dependency were removed from
+`computeCourtLayout()` entirely, since king/kubb/stake placement was
+already fully deterministic and only the old stick-scatter ever used
+the seed.
+
+New asset `stick-rack.scene-asset.ts` (plank + 2 legs, `woodMaterial`,
+matching the existing procedural-prop convention). `CourtLayoutSystem`
+no longer touches sticks at all on a game-mode switch — removed the
+`stickSpawnPositions`-repositioning block and the now-dead
+`stickQuaternion()` helper — since the rack is fixed regardless of
+preset.
+
+**Found and fixed a real bug via live emulator testing, before any
+commit**: sticks fell straight through the rack's plank to the ground.
+Root cause: the visual `stick-rack` scene node is a pure decorative
+mesh with no collider at all, so the dynamic stick `PhysicsBody`s had
+nothing to land on. Fixed by adding a separate `stick-rack-collider`
+scene node (`PhysicsBody: STATIC` + a `Box` `PhysicsShape` sized to
+the plank, positioned at the plank's true world-space center) —
+the same "visual node + separate invisible collider node" pattern
+already used for `ground`/`ground-collider`. This is exactly the class
+of bug CLAUDE.md's "verify before you claim it works" discipline
+exists to catch — inspection alone (reading the scene JSON) would not
+have caught the missing collider.
+
+**Live-verified, not just inspected**: 6 sticks render resting on the
+rack (screenshot); direct grab from the rack works (StickState →
+HELD); a full throw → auto-reset cycle returns a stick to its exact
+rack slot and phase (RACKED); switching game mode (Simple↔Advanced)
+leaves a racked stick's position completely untouched — confirms
+`CourtLayoutSystem`'s removal of stick-handling logic didn't silently
+break anything. Mechanical pass green (tsc/eslint/prettier/vitest —
+160 tests — build/smoke) after the collider fix. No console errors
+throughout.

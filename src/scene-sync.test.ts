@@ -2,11 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import {
-  courtLayout,
-  defaultCourtPreset,
-  STICK_LAYOUT_SEED,
-} from './config.js';
+import { courtLayout, defaultCourtPreset, stickRackLayout } from './config.js';
 
 /**
  * Scene JSON can't call functions, so every piece position in
@@ -46,7 +42,8 @@ function expectPositionClose(actual: number[], expected: number[]): void {
   }
 }
 
-const layout = courtLayout(defaultCourtPreset, STICK_LAYOUT_SEED);
+const layout = courtLayout(defaultCourtPreset);
+const stickLayout = stickRackLayout();
 
 describe('scene JSON stays in sync with config.ts courtLayout()', () => {
   it('king position matches', () => {
@@ -75,8 +72,8 @@ describe('scene JSON stays in sync with config.ts courtLayout()', () => {
     });
   });
 
-  it('all 6 stick spawn positions match (rotation is a separate node-transform concern)', () => {
-    layout.stickSpawnPositions.forEach(({ position: expected }, i) => {
+  it('all 6 stick rack positions match (rotation is a separate node-transform concern)', () => {
+    stickLayout.forEach(({ position: expected }, i) => {
       expectPositionClose(nodePosition(`stick-${i}`), expected);
     });
   });

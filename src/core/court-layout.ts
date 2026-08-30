@@ -1,4 +1,4 @@
-import { createRng } from './rng.js';
+import { STICKS_PER_ROUND } from './scoring.js';
 
 export type Vec3 = [x: number, y: number, z: number];
 
@@ -28,7 +28,6 @@ export interface CourtLayout {
   kingPosition: Vec3;
   kubbPositions: Vec3[];
   stakePositions: Vec3[];
-  stickSpawnPositions: StickSpawn[];
 }
 
 // The near baseline's z=0 line is also the player's spawn origin (scene
@@ -36,16 +35,7 @@ export interface CourtLayout {
 // world 0,0,0 — see docs/DECISIONS.md). A kubb centered at x=0 there
 // would land exactly on the player's spawn point, so the near row is set
 // back a touch into the court instead of sitting exactly on the line.
-// Must stay clear of the stick scatter zone (STICK_SCATTER_NEAR_Z and
-// beyond) too — a kubb placed inside that zone can spawn overlapping a
-// scattered stick, and Havok's overlap-resolution impulse was launching
-// the stick clean through the (thin, 0.02m) ground on frame one. See
-// docs/DECISIONS.md.
 const NEAR_BASELINE_SETBACK_M = 0.05;
-const STICK_SCATTER_MARGIN_M = 0.15;
-const STICK_SCATTER_NEAR_Z = -0.15;
-const STICK_SCATTER_FAR_Z = -0.9;
-const STICK_COUNT = 6;
 /** Per baseline; exported so consumers (e.g. the stats display's
  * felled-out-of-total count) don't re-hardcode the piece total. */
 export const KUBB_COUNT = 5;
@@ -53,12 +43,12 @@ export const KUBB_COUNT = 5;
 /**
  * Player origin is world (0,0,0), facing -Z. The near baseline (player's
  * baseline) sits at z=0; the far baseline (kubbs + king row) sits at
- * z=-lengthM. X is centered on the court width.
+ * z=-lengthM. X is centered on the court width. Deterministic (no RNG
+ * needed) — court/kubb/stake geometry has no randomness.
  */
 export function computeCourtLayout(
   preset: CourtPreset,
   dims: PieceDims,
-  seed: number,
 ): CourtLayout {
   const halfWidthM = preset.widthM / 2;
   const farZ = -preset.lengthM;
@@ -88,19 +78,38 @@ export function computeCourtLayout(
     [halfWidthM, stakeY, farZ],
   ];
 
-  const rng = createRng(seed);
-  const scatterHalfWidthM = halfWidthM - STICK_SCATTER_MARGIN_M;
-  const stickSpawnPositions: StickSpawn[] = Array.from(
-    { length: STICK_COUNT },
-    () => {
-      const x = (rng() * 2 - 1) * scatterHalfWidthM;
-      const z =
-        STICK_SCATTER_NEAR_Z +
-        rng() * (STICK_SCATTER_FAR_Z - STICK_SCATTER_NEAR_Z);
-      const yawRad = rng() * Math.PI * 2;
-      return { position: [x, dims.stickRadiusM, z], yawRad };
-    },
-  );
+  return { kingPosition, kubbPositions, stakePositions };
+}
 
-  return { kingPosition, kubbPositions, stakePositions, stickSpawnPositions };
+export interface StickRackConfig {
+  xM: number;
+  zM: number;
+  plankTopM: number;
+  spacingM: number;
+}
+
+/**
+ * A neat, fixed row of STICKS_PER_ROUND slots on a physical rack beside
+ * the player (Erik's feedback, 2026-08-30: bending down to the grass to
+ * pick up a stick, over and over, got tiring). Deliberately NOT
+ * court-preset-dependent — the player origin is always world (0,0,0)
+ * regardless of court size — and deliberately NOT randomized: a real
+ * rack holds sticks in tidy parallel slots, not a scatter, so unlike
+ * computeCourtLayout's earlier stick logic this needs no seed. Replaces
+ * the M1-era ground-scatter design entirely (see docs/DECISIONS.md for
+ * why, and for the "kubb spawning inside a scattered stick" bug that
+ * design used to risk — moot now that sticks never share ground space
+ * with kubbs at all).
+ */
+export function computeStickRackPositions(
+  config: StickRackConfig,
+  stickRadiusM: number,
+): StickSpawn[] {
+  const y = config.plankTopM + stickRadiusM;
+  const totalWidthM = (STICKS_PER_ROUND - 1) * config.spacingM;
+  const startXM = config.xM - totalWidthM / 2;
+  return Array.from({ length: STICKS_PER_ROUND }, (_, i) => ({
+    position: [startXM + i * config.spacingM, y, config.zM],
+    yawRad: Math.PI / 2,
+  }));
 }

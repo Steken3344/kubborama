@@ -4,8 +4,11 @@
  * must stay usable from src/core/* tests and from scene-asset modules
  * alike.
  */
-import { computeCourtLayout } from './core/court-layout.js';
-import type { CourtLayout } from './core/court-layout.js';
+import {
+  computeCourtLayout,
+  computeStickRackPositions,
+} from './core/court-layout.js';
+import type { CourtLayout, StickSpawn } from './core/court-layout.js';
 import type { Vec3 } from './core/vec3.js';
 import audioData from './data/audio.json' with { type: 'json' };
 import courtPresetsData from './data/court-presets.json' with { type: 'json' };
@@ -14,6 +17,7 @@ import piecesData from './data/pieces.json' with { type: 'json' };
 import cameraPosesData from './data/camera-poses.json' with { type: 'json' };
 import windIndicatorData from './data/wind-indicator.json' with { type: 'json' };
 import sinBinData from './data/sin-bin.json' with { type: 'json' };
+import stickRackData from './data/stick-rack.json' with { type: 'json' };
 
 export const courtPresets = courtPresetsData.presets;
 export type CourtPresetName = keyof typeof courtPresets;
@@ -49,13 +53,7 @@ export const defaultMaterial = pieces.defaultMaterial as MaterialName;
 export const cameraPoses = cameraPosesData;
 export const windIndicator = windIndicatorData;
 export const sinBin = sinBinData;
-
-/**
- * Fixed seed for the static M1 stick-scatter layout — the same six
- * sticks land in the same spots every load. Not a gameplay RNG (no
- * player-visible randomness depends on this beyond initial dressing).
- */
-export const STICK_LAYOUT_SEED = 1337;
+export const stickRack = stickRackData;
 
 export function getCourtPreset(name: CourtPresetName = defaultCourtPreset) {
   return courtPresets[name];
@@ -85,16 +83,17 @@ export function kingMassKg(material?: MaterialName): number {
 
 export function courtLayout(
   presetName: CourtPresetName = defaultCourtPreset,
-  seed: number = STICK_LAYOUT_SEED,
 ): CourtLayout {
-  return computeCourtLayout(
-    getCourtPreset(presetName),
-    {
-      kingHeightM: pieces.king.heightM,
-      kubbHeightM: pieces.kubb.heightM,
-      stakeHeightM: pieces.stake.heightM,
-      stickRadiusM: pieces.stick.radiusM,
-    },
-    seed,
-  );
+  return computeCourtLayout(getCourtPreset(presetName), {
+    kingHeightM: pieces.king.heightM,
+    kubbHeightM: pieces.kubb.heightM,
+    stakeHeightM: pieces.stake.heightM,
+    stickRadiusM: pieces.stick.radiusM,
+  });
+}
+
+/** Fixed physical rack beside the player — not preset-dependent (see
+ * computeStickRackPositions), so this never needs a preset argument. */
+export function stickRackLayout(): StickSpawn[] {
+  return computeStickRackPositions(stickRack, pieces.stick.radiusM);
 }

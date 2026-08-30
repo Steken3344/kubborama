@@ -395,6 +395,14 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       and a cozy-campsite vignette (fire, tent, log/stump seating) off
       to one side — all per Erik's live feedback and choices. Needs his
       in-headset reaction; full writeup in docs/DECISIONS.md
+- [x] Stick rack (2026-08-30, Erik's ergonomics feedback): replaced
+      ground-scatter with a fixed 6-slot rack beside the player (right
+      side, hip height) so throws no longer require bending down each
+      time. Court/kubb/stake layout is now fully seed-free (the old
+      `seed` param only ever fed stick scatter). Found and fixed a
+      real bug during live testing — the rack's visual mesh had no
+      collider, so sticks fell straight through to the ground — before
+      any commit. Full writeup in docs/DECISIONS.md.
 - [ ] 72 Hz verified ON QUEST 2 (chrome-devtools via adb — needs USB card)
 - [ ] 72 Hz verified ON QUEST 2 (chrome-devtools via adb — needs USB card)
 - **GATE (Erik, headset): perf + comfort + full experience pass** 🎧

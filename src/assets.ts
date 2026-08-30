@@ -7,6 +7,7 @@ import kubb from './scene-assets/kubb.scene-asset.js';
 import leaf from './scene-assets/leaf.scene-asset.js';
 import stake from './scene-assets/stake.scene-asset.js';
 import stick from './scene-assets/stick.scene-asset.js';
+import stickRack from './scene-assets/stick-rack.scene-asset.js';
 
 const publicAssetUrl = (filePath: string): string =>
   `${import.meta.env.BASE_URL}${filePath.replace(/^\/+/u, '')}`;
@@ -24,6 +25,7 @@ export default defineAssets({
   stick,
   stake,
   leaf,
+  'stick-rack': stickRack,
   'court-line-long': courtLineLong,
   'court-line-short': courtLineShort,
   'reset-menu': {
