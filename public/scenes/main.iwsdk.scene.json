@@ -82,16 +82,16 @@
       "components": {
         "DirectionalLight": {
           "castShadow": true,
-          "color": [1, 0.95, 0.85, 1],
-          "intensity": 2.2,
+          "color": [1, 0.9490196078431372, 0.8509803921568627, 1],
+          "intensity": 1,
           "shadowCameraSize": 16,
-          "shadowMapSize": "1024"
+          "shadowMapSize": "256"
         }
       },
       "id": "sun",
       "name": "Sun",
       "transform": {
-        "position": [5, 9.3571, 6.9381],
+        "position": [8.3927, 12.1363, 4.9921],
         "rotationDeg": [55, -45, 0],
         "scale": 1
       }
@@ -598,7 +598,9 @@
       "id": "stick-rack",
       "name": "Pinnstall",
       "transform": {
-        "position": [0.7, 0, -0.15]
+        "position": [1.7313, 0, 0.468],
+        "rotationDeg": [0, -90, 0],
+        "scale": 1
       }
     },
     {
@@ -607,10 +609,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.5, 0.03, 0.4],
           "friction": 0.6,
-          "restitution": 0.15
+          "restitution": 0.15,
+          "shape": "Box"
         }
       },
       "content": {
@@ -619,7 +621,9 @@
       "id": "stick-rack-collider",
       "name": "Stick rack collider",
       "transform": {
-        "position": [0.7, 0.935, -0.15]
+        "position": [1.7313, 0.935, 0.468],
+        "rotationDeg": [0, -90, 0],
+        "scale": 1
       }
     },
     {
@@ -654,8 +658,9 @@
       "id": "stick-0",
       "name": "Kastpinne 0",
       "transform": {
-        "position": [0.5, 0.972, -0.15],
-        "rotationDeg": [0, 90, 90]
+        "position": [1.7313, 0.972, 0.268],
+        "rotationDeg": [0, 0, 90],
+        "scale": 1
       }
     },
     {
@@ -690,8 +695,9 @@
       "id": "stick-1",
       "name": "Kastpinne 1",
       "transform": {
-        "position": [0.58, 0.972, -0.15],
-        "rotationDeg": [0, 90, 90]
+        "position": [1.7313, 0.972, 0.348],
+        "rotationDeg": [0, 0, 90],
+        "scale": 1
       }
     },
     {
@@ -726,8 +732,9 @@
       "id": "stick-2",
       "name": "Kastpinne 2",
       "transform": {
-        "position": [0.66, 0.972, -0.15],
-        "rotationDeg": [0, 90, 90]
+        "position": [1.7313, 0.972, 0.428],
+        "rotationDeg": [0, 0, 90],
+        "scale": 1
       }
     },
     {
@@ -762,8 +769,9 @@
       "id": "stick-3",
       "name": "Kastpinne 3",
       "transform": {
-        "position": [0.74, 0.972, -0.15],
-        "rotationDeg": [0, 90, 90]
+        "position": [1.7313, 0.972, 0.508],
+        "rotationDeg": [0, 0, 90],
+        "scale": 1
       }
     },
     {
@@ -798,8 +806,9 @@
       "id": "stick-4",
       "name": "Kastpinne 4",
       "transform": {
-        "position": [0.82, 0.972, -0.15],
-        "rotationDeg": [0, 90, 90]
+        "position": [1.7313, 0.972, 0.588],
+        "rotationDeg": [0, 0, 90],
+        "scale": 1
       }
     },
     {
@@ -834,8 +843,9 @@
       "id": "stick-5",
       "name": "Kastpinne 5",
       "transform": {
-        "position": [0.9, 0.972, -0.15],
-        "rotationDeg": [0, 90, 90]
+        "position": [1.7313, 0.972, 0.668],
+        "rotationDeg": [0, 0, 90],
+        "scale": 1
       }
     },
     {
@@ -880,8 +890,26 @@
       "id": "fence-line",
       "name": "Fence",
       "transform": {
-        "position": [-3.7184, 0.0048, -5.2617],
+        "position": [-3.7865, 0.0048, -5.2617],
         "rotationDeg": [0, -90, 0],
+        "scale": 1
+      }
+    },
+    {
+      "content": {
+        "distribution": {
+          "count": 5,
+          "step": [1, 0, 0],
+          "type": "linear"
+        },
+        "prefab": "fence-section",
+        "type": "pattern"
+      },
+      "id": "fence-line-copy",
+      "name": "Fence",
+      "transform": {
+        "position": [3.3129, 0.0538, -0.9104],
+        "rotationDeg": [0, 90, 0],
         "scale": 1
       }
     },
@@ -891,10 +919,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.6, 1.6, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -907,7 +935,7 @@
       "transform": {
         "position": [4, 0, -1],
         "rotationDeg": [0, 20, 0],
-        "scale": 4.0
+        "scale": 4
       }
     },
     {
@@ -916,10 +944,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.645, 1.72, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -941,10 +969,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.408, 1.36, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -966,10 +994,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.57, 1.52, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -991,10 +1019,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.44, 1.76, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -1016,10 +1044,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.5, 0.4, 0.5],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1040,10 +1068,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.3, 0.25, 0.3],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1054,8 +1082,9 @@
       "id": "rock-1",
       "name": "Rock (small)",
       "transform": {
-        "position": [2.2, 0, -6.7],
-        "rotationDeg": [0, 10, 0]
+        "position": [3.016, 0, -6.8439],
+        "rotationDeg": [0, 10, 0],
+        "scale": 1
       }
     },
     {
@@ -1064,10 +1093,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.3, 0.5, 0.3],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1088,10 +1117,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.3, 0.25, 0.3],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1112,10 +1141,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.5, 0.4, 0.5],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1136,10 +1165,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.3, 0.25, 0.3],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1150,8 +1179,9 @@
       "id": "rock-5",
       "name": "Rock (small)",
       "transform": {
-        "position": [-2.5, 0, -6.5],
-        "rotationDeg": [0, 60, 0]
+        "position": [-2.909, 0, -5.7915],
+        "rotationDeg": [0, 60, 0],
+        "scale": 1
       }
     },
     {
@@ -1160,10 +1190,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.5, 0.4, 0.5],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1172,7 +1202,7 @@
       },
       "id": "rock-large-d-1",
       "transform": {
-        "position": [0, 0.05, 3.2693],
+        "position": [0, 0.05, 3.7059],
         "rotationDeg": [0, 0, 0],
         "scale": 1
       }
@@ -1183,10 +1213,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.3, 0.5, 0.3],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1206,10 +1236,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [1.0, 1.0, 0.4185],
+          "dimensions": [1, 1, 0.4185],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1220,7 +1250,7 @@
       "id": "cliff-0",
       "name": "Cliff (large)",
       "transform": {
-        "position": [-8.5, 0, -6.0],
+        "position": [-8.5, 0, -6],
         "rotationDeg": [0, 40, 0]
       }
     },
@@ -1230,10 +1260,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [1.0, 1.0, 1.0],
+          "dimensions": [1, 1, 1],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1244,7 +1274,7 @@
       "id": "cliff-1",
       "name": "Cliff (block)",
       "transform": {
-        "position": [-9.0, 0, -2.5],
+        "position": [-9, 0, -2.5],
         "rotationDeg": [0, 110, 0]
       }
     },
@@ -1254,10 +1284,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [1.1685, 1.0, 1.1685],
+          "dimensions": [1.1685, 1, 1.1685],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1278,10 +1308,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [1.0, 1.0, 0.2685],
+          "dimensions": [1, 1, 0.2685],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1292,7 +1322,7 @@
       "id": "cliff-3",
       "name": "Cliff (top)",
       "transform": {
-        "position": [-7.5, 0, 5.0],
+        "position": [-7.5, 0, 5],
         "rotationDeg": [0, 260, 0]
       }
     },
@@ -1302,10 +1332,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [1.0, 0.5, 0.4185],
+          "dimensions": [1, 0.5, 0.4185],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1326,10 +1356,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [0.1685, 1.0, 0.1685],
+          "dimensions": [0.1685, 1, 0.1685],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1350,10 +1380,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [1.0, 1.0, 0.4185],
+          "dimensions": [1, 1, 0.4185],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1364,7 +1394,7 @@
       "id": "cliff-6",
       "name": "Cliff (large)",
       "transform": {
-        "position": [9.0, 0, -1.5],
+        "position": [9, 0, -1.5],
         "rotationDeg": [0, 250, 0]
       }
     },
@@ -1374,10 +1404,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [1.0, 1.0, 1.0],
+          "dimensions": [1, 1, 1],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1388,7 +1418,7 @@
       "id": "cliff-7",
       "name": "Cliff (block)",
       "transform": {
-        "position": [8.2, 0, 2.0],
+        "position": [8.2, 0, 2],
         "rotationDeg": [0, 170, 0]
       }
     },
@@ -1398,10 +1428,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [1.1685, 1.0, 1.1685],
+          "dimensions": [1.1685, 1, 1.1685],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1422,10 +1452,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [1.0, 1.0, 0.2685],
+          "dimensions": [1, 1, 0.2685],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1446,10 +1476,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
-          "dimensions": [1.0, 0.5, 0.4185],
+          "dimensions": [1, 0.5, 0.4185],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1470,10 +1500,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.848, 2.12, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -1495,10 +1525,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.704, 1.76, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -1509,7 +1539,7 @@
       "id": "tree-6",
       "name": "Tree (tall, autumn)",
       "transform": {
-        "position": [-6.0, 0, -4.5],
+        "position": [-6, 0, -4.5],
         "rotationDeg": [0, 300, 0],
         "scale": 4.4
       }
@@ -1520,10 +1550,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [1.008, 2.24, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -1545,10 +1575,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [1.008, 2.24, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -1559,7 +1589,7 @@
       "id": "tree-8",
       "name": "Tree (pine)",
       "transform": {
-        "position": [7.0, 0, 4.0],
+        "position": [7, 0, 4],
         "rotationDeg": [0, 200, 0],
         "scale": 5.6
       }
@@ -1570,10 +1600,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [1.0955, 0.2922, 0.9199],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1584,7 +1614,7 @@
       "id": "rock-6",
       "name": "Rock (large)",
       "transform": {
-        "position": [6.8, 0, -6.0],
+        "position": [6.8, 0, -6],
         "rotationDeg": [0, 80, 0]
       }
     },
@@ -1594,10 +1624,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.575, 0.711, 0.664],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1618,10 +1648,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.4958, 0.0649, 0.4296],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1642,10 +1672,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [2.1875, 1.4025, 1.665],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1656,7 +1686,7 @@
       "id": "campsite-tent",
       "name": "Campsite tent",
       "transform": {
-        "position": [-7.3, 0, 2.0],
+        "position": [-7.3, 0, 2],
         "rotationDeg": [0, 60, 0],
         "scale": 2.5
       }
@@ -1667,10 +1697,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.9738, 0.1404, 0.9288],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1692,10 +1722,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.234, 0.1732, 0.71],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1716,10 +1746,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.3213, 0.2065, 0.371],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1730,7 +1760,7 @@
       "id": "campsite-stump",
       "name": "Campsite stump seat",
       "transform": {
-        "position": [-5.5, 0, 3.0],
+        "position": [-5.5, 0, 3],
         "rotationDeg": [0, 0, 0]
       }
     },
@@ -1740,10 +1770,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.4247, 0.3464, 0.71],
           "friction": 0.7,
-          "restitution": 0.05
+          "restitution": 0.05,
+          "shape": "Box"
         }
       },
       "content": {
@@ -1754,7 +1784,7 @@
       "id": "campsite-logs",
       "name": "Campsite firewood pile",
       "transform": {
-        "position": [-7.0, 0, 1.3],
+        "position": [-7, 0, 1.3],
         "rotationDeg": [0, 45, 0]
       }
     },
@@ -1764,10 +1794,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.4472, 1.9, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -1789,10 +1819,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.4472, 1.9, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -1814,10 +1844,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.2106, 1.65, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -1839,10 +1869,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.2106, 1.65, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -1864,10 +1894,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.4104, 1.9, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -1889,10 +1919,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.4104, 1.9, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -1904,7 +1934,7 @@
       "name": "Tree (blocks, autumn)",
       "transform": {
         "position": [-3.283, 0, 8.091],
-        "rotationDeg": [0, 32.0, 0],
+        "rotationDeg": [0, 32, 0],
         "scale": 3.8
       }
     },
@@ -1914,10 +1944,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.6169, 2.25, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -1939,10 +1969,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.6169, 2.25, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -1964,10 +1994,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.4887, 2.2, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -1989,10 +2019,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.4887, 2.2, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -2014,10 +2044,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.3805, 2.2, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -2039,10 +2069,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.3805, 2.2, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -2064,10 +2094,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.324, 1.8, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -2089,10 +2119,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.324, 1.8, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -2114,10 +2144,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.2854, 1.65, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -2139,10 +2169,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Cylinder",
           "dimensions": [0.2854, 1.65, 0],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Cylinder"
         }
       },
       "content": {
@@ -2164,10 +2194,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.99, 0.611, 0.99],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2189,10 +2219,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.99, 0.611, 0.99],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2214,10 +2244,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.99, 0.611, 0.99],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2239,10 +2269,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [1.5063, 0.901, 1.5063],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2264,10 +2294,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [1.5063, 0.901, 1.5063],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2289,10 +2319,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [1.5063, 0.901, 1.5063],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2314,10 +2344,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.9358, 0.6073, 0.8393],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2339,10 +2369,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.9358, 0.6073, 0.8393],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2364,10 +2394,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.9358, 0.6073, 0.8393],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2389,10 +2419,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [1.0192, 0.4233, 1.177],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2414,10 +2444,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [1.0192, 0.4233, 1.177],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2439,10 +2469,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [1.0192, 0.4233, 1.177],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2464,10 +2494,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.9575, 0.5182, 0.8407],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2489,10 +2519,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.9575, 0.5182, 0.8407],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2514,10 +2544,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.9575, 0.5182, 0.8407],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2539,10 +2569,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.911, 0.7388, 1.034],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2564,10 +2594,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.911, 0.7388, 1.034],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {
@@ -2589,10 +2619,10 @@
           "state": "STATIC"
         },
         "PhysicsShape": {
-          "shape": "Box",
           "dimensions": [0.911, 0.7388, 1.034],
           "friction": 0.6,
-          "restitution": 0.1
+          "restitution": 0.1,
+          "shape": "Box"
         }
       },
       "content": {

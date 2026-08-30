@@ -3172,3 +3172,42 @@ leaves a racked stick's position completely untouched — confirms
 break anything. Mechanical pass green (tsc/eslint/prettier/vitest —
 160 tests — build/smoke) after the collider fix. No console errors
 throughout.
+
+### 2026-08-30 (later) — Erik relocated the rack in the scene editor
+
+Erik moved the whole rack (via the managed scene editor, direct
+drag/rotate) to sit flush against the fence on the court's right side,
+rotated 90° from its original orientation, rather than the original
+free-floating `(0.7, -0.15)` spot. Two real issues surfaced from this
+manual edit, both fixed same session:
+
+1. **`stick-rack-collider` didn't rotate with the visual rack** —
+   its `rotationDeg` stayed `[0,0,0]` while the rack (and plank mesh)
+   rotated to `[0,-90,0]`, so the collider's box footprint no longer
+   matched the plank's actual world orientation (0.5×0.4m swapped
+   axes). Verified by hand that the then-current stick positions still
+   happened to fall inside the mismatched footprint's overlap region
+   (so nothing was visibly broken yet), but it was fragile — flagged
+   to Erik and fixed by setting the collider's transform to exactly
+   match the plank's real world position/rotation
+   `(1.7313, 0.935, 0.468)`, `[0,-90,0]`.
+2. **`scene-sync.test.ts` correctly failed** — Erik's manual drag left
+   the 6 stick nodes' authored positions diverging from what
+   `computeStickRackPositions()` computes, exactly the drift this
+   guard test exists to catch. Rather than reverting Erik's placement,
+   promoted it to the source of truth: added a `yawRad` field to
+   `StickRackConfig`/`stick-rack.json` (rack rotation around Y, ± the
+   rotation the rack itself was dragged to — `-90°`/`-π/2` here) so
+   `computeStickRackPositions()` can lay the row out along any rack
+   orientation, not just world X. `src/data/stick-rack.json` updated to
+   `xM: 1.7313, zM: 0.468, yawRad: -π/2` (matching the rack node's own
+   dragged transform, which is a single clean drag/rotate action and
+   far more reliable than the 6 individually-dragged stick positions,
+   which were only approximately even); the 6 scene-authored stick
+   positions were then recomputed exactly from that config and
+   overwritten in the scene JSON (not left at Erik's approximate drag
+   values), restoring an exact sync. New unit test covers the rotated
+   case. Live re-verified: all 6 sticks render in a clean, evenly
+   spaced row along the rotated plank (screenshot). Full mechanical
+   pass green (161 tests, tsc/eslint/prettier/build/smoke) after the
+   fix.

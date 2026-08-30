@@ -109,6 +109,7 @@ describe('computeStickRackPositions', () => {
     zM: -0.15,
     plankTopM: 0.95,
     spacingM: 0.08,
+    yawRad: 0,
   };
 
   it('places 6 sticks resting on the plank surface, all facing the same way', () => {
@@ -117,8 +118,8 @@ describe('computeStickRackPositions', () => {
     for (const { position, yawRad } of sticks) {
       const [, y, z] = position;
       expect(y).toBeCloseTo(rackConfig.plankTopM + dims.stickRadiusM);
-      expect(z).toBe(rackConfig.zM);
-      expect(yawRad).toBe(Math.PI / 2);
+      expect(z).toBeCloseTo(rackConfig.zM);
+      expect(yawRad).toBeCloseTo(Math.PI / 2);
     }
   });
 
@@ -136,5 +137,25 @@ describe('computeStickRackPositions', () => {
     const a = computeStickRackPositions(rackConfig, dims.stickRadiusM);
     const b = computeStickRackPositions(rackConfig, dims.stickRadiusM);
     expect(a).toEqual(b);
+  });
+
+  it('rotates the row with yawRad instead of only ever laying along X (Erik relocated the rack beside the fence, 2026-08-30)', () => {
+    const rotated: StickRackConfig = { ...rackConfig, yawRad: -Math.PI / 2 };
+    const sticks = computeStickRackPositions(rotated, dims.stickRadiusM);
+    const xs = sticks.map(({ position }) => position[0]);
+    const zs = sticks.map(({ position }) => position[2]);
+    // A -90° yaw turns the row to run along Z instead of X.
+    for (const x of xs) {
+      expect(x).toBeCloseTo(rotated.xM);
+    }
+    for (let i = 1; i < zs.length; i++) {
+      expect((zs[i] ?? 0) - (zs[i - 1] ?? 0)).toBeCloseTo(rotated.spacingM);
+    }
+    const meanZ = zs.reduce((sum, z) => sum + z, 0) / zs.length;
+    expect(meanZ).toBeCloseTo(rotated.zM);
+    // Each stick's own facing rotates by the same yaw as the rack.
+    for (const { yawRad } of sticks) {
+      expect(yawRad).toBeCloseTo(Math.PI / 2 - Math.PI / 2);
+    }
   });
 });

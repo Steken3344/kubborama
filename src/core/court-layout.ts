@@ -86,6 +86,11 @@ export interface StickRackConfig {
   zM: number;
   plankTopM: number;
   spacingM: number;
+  /** Rotation of the whole rack around Y, radians. 0 lays the row along
+   * world X (the original placement); a rack turned to sit flush against
+   * a wall/fence at another angle (Erik's 2026-08-30 relocation) uses a
+   * nonzero value instead of a second layout function. */
+  yawRad: number;
 }
 
 /**
@@ -107,9 +112,17 @@ export function computeStickRackPositions(
 ): StickSpawn[] {
   const y = config.plankTopM + stickRadiusM;
   const totalWidthM = (STICKS_PER_ROUND - 1) * config.spacingM;
-  const startXM = config.xM - totalWidthM / 2;
-  return Array.from({ length: STICKS_PER_ROUND }, (_, i) => ({
-    position: [startXM + i * config.spacingM, y, config.zM],
-    yawRad: Math.PI / 2,
-  }));
+  const cosYaw = Math.cos(config.yawRad);
+  const sinYaw = Math.sin(config.yawRad);
+  return Array.from({ length: STICKS_PER_ROUND }, (_, i) => {
+    const localOffsetM = i * config.spacingM - totalWidthM / 2;
+    return {
+      position: [
+        config.xM + localOffsetM * cosYaw,
+        y,
+        config.zM - localOffsetM * sinYaw,
+      ],
+      yawRad: Math.PI / 2 + config.yawRad,
+    };
+  });
 }
