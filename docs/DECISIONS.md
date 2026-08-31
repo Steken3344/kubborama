@@ -3306,3 +3306,112 @@ wrap in a `Group`, even for a single mesh, if the asset needs any
 internal local-space offset — a bare Mesh root only works when its own
 origin should coincide exactly with the scene node's authored
 transform.
+
+## 2026-08-30 — Live-test regression report, not reproduced (documented, not fixed)
+
+Erik, testing the deployed build after the HUD-frame push: "sticks
+seem to end up lower than the floor now, I can't pick up a stick that
+landed on the ground" — suspected the stick-rack collider fixes.
+
+Investigated before touching anything (systematic-debugging discipline
+— no fix without repro): `ground`/`ground-collider` are untouched by
+every commit since `bbfeca4` (grepped the full diff history). Live-
+tested in the emulator: grabbed a stick from the (twice-relocated)
+rack, dropped it on open court ground — settled at y≈0.0219 (exactly
+the cylinder radius, correct) and was immediately re-grabbable.
+Repeated directly underneath the relocated rack (between its two
+support posts, at ground level) — same correct result. Could not
+reproduce either symptom in either tested spot.
+
+Erik decided it was "maybe just something weird" and moved on (2 real
+Quest headsets, testing at night — a transient tracking/rendering
+glitch on real hardware is plausible and wouldn't show up in the
+emulator). Logged rather than silently dropped: if this recurs, the
+next report should include exactly WHERE the stick landed (near the
+relocated rack vs. out on the open court) and whether the rack itself
+looked visually sunk/floating, not just the symptom — that's the
+detail that would actually distinguish "real physics bug" from
+"real-headset space/tracking quirk" from these two already-ruled-out
+open-ground scenarios.
+
+## 2026-08-31 — MP1 co-presence: first multiplayer implementation
+
+Erik has 2 physical Meta Quests and asked for a report on how to add
+a second player, then — after reviewing docs/PLAN.md §10-12's existing
+(pre-session) multiplayer research — said to go ahead and start
+implementing, working autonomously overnight for him to test the next
+day. Scoped to the plan's own **MP1 (co-presence)** tier: shared
+presence only, no shared match state (that's MP2).
+
+**Stack, matching the plan's pre-approved choice exactly**: Trystero
+v0.25.4 installed (plan named v0.25.3; a newer patch, no API
+difference found via context7's current docs). Default import
+(`trystero`) uses the Nostr signaling strategy, matching the plan's
+"Nostr relays by default" — confirmed via context7, not assumed.
+`joinRoom`/`room.makeAction` are synchronous/typed as documented;
+`DataPayload` accepts plain JSON-shaped objects directly, no manual
+serialization needed.
+
+**Architecture, following the functional-core/imperative-shell split**:
+
+- `core/presence.ts` (pure, zod, TDD — 9 tests): the wire format for
+  one player's presence (head + both hands, each a
+  position+quaternion pose), version-stamped. `parsePresenceMessage`
+  never throws — a peer sending a mismatched version or malformed
+  shape is silently dropped, treating the network as the untrusted
+  boundary it is (CLAUDE.md's own rule, applied to a genuinely new
+  kind of boundary this project hasn't had before: another player's
+  browser, not just localStorage/URL params).
+- `systems/multiplayer.ts` (adapter): joins a room on init (`?room=`
+  URL param, default `kubborama-lobby` — chosen so two headsets
+  opening the same plain deployed URL land in the same room with zero
+  manual setup, good enough for a first test between exactly 2 known
+  devices; a real friend-link room UI is later, per the plan).
+  Broadcasts local head/`gripSpaces` transforms at ~20 Hz (config's
+  `sendIntervalS`, matching the plan's presence-sync rate) — throttled
+  inside `update()` via an accumulator, and the outgoing pose/message
+  objects are allocated once and mutated in place every send rather
+  than rebuilt (`never allocate in update()`, CLAUDE.md's own rule,
+  applied even though this is a ~20 Hz path, not a 90 Hz one).
+- `peer-avatar.scene-asset.ts` + `avatarMaterial`: a deliberately
+  minimal placeholder — 3 spheres (head + 2 hands), matching the
+  plan's own avatar design principle ("replicate only what is
+  tracked... NO legs and NO IK"). Real character avatars are a later
+  MP1 step per the plan (Quaternius packs), not attempted here — the
+  goal tonight was proving the transport and rendering path work, not
+  art.
+
+**A real, undecided design gap, called out rather than guessed at**:
+both players' own tracked origin is world `(0,0,0)` by default (no
+authored `player.transform`), so a remote peer's raw broadcast
+position would land exactly on top of the local player's own body.
+Added a fixed `remoteOffset` (`data/multiplayer.json`, currently
+`[3,0,0]`) shifting every incoming pose sideways purely so the two are
+visibly distinct for this first test. This is NOT "each player at
+their own baseline" — that needs an actual design decision (which
+baseline is whose, how it's assigned per room) that only Erik can
+make, and guessing one autonomously overnight felt like exactly the
+kind of open design call CLAUDE.md's workflow reserves for him. Logged
+here rather than silently picked.
+
+**What's verified, and what explicitly isn't**: full mechanical pass
+green (170 tests, tsc/eslint/prettier, build, smoke — bundle grew
+~67KB gzipped for Trystero). Live-verified single-client in the
+emulator: the room join succeeds, `[net] joined multiplayer room`
+logs with no errors, the ~20 Hz send loop ran for several seconds with
+zero console errors, `ecs_list_systems` confirms `MultiplayerSystem`
+registered and unpaused. **What could NOT be verified with the tools
+available**: actual 2-peer connection and sync — the MCP toolset
+drives exactly one managed browser tab, so there's no way to spin up
+a genuine second WebRTC peer locally. This needs Erik's 2 real
+headsets, which is the whole reason this feature exists right now —
+recommend he opens the deployed URL on both, no query param needed
+(both default into the same room), and confirms he can see the other
+device's head/hands moving.
+
+**Also unfinished from the plan's MP1 scope, deliberately cut for a
+first pass, not forgotten**: voice chat (Trystero's `addStream` is
+built for this, straightforward to add once presence itself is
+confirmed working), any room/lobby UI beyond the URL param, and of
+course all of MP2/MP3 (shared match state, turn authority, the rules
+engine over the network).

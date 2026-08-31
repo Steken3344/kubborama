@@ -69,6 +69,16 @@ export const courtLineMaterial = new MeshStandardMaterial({
   roughness: 0.9,
 });
 
+/** MP1 co-presence placeholder avatar (docs/PLAN.md §10) — a plain
+ * flat color, deliberately not matching any game-piece material, so a
+ * remote player's head/hands are never mistaken for a kubb/king/stick.
+ * Real character avatars are a later MP1 step (Quaternius packs, per
+ * the plan); this is the "prove the transport works" placeholder. */
+export const avatarMaterial = new MeshStandardMaterial({
+  color: '#4a90d9',
+  roughness: 0.5,
+});
+
 /** Wind-indicator leaves (docs/PLAN.md §13's "cheapest possible" flourish
  * — direction/strength readable at a glance). Warm autumn gold rather
  * than green — matches the garden's existing autumn tree/bush dressing

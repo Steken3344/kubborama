@@ -7,6 +7,7 @@ import { HandoffSystem } from './systems/handoff.js';
 import { HudSystem } from './systems/hud.js';
 import { ImpactSystem } from './systems/impact.js';
 import { MenuSystem } from './systems/menu.js';
+import { MultiplayerSystem } from './systems/multiplayer.js';
 import { OneShotAudioSystem } from './systems/oneShotAudio.js';
 import { RoundSystem } from './systems/round.js';
 import { SettingsSystem } from './systems/settings.js';
@@ -93,6 +94,10 @@ World.create(
   // doesn't matter for correctness (subscriptions, not query timing),
   // but registering last keeps init order readable.
   world.registerSystem(TuningLabSystem);
+  // MP1 co-presence (docs/PLAN.md §10): independent of every other
+  // system here — only reads player.head/gripSpaces and creates its
+  // own peer-avatar entities, so registration order doesn't matter.
+  world.registerSystem(MultiplayerSystem);
 
   document.getElementById('splash')?.classList.add('splash-hidden');
 });

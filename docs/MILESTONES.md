@@ -413,3 +413,36 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
 - [ ] vite-plugin-pwa: manifest, icons, service worker; installable from
       deployed URL; launches fullscreen from Quest app library
 - Review gate → tag v0.7-m6 → POC COMPLETE 🎉
+
+## M7 — MP1 co-presence (multiplayer) `status: implemented, awaiting Erik's 2-headset test`
+
+- [x] Trystero installed (v0.25.4, default Nostr signaling strategy,
+      matching docs/PLAN.md §12's pre-approved choice) — serverless
+      WebRTC, no signaling server to build/host.
+- [x] `core/presence.ts`: pure, zod-validated presence message (head +
+      both hands, position + quaternion) — TDD, 9 tests, network
+      messages treated as an untrusted boundary per CLAUDE.md
+      (malformed/mismatched-version peer data is dropped, never
+      trusted).
+- [x] `systems/multiplayer.ts`: joins a room (`?room=` URL param,
+      default `kubborama-lobby` so two headsets opening the plain
+      deployed URL land together with zero setup), broadcasts local
+      head/hand transforms at ~20 Hz (throttled, no per-frame
+      allocation — reused pose objects mutated in place), renders
+      every other peer as a placeholder avatar (`peer-avatar` scene
+      asset: 3 spheres, no character art yet).
+- [x] Mechanical pass green: tsc/eslint/prettier/vitest (170 tests),
+      build, smoke. Single-client live-verified in the emulator (joins
+      the room, sends presence every tick, zero console errors over
+      several seconds) — see docs/DECISIONS.md for what could and
+      couldn't be verified without a second real client.
+- [ ] **KNOWN LIMITATION, not yet solved**: remote peers are placed at
+      a fixed sideways offset (`data/multiplayer.json`'s
+      `remoteOffset`), not at a real "each player at their own
+      baseline" position — a design decision for Erik, not guessed at
+      here.
+- **GATE (Erik, 2× headset): open the deployed URL on both Quests,
+  confirm each sees the other's head/hands moving live** 🎧🎧
+- No voice yet (MP1's plan includes it — Trystero's addStream — cut
+  from this first pass to keep the transport test isolated); no
+  room/lobby UI (URL param only); no shared match state (MP2, later).
