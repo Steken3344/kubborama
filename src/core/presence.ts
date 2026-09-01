@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { quaternionSchema, vec3Schema } from './networkSchemas.js';
 import type { Vec3 } from './vec3.js';
 
 /**
@@ -8,14 +9,6 @@ import type { Vec3 } from './vec3.js';
  * model); this is presence only.
  */
 export const PRESENCE_SCHEMA_VERSION = 1;
-
-const vec3Schema = z.tuple([z.number(), z.number(), z.number()]);
-const quaternionSchema = z.tuple([
-  z.number(),
-  z.number(),
-  z.number(),
-  z.number(),
-]);
 
 const poseSchema = z.object({
   position: vec3Schema,

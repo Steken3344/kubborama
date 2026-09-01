@@ -1,23 +1,17 @@
 import { z } from 'zod';
+import { quaternionSchema, vec3Schema } from './networkSchemas.js';
 
 /**
- * MP2 phase 1 (docs/PLAN.md §10, Erik's 2026-09-01 decisions): the
- * host broadcasts the shared court's authoritative piece transforms —
- * king + both kubb baselines for now. Sticks stay MP1-local (each
- * player's own set, unnetworked) until phase 2 relays a guest's throw
- * through the host's physics — see systems/multiplayer.ts's class doc
- * for the full phased plan. Network messages are an untrusted
- * boundary (CLAUDE.md): malformed data is dropped, never trusted.
+ * MP2 (docs/PLAN.md §10, Erik's 2026-09-01 decisions): the host
+ * broadcasts the shared court's authoritative piece transforms — king,
+ * both kubb baselines, and every stick — at ~20 Hz. A stick's initial
+ * throw is relayed separately (see core/throwRelay.ts) since it needs
+ * velocity, not just a transform; once flying/settled it's just
+ * another periodically-synced piece like this. Network messages are
+ * an untrusted boundary (CLAUDE.md): malformed data is dropped, never
+ * trusted.
  */
 export const PIECE_SYNC_SCHEMA_VERSION = 1;
-
-const vec3Schema = z.tuple([z.number(), z.number(), z.number()]);
-const quaternionSchema = z.tuple([
-  z.number(),
-  z.number(),
-  z.number(),
-  z.number(),
-]);
 
 const pieceTransformSchema = z.object({
   id: z.string(),

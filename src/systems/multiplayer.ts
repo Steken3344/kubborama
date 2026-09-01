@@ -1,6 +1,8 @@
 import {
   createSystem,
+  Grabbed,
   Object3D,
+  PhysicsManipulation,
   PhysicsSystem,
   Quaternion,
   Vector3,
@@ -8,8 +10,11 @@ import {
 import type { Entity } from '@iwsdk/core';
 import { joinRoom, selfId } from 'trystero';
 import type { MessageAction, Room } from 'trystero';
+import { StickPhase, StickState } from '../components/stick-state.js';
 import { defaultCourtPreset, getCourtPreset, multiplayer } from '../config.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
+import { gameEvents } from '../core/events.js';
+import type { GameEvents } from '../core/events.js';
 import { isHost } from '../core/multiplayerAuthority.js';
 import type { PeerJoinInfo } from '../core/multiplayerAuthority.js';
 import {
@@ -24,16 +29,23 @@ import {
   parsePresenceMessage,
 } from '../core/presence.js';
 import type { Pose, PresenceMessage } from '../core/presence.js';
+import {
+  buildThrowRelayMessage,
+  parseThrowRelayMessage,
+} from '../core/throwRelay.js';
+import type { ThrowRelayMessage } from '../core/throwRelay.js';
+import { STICKS_PER_ROUND } from '../core/scoring.js';
 import { log } from '../core/log.js';
 import { settingsState } from '../settingsState.js';
 
-// King + both kubb baselines — MP2 phase 1's shared court state (see
-// class doc). NOT sticks: a stick is grabbed/thrown locally, and
-// networking a grab needs relaying the throw through the host's
-// physics (phase 2, not built yet) — sticks stay MP1-local for now.
+// King, both kubb baselines, and every stick — MP2's shared court
+// state (see class doc). A stick's initial throw is relayed
+// separately (core/throwRelay.ts, needs velocity); once flying it's
+// just another periodically-synced piece like this.
 const NETWORKED_PIECE_IDS = [
   'king',
   ...Array.from({ length: KUBB_COUNT * 2 }, (_, i) => `kubb-${i}`),
+  ...Array.from({ length: STICKS_PER_ROUND }, (_, i) => `stick-${i}`),
 ];
 
 // The other headset spawns at the far baseline — the one you normally
@@ -81,33 +93,56 @@ const FAR_Z = -getCourtPreset(defaultCourtPreset).lengthM;
  * MP2 phase 1 (Erik, 2026-09-01, interviewed for the design): shared
  * court state, using core/multiplayerAuthority.ts's "först in äger
  * spelet" rule — whichever peer joined the room first is the
- * authoritative host for king + kubb positions, broadcasting them
+ * authoritative host for king/kubb/stick positions, broadcasting them
  * (core/pieceSync.ts) at the same ~20Hz as presence. The guest applies
  * every incoming snapshot directly via `PhysicsSystem.setBodyTransform`
  * (the same API MenuSystem's reset uses) rather than switching those
  * bodies to Kinematic — changing a body's motion state at runtime
  * needs "deliberate lifecycle handling" per the physics skill
- * reference (remove+recreate the body), which is real surgery on 11
+ * reference (remove+recreate the body), which is real surgery on 17
  * pieces for a first pass; periodic snap-correction is simpler and
  * safe, at the cost of a small amount of visible drift between
  * network ticks while local gravity briefly acts on an otherwise-
- * mirrored body.
+ * mirrored body. A piece the LOCAL player is actively holding
+ * (`Grabbed`) is skipped — otherwise a stale host snapshot would fight
+ * the guest's own hand-tracking while they're aiming.
  *
- * Deliberately NOT phase 1: Erik asked for both players to throw AND
- * a real turn-based 1v1 match. That needs (a) relaying a guest's
- * stick release through the host's physics — the guest's own local
- * throw can't be authoritative once kubbs/king are host-owned, so a
- * release has to become a network request the host applies to ITS
- * copy of that stick — and (b) turn enforcement + per-baseline kubb
- * ownership in the rules engine (SimpleRulesSystem/ToppleSystem
- * currently assume one practicing player, not two sides). Both are
- * real next phases, not guessed at here — see docs/DECISIONS.md.
+ * MP2 phase 2 (same session): "both should be able to throw" needed
+ * more than adding sticks to the sync list above — a GUEST's own local
+ * throw physics can't be authoritative once the host owns the shared
+ * court. `ThrowingSystem` is untouched; this system just also
+ * subscribes to the SAME `Thrown` event it already emits
+ * (core/events.ts's bus was built with exactly this in mind — see its
+ * own doc comment) and, only if I'm not the host, relays the release
+ * (position/orientation read at that instant, since `Thrown` fires
+ * synchronously before physics steps again — plus velocity, already in
+ * the event payload) via core/throwRelay.ts. The host applies it to
+ * ITS copy of that stick with the identical two-call pattern
+ * `ThrowingSystem.onRelease()` uses for a local throw
+ * (`setBodyTransform` then a one-shot `PhysicsManipulation`), so
+ * `ImpactSystem`/`ToppleSystem` react exactly as if the host itself
+ * had thrown it. The guest's own local stick keeps flying in parallel
+ * (untouched, free client-side prediction) and gets pulled back in
+ * line by the regular pieces broadcast once it's no longer `Grabbed` —
+ * client prediction + server reconciliation, not synchronized/locked
+ * step.
+ *
+ * Deliberately NOT built: **turn enforcement or per-baseline kubb
+ * ownership** for a real refereed 1v1 match — `SimpleRulesSystem`/
+ * `ToppleSystem` still assume one practicing player, not two competing
+ * sides. Both players can throw at the SAME shared kubbs right now,
+ * which is real co-op, not yet a scored match — a real next phase,
+ * not guessed at here (docs/DECISIONS.md). Also unhandled: two players
+ * grabbing the exact same physical stick at once (undefined, in
+ * practice host's local grab wins) — an edge case, not the common
+ * path with 6 sticks to choose from.
  */
 export class MultiplayerSystem extends createSystem({}) {
   private room?: Room;
   private presenceAction?: MessageAction<PresenceMessage>;
   private pieceSyncAction?: MessageAction<PieceSyncMessage>;
   private helloAction?: MessageAction<{ joinedAtMs: number }>;
+  private throwRelayAction?: MessageAction<ThrowRelayMessage>;
   private physicsSystem!: PhysicsSystem;
   private sendTimerS = 0;
   private peerAvatars = new Map<string, Entity>();
@@ -116,6 +151,7 @@ export class MultiplayerSystem extends createSystem({}) {
   private readonly joinedAtMs = Date.now();
   private readonly peerJoinedAtMs = new Map<string, number>();
   private networkedPieces = new Map<string, Entity>();
+  private entityIndexToPieceId = new Map<number, string>();
 
   // Reused every send tick instead of allocated fresh — see
   // .claude/rules (never allocate in update()); the throttled ~20Hz
@@ -135,7 +171,9 @@ export class MultiplayerSystem extends createSystem({}) {
     }
     this.physicsSystem = physicsSystem;
     for (const id of NETWORKED_PIECE_IDS) {
-      this.networkedPieces.set(id, this.world.requireSceneEntity(id));
+      const entity = this.world.requireSceneEntity(id);
+      this.networkedPieces.set(id, entity);
+      this.entityIndexToPieceId.set(entity.index, id);
     }
 
     const roomId = this.roomIdFromUrl();
@@ -162,6 +200,27 @@ export class MultiplayerSystem extends createSystem({}) {
       }
       this.applyPieceSync(message);
     };
+    this.throwRelayAction =
+      this.room.makeAction<ThrowRelayMessage>('throwRelay');
+    this.throwRelayAction.onMessage = (data) => {
+      // Only the actual host should ever act on a relayed throw — with
+      // exactly 2 peers this is automatic (only a guest sends one), but
+      // the check stays cheap and correct if a 3rd peer ever joins.
+      if (!this.isHostNow()) {
+        return;
+      }
+      const message = parseThrowRelayMessage(data);
+      if (!message) {
+        log('warn', 'net', 'dropped malformed throw-relay message', {});
+        return;
+      }
+      this.applyThrowRelay(message);
+    };
+    this.cleanupFuncs.push(
+      gameEvents.on('Thrown', (event) => {
+        this.relayLocalThrowIfGuest(event);
+      }),
+    );
     this.room.onPeerJoin = (peerId) => {
       log('info', 'net', 'peer joined', { peerId, roomId });
       void this.helloAction?.send(
@@ -260,7 +319,11 @@ export class MultiplayerSystem extends createSystem({}) {
   private applyPieceSync(message: PieceSyncMessage): void {
     for (const piece of message.pieces) {
       const entity = this.networkedPieces.get(piece.id);
-      if (!entity) {
+      if (!entity || entity.hasComponent(Grabbed)) {
+        // Skip a piece the LOCAL player is actively holding — a stale
+        // host snapshot would otherwise fight their own hand-tracking
+        // while aiming. Kubbs/king are never grabbable, so this only
+        // ever matters for sticks.
         continue;
       }
       this.physicsSystem.setBodyTransform(entity, {
@@ -268,6 +331,61 @@ export class MultiplayerSystem extends createSystem({}) {
         quaternion: piece.quaternion,
       });
     }
+  }
+
+  /** Only a non-host relays — the host's own throws are already
+   * authoritative and get shared for free via the regular pieces
+   * broadcast above. */
+  private relayLocalThrowIfGuest(event: GameEvents['Thrown']): void {
+    if (this.isHostNow() || !this.throwRelayAction) {
+      return;
+    }
+    const pieceId = this.entityIndexToPieceId.get(Number(event.stickId));
+    const entity = pieceId ? this.networkedPieces.get(pieceId) : undefined;
+    const object3D = entity?.object3D;
+    if (!pieceId || !object3D) {
+      return;
+    }
+    // Thrown fires synchronously from ThrowingSystem.onRelease(),
+    // before physics steps again this frame — the stick's current
+    // orientation IS its release orientation.
+    void this.throwRelayAction.send(
+      buildThrowRelayMessage({
+        stickId: pieceId,
+        position: event.releasePosition,
+        quaternion: [
+          object3D.quaternion.x,
+          object3D.quaternion.y,
+          object3D.quaternion.z,
+          object3D.quaternion.w,
+        ],
+        linearVelocity: event.releaseVelocity,
+        angularVelocity: event.angularVelocity,
+      }),
+    );
+  }
+
+  /** Applies a guest's relayed throw to the host's own copy of that
+   * stick — the identical two-call pattern
+   * ThrowingSystem.onRelease() uses for a local throw, so
+   * ImpactSystem/ToppleSystem react exactly as if the host itself had
+   * thrown it. */
+  private applyThrowRelay(message: ThrowRelayMessage): void {
+    const entity = this.networkedPieces.get(message.stickId);
+    if (!entity) {
+      return;
+    }
+    this.physicsSystem.setBodyTransform(entity, {
+      position: message.position,
+      quaternion: message.quaternion,
+    });
+    entity.addComponent(PhysicsManipulation, {
+      force: [0, 0, 0],
+      linearVelocity: message.linearVelocity,
+      angularVelocity: message.angularVelocity,
+    });
+    entity.setValue(StickState, 'phase', StickPhase.Flying);
+    log('info', 'net', 'applied relayed throw', { stickId: message.stickId });
   }
 
   private async setUpMicrophone(): Promise<void> {

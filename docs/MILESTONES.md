@@ -472,10 +472,30 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
     (room joins, all 11 pieces resolve, king/kubbs stay in their
     normal resting state, `MultiplayerSystem` runs unpaused) — actual
     2-peer sync still needs Erik's 2 headsets.
-- [ ] **MP2 phase 2 (not started)**: relay a guest's stick grab/release
-      through the host's physics — needed before "both players throw"
-      is real, since sticks aren't host-owned yet.
+- [x] **MP2 phase 2 (2026-09-01)**: both players' throws now affect
+      the shared kubbs. `ThrowingSystem` is unchanged — this just
+      subscribes to its existing `Thrown` event and, only if I'm not
+      the host, relays the release (`core/throwRelay.ts`, pure/zod/6
+      tests) to the host, which applies it to its own copy of that
+      stick with the same `setBodyTransform` +
+      one-shot-`PhysicsManipulation` pattern a local throw uses.
+      Sticks joined the pieces-broadcast list (17 total now) for
+      ongoing reconciliation once released; a piece the local player
+      is `Grabbed`-holding is skipped during correction. Also
+      extracted `core/networkSchemas.ts` (DRY — this was about to be
+      the 3rd copy of the same vec3/quaternion zod schemas). Mechanical
+      pass green (192 tests). Live-verified: a local throw fires the
+      full pipeline correctly end to end with zero errors, and the
+      guest-relay path correctly no-ops when solo (=host) — an actual
+      guest's relay landing on a real host still needs Erik's 2
+      headsets.
 - [ ] **MP2 phase 3 (not started)**: turn enforcement + per-baseline
       kubb ownership in the rules engine, for an actual refereed 1v1
       match — `SimpleRulesSystem`/`ToppleSystem` currently assume one
-      practicing player, not two competing sides.
+      practicing player, not two competing sides. Right now both
+      players can throw at the same shared kubbs — real co-op, not
+      yet a scored match.
+- [ ] Known gap, not solved: two players grabbing the exact same
+      physical stick at once is undefined (host's local grab wins in
+      practice) — edge case, not the common path with 6 sticks to
+      choose from.

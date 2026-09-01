@@ -3633,3 +3633,68 @@ simulation. What could NOT be verified: an actual guest receiving and
 applying a real snapshot (needs Erik's 2 headsets, same limitation as
 the rest of MP1/MP2). Mechanical pass green (186 tests,
 tsc/eslint/prettier, build, smoke).
+
+## 2026-09-01 — MP2 phase 2: both players can throw
+
+Continuing straight from phase 1 ("fortsätta bygg" — Erik wanted to
+keep going without pausing for a headset test). Built the second of
+the four separable pieces identified in the phase-1 entry: relaying a
+guest's stick release through the host's physics, so a throw from
+either player actually affects the shared kubbs.
+
+**DRY cleanup done in passing**: `core/presence.ts` and
+`core/pieceSync.ts` each defined an identical local `vec3Schema`/
+`quaternionSchema`. Adding a third copy for this file would have been
+the exact violation CLAUDE.md's "extract on second occurrence" rule
+warns about — extracted both into `core/networkSchemas.ts` and
+updated the two existing files to import from it instead of silently
+letting a third near-duplicate slide by.
+
+**Design, once the existing code was actually read (not assumed)**:
+`ThrowingSystem.onRelease()` already emits a `Thrown` event on the
+shared bus (`core/events.ts`, whose own doc comment literally lists
+"network" among the bus's future subscribers) carrying everything
+needed — `releasePosition`, `releaseVelocity`, `angularVelocity` — for
+every throw, host or guest, no changes to `ThrowingSystem` required.
+`systems/multiplayer.ts` just also subscribes: if I'm not the host, it
+reads the stick's current orientation (safe — `Thrown` fires
+synchronously, before physics steps again this frame) and relays the
+full release state (`core/throwRelay.ts`, pure/zod/6 tests) to the
+host. The host applies it to ITS copy of that stick using the
+IDENTICAL two-call pattern `onRelease()` itself uses for a local throw
+(`PhysicsSystem.setBodyTransform` then a one-shot `PhysicsManipulation`
+component) — so `ImpactSystem`/`ToppleSystem`/scoring all react
+exactly as if the host had thrown it, no special-casing needed
+anywhere else in the game.
+
+Sticks were also added to the existing pieces-broadcast list (now 17:
+king + 10 kubbs + 6 sticks) so a thrown stick keeps converging toward
+the host's authoritative trajectory after the initial relay — but a
+piece the LOCAL player is actively holding (`Grabbed`) is skipped
+during that correction, so a stale host snapshot never fights a
+player's own hand-tracking mid-aim. The guest's own local stick keeps
+flying on its own physics in parallel — untouched, free client-side
+prediction — while the periodic broadcast reconciles it once released;
+standard prediction+reconciliation netcode, not lockstep.
+
+**Known limitation, documented not solved**: two players grabbing the
+exact SAME physical stick at once is undefined (in practice host's
+local grab wins, since only the host's grab has physics
+consequences on the shared body) — an edge case with 6 sticks
+available, not the common path, not worth solving for a first pass.
+
+**Still NOT built**: turn enforcement or per-baseline kubb ownership.
+Both players can currently throw at the SAME shared kubbs — real
+co-op, not yet a scored 1v1 match. That's phase 3, unchanged from the
+phase-1 assessment.
+
+**Live-verified in the emulator**: grabbed and threw a stick locally
+(solo session, so host) — full pipeline fired correctly end to end
+(`[grab] stick grabbed` → `[physics] impact` → `[throw] release`,
+`StickState` transitioned to `Flying` with `lastThrowerHand` set), zero
+errors, and the guest-relay path correctly no-opped (no send, no
+"applied relayed throw" log) since a solo session is always host. What
+could NOT be verified: an actual guest's relay arriving and being
+applied on a real host — needs Erik's 2 headsets, same limitation as
+the rest of MP1/MP2. Mechanical pass green (192 tests,
+tsc/eslint/prettier, build, smoke).
