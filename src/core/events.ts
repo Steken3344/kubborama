@@ -1,4 +1,5 @@
 import type { Language } from './i18n.js';
+import type { MatchSide, MatchState } from './match.js';
 import type { RoundResult } from './scoring.js';
 import type { Settings } from './settings.js';
 import type { Vec3 } from './vec3.js';
@@ -98,6 +99,14 @@ export interface GameEvents {
   };
   GameModeChanged: {
     gameMode: Settings['gameMode'];
+  };
+  /** MP2 phase 3 — only emitted once an actual multiplayer peer is
+   * connected (see systems/multiplayer.ts), never during solo play.
+   * `mySide` is which side the LOCAL player is on, so a listener
+   * (HudSystem) never needs to ask MultiplayerSystem who's host. */
+  MatchStateChanged: {
+    state: MatchState;
+    mySide: MatchSide;
   };
 }
 

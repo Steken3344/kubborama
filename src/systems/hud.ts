@@ -1,4 +1,5 @@
 import { createSystem, UIKitMLAsset } from '@iwsdk/core';
+import type { GameEvents } from '../core/events.js';
 import type { ThrowStyle } from '../core/underhandClassifier.js';
 import { gameEvents } from '../core/events.js';
 import { i18nState } from '../i18nState.js';
@@ -16,9 +17,11 @@ export class HudSystem extends createSystem({}) {
   private hudPanel!: UIKitMLAsset;
   private statsSystem!: StatsSystem;
   private lastThrowStyle: ThrowStyle | null = null;
+  private lastMatchState: GameEvents['MatchStateChanged'] | null = null;
   private unsubscribeRoundEnded?: () => void;
   private unsubscribeThrown?: () => void;
   private unsubscribeLanguageChanged?: () => void;
+  private unsubscribeMatchStateChanged?: () => void;
 
   init(): void {
     const statsSystem = this.world.getSystem(StatsSystem);
@@ -48,12 +51,20 @@ export class HudSystem extends createSystem({}) {
     this.unsubscribeLanguageChanged = gameEvents.on('LanguageChanged', () => {
       this.refreshLabels();
     });
+    this.unsubscribeMatchStateChanged = gameEvents.on(
+      'MatchStateChanged',
+      (e) => {
+        this.lastMatchState = e;
+        this.updateMatchRow();
+      },
+    );
   }
 
   destroy(): void {
     this.unsubscribeRoundEnded?.();
     this.unsubscribeThrown?.();
     this.unsubscribeLanguageChanged?.();
+    this.unsubscribeMatchStateChanged?.();
   }
 
   private refreshLabels(): void {
@@ -70,7 +81,33 @@ export class HudSystem extends createSystem({}) {
     this.hudPanel
       .requireElementById('style-label')
       .setProperties({ text: t('hudStyleLabel') });
+    this.hudPanel
+      .requireElementById('match-label')
+      .setProperties({ text: t('matchLabel') });
     this.updateThrowStyle();
+    this.updateMatchRow();
+  }
+
+  /** Hidden until the first MatchStateChanged — i.e. never in solo
+   * play, since systems/multiplayer.ts only emits it with an actual
+   * opponent connected. */
+  private updateMatchRow(): void {
+    if (!this.lastMatchState) {
+      return;
+    }
+    const t = i18nState.t;
+    const { state, mySide } = this.lastMatchState;
+    const text = state.winner
+      ? state.winner === mySide
+        ? t('matchWon')
+        : t('matchLost')
+      : state.currentTurn === mySide
+        ? t('matchYourTurn')
+        : t('matchOpponentTurn');
+    this.hudPanel.requireElementById('match-row').setProperties({
+      display: 'flex',
+    });
+    this.hudPanel.requireElementById('match-value').setProperties({ text });
   }
 
   private updateBestFelled(): void {

@@ -262,7 +262,7 @@ export class MultiplayerSystem extends createSystem({}) {
       // isHostNow()'s own note on why that check is cheap and safe to
       // repeat even in a 2-peer room.
       if (!this.isHostNow()) {
-        this.matchState = message.state;
+        this.setMatchState(message.state);
       }
     };
     this.cleanupFuncs.push(
@@ -344,6 +344,12 @@ export class MultiplayerSystem extends createSystem({}) {
       joinedAtMs: this.peerJoinedAtMs.get(id) ?? 0,
     }));
     return isHost({ id: selfId, joinedAtMs: this.joinedAtMs }, peers);
+  }
+
+  /** Match tracking only means anything with an actual opponent —
+   * gates MatchStateChanged so solo play never shows match/turn UI. */
+  private hasMultiplayerPeer(): boolean {
+    return Object.keys(this.room?.getPeers() ?? {}).length > 0;
   }
 
   private sendPieceSync(): void {
@@ -452,7 +458,7 @@ export class MultiplayerSystem extends createSystem({}) {
    * copy of MatchState comes from the host via matchSyncAction, never
    * computed locally, so this bails out immediately for a guest. */
   private onKubbFelledForMatch(entityId: string): void {
-    if (!this.isHostNow()) {
+    if (!this.isHostNow() || !this.hasMultiplayerPeer()) {
       return;
     }
     const pieceId = this.entityIndexToPieceId.get(Number(entityId));
@@ -464,31 +470,45 @@ export class MultiplayerSystem extends createSystem({}) {
     if (!side) {
       return;
     }
-    this.matchState = withKubbFelled(this.matchState, side);
-    if (this.matchState.winner) {
-      log('info', 'state', 'match won', { winner: this.matchState.winner });
+    const nextState = withKubbFelled(this.matchState, side);
+    if (nextState.winner) {
+      log('info', 'state', 'match won', { winner: nextState.winner });
     }
+    this.setMatchState(nextState);
     this.broadcastMatchState();
   }
 
   private onRoundEndedForMatch(): void {
-    if (!this.isHostNow()) {
+    if (!this.isHostNow() || !this.hasMultiplayerPeer()) {
       return;
     }
-    this.matchState = withTurnAdvanced(this.matchState);
+    this.setMatchState(withTurnAdvanced(this.matchState));
     this.broadcastMatchState();
   }
 
   private onResetForMatch(): void {
-    if (!this.isHostNow()) {
+    if (!this.isHostNow() || !this.hasMultiplayerPeer()) {
       return;
     }
-    this.matchState = initialMatchState();
+    this.setMatchState(initialMatchState());
     this.broadcastMatchState();
   }
 
   private broadcastMatchState(): void {
     void this.matchSyncAction?.send(buildMatchSyncMessage(this.matchState));
+  }
+
+  /** The single place MatchState is mutated — always paired with
+   * telling the HUD (`MatchStateChanged`, only once an opponent is
+   * actually present, so solo play never shows match/turn UI). */
+  private setMatchState(state: MatchState): void {
+    this.matchState = state;
+    if (this.hasMultiplayerPeer()) {
+      gameEvents.emit('MatchStateChanged', {
+        state,
+        mySide: this.isHostNow() ? 'host' : 'guest',
+      });
+    }
   }
 
   private async setUpMicrophone(): Promise<void> {

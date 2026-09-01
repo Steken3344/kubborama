@@ -3781,3 +3781,40 @@ risk today (no private data beyond voice/avatar position, and this is
 still pre-release), but worth remembering before this ships more
 broadly — a real per-session room code is a legitimate follow-up, not
 just theoretical hardening.
+
+## 2026-09-01 — HUD shows turn/match status (was log-only)
+
+Continuing straight from phase 3 (Erik: "fortsätt"). Phase 3 left match
+state genuinely tracked and synced but invisible outside console
+logs — picked this over the harder "real king-win" cut since a match
+neither player can see the status of isn't usable for an actual
+2-headset test.
+
+New `MatchStateChanged` game event (`core/events.ts`) carries both the
+`MatchState` and `mySide` (which side the LOCAL player is on) — so
+`HudSystem` never needs a reference to `MultiplayerSystem` to ask "am
+I host," matching this project's one-event-bus rule instead of adding
+new cross-system coupling. `systems/multiplayer.ts` gained one
+mutation point, `setMatchState()`, that every match-state change now
+goes through — replacing four separate direct `this.matchState = ...`
+assignments — and only emits the event once `hasMultiplayerPeer()` is
+true, so solo play NEVER shows match/turn UI (the existing single-
+player HUD is completely unaffected).
+
+`hud.uikitml` gained one new row (`match-row`), hidden by default,
+matching the panel's existing row pattern exactly. Shows "Din tur" /
+"Motst. tur" while the match is open, "Du vann!" / "Du förlorade" once
+`state.winner` is set. New i18n keys in both `sv.json`/`en.json`.
+
+**Live-verified**: reloaded, confirmed zero UIKitML parser errors for
+the new markup, and confirmed via screenshot that the HUD looks
+IDENTICAL to before (Runda/Fallna/Rekord/Stil, no fifth row) in solo
+play — the gating works. **What could NOT be verified**: the row
+actually appearing and showing the right text once a peer connects —
+that requires a real second client sending presence long enough for
+`hasMultiplayerPeer()` to go true, which the single-browser-tab
+tooling can't produce. Needs Erik's 2 headsets, same limitation as the
+rest of MP1/MP2. Mechanical pass green (209 tests — no new tests this
+pass; this is UI/event-wiring, consistent with CLAUDE.md's "adapters
+covered by ... emulator MCP checks instead" for this class of change),
+tsc/eslint/prettier, build, smoke.

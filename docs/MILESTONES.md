@@ -503,8 +503,8 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       king-felling — `KingProtected` is a global (not per-side) rule,
       and reworking it is separate work. Turn order is tracked/synced
       but NOT enforced (honor system — real enforcement needs the same
-      risky runtime grab-component surgery flagged in phase 1). No HUD
-      yet — visible only via logs. Mechanical pass green (209 tests).
+      risky runtime grab-component surgery flagged in phase 1).
+      Mechanical pass green (209 tests).
       Live-verified with a REAL physical topple (not a synthetic
       Transform write — that got silently overwritten by Havok on the
       next physics step, confirming why): `[state] kubb felled]` fired
@@ -518,3 +518,14 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       physical stick at once is undefined (host's local grab wins in
       practice) — edge case, not the common path with 6 sticks to
       choose from.
+- [x] **HUD turn/match indicator (2026-09-01)**: a new `match-row` on
+      the existing HUD shows "Din tur"/"Motst. tur" while playing,
+      "Du vann!"/"Du förlorade" once decided — hidden by default,
+      shown only once `MultiplayerSystem.hasMultiplayerPeer()` is
+      true, so solo play is completely unaffected (screenshot-
+      verified identical to before). New `MatchStateChanged` event
+      (`core/events.ts`) carries `mySide` so `HudSystem` never needs
+      to ask `MultiplayerSystem` who's host — one-event-bus rule, no
+      new cross-system coupling. What's unverified: the row actually
+      appearing with a real second peer connected — needs Erik's 2
+      headsets.
