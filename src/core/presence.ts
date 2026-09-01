@@ -50,3 +50,28 @@ export function parsePresenceMessage(data: unknown): PresenceMessage | null {
   const result = presenceMessageSchema.safeParse(data);
   return result.success ? result.data : null;
 }
+
+/**
+ * Erik's 2026-09-01 decision (resolves MP1's "known limitation" from
+ * the first implementation): the other headset spawns at the FAR
+ * baseline — the one you normally throw at — facing back toward you,
+ * rather than at a generic sideways offset. Every peer sends its own
+ * poses in its own local space (peer origin (0,0,0), facing -Z, same
+ * convention as the local player per CLAUDE.md); this rotates that
+ * whole local space 180° around Y and translates it to the far
+ * baseline, so both players end up facing each other across the court
+ * — a real "each player at their own baseline" placement, not a
+ * cosmetic shift. Pure closed-form math (no three.js Quaternion
+ * needed): 180°-around-Y composed with any quaternion (x,y,z,w) is
+ * exactly (z,w,-x,-y) — verified against the identity case (facing -Z
+ * mirrors to facing +Z, i.e. the 180° rotation itself).
+ */
+export function mirrorPoseToFarBaseline(pose: Pose, farZ: number): Pose {
+  const [x, y, z] = pose.position;
+  const [qx, qy, qz, qw] = pose.quaternion;
+  return {
+    // `-0 || 0` avoids a real-but-meaningless negative zero at x=0.
+    position: [-x || 0, y, farZ - z],
+    quaternion: [qz, qw, -qx || 0, -qy || 0],
+  };
+}

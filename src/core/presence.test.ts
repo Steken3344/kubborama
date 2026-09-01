@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildPresenceMessage,
   defaultPose,
+  mirrorPoseToFarBaseline,
   parsePresenceMessage,
   PRESENCE_SCHEMA_VERSION,
 } from './presence.js';
@@ -77,6 +78,39 @@ describe('parsePresenceMessage (untrusted network boundary)', () => {
       rightHand: rightPose,
     };
     expect(parsePresenceMessage(malformed)).toBeNull();
+  });
+});
+
+describe('mirrorPoseToFarBaseline (Erik, 2026-09-01: other headset spawns at the far baseline)', () => {
+  const farZ = -6;
+
+  it('mirrors an identity pose (facing -Z) to face +Z at the far baseline', () => {
+    const identity: Pose = { position: [0, 0, 0], quaternion: [0, 0, 0, 1] };
+    const mirrored = mirrorPoseToFarBaseline(identity, farZ);
+    expect(mirrored.position).toEqual([0, 0, farZ]);
+    // The 180°-around-Y quaternion itself — mirroring "facing -Z" gives
+    // "facing +Z".
+    expect(mirrored.quaternion).toEqual([0, 1, 0, 0]);
+  });
+
+  it('flips X and translates Z relative to the far baseline, keeps Y', () => {
+    const pose: Pose = {
+      position: [1, 1.6, -0.5],
+      quaternion: [0, 0, 0, 1],
+    };
+    const mirrored = mirrorPoseToFarBaseline(pose, farZ);
+    expect(mirrored.position).toEqual([-1, 1.6, farZ - -0.5]);
+  });
+
+  it('preserves quaternion unit length for a non-trivial rotation', () => {
+    const halfSqrt2 = Math.SQRT1_2;
+    const pose: Pose = {
+      position: [0, 0, 0],
+      quaternion: [0, halfSqrt2, 0, halfSqrt2],
+    };
+    const mirrored = mirrorPoseToFarBaseline(pose, farZ);
+    const [x, y, z, w] = mirrored.quaternion;
+    expect(x * x + y * y + z * z + w * w).toBeCloseTo(1);
   });
 });
 

@@ -3415,3 +3415,79 @@ built for this, straightforward to add once presence itself is
 confirmed working), any room/lobby UI beyond the URL param, and of
 course all of MP2/MP3 (shared match state, turn authority, the rules
 engine over the network).
+
+## 2026-09-01 — ground-collider misreading, NOT a bug (pushed back, didn't "fix")
+
+Erik, after looking at the scene editor: "ground-collider ligger under
+ground... ändra så de ligger på samma höjd" (ground-collider sits
+below ground, make them the same height) — reasoning from seeing
+`ground` at `position.y: 0` and `ground-collider` at `position.y:
+-0.5` in the JSON and concluding they don't match.
+
+**They do match — didn't touch it, would have reintroduced a real,
+already-fixed bug if I had.** `ground-collider`'s `PhysicsShape` is a
+`Box` with `dimensions: [30, 1, 30]` — per the physics skill reference,
+Box dimensions are full width/height/depth, not half-extents, and a
+node's `position` is that box's CENTER. A 1m-tall box centered at
+`y=-0.5` spans from `y=-1` to `y=0` — its TOP face is exactly at `y=0`,
+matching the visual `ground` plane exactly. This asymmetry (thick slab
+centered below zero, top surface at zero) is deliberate, not an
+oversight: it's the exact fix from 2026-08-28's "floating ground" bug
+(docs/DECISIONS.md, M5 real-headset feedback), which Erik confirmed
+fixed on his actual Quest 2 at the time. Moving the collider's position
+to `y=0` as literally requested would put the box's center there
+instead, so it would span `y=-0.5` to `y=0.5` — objects would rest
+0.5m ABOVE the visible ground, reintroducing that exact bug.
+
+Verified fresh rather than just asserting this from memory: re-read
+the current JSON (unchanged since Aug 28), re-ran the physics-shape
+dimension convention from `.claude/skills/iwsdk-physics/references/
+component-reference.md`, and live-tested twice more in the emulator —
+dropped a stick from height onto open court ground, it settled at
+`y≈0.0219` both times (matches the stick's own radius exactly — a
+cylinder lying on its side rests one radius above the contact plane,
+confirmed against `stick.scene-asset.ts`'s un-offset, centered
+geometry) and was immediately re-grabbable both times. Screenshot
+confirmed the stick visually resting ON the grass, not sunk into it.
+
+**What this probably actually is**: Erik is testing on 2 real Quest
+headsets over consecutive nights; the most likely real explanations
+are (a) a stale cached build on a Quest browser tab that never got a
+hard refresh after a deploy, or (b) a genuine real-hardware space/
+tracking quirk near the floor that the emulator's exact programmatic
+grabs can't reproduce — not the collider math, which checks out twice
+independently. If this recurs, the next report should include exactly
+WHERE the stick landed and a screenshot from the headset, not just the
+symptom.
+
+## 2026-09-01 — MP1 remote player placement: far baseline, not a sideways offset
+
+Erik's decision, resolving the "known limitation" flagged when MP1
+first shipped: the other headset should spawn behind the far
+baseline — the one you normally throw at — facing back toward you,
+matching how a real 1v1 kubb match is actually laid out, rather than
+an arbitrary sideways shift.
+
+Added `core/presence.ts`'s `mirrorPoseToFarBaseline(pose, farZ)`: a
+peer sends poses in its OWN local tracked space (origin `(0,0,0)`,
+facing `-Z`, same convention as the local player). This rotates that
+whole local space 180° around Y and translates it to the far
+baseline — pure closed-form math, no `three.js` `Quaternion` needed:
+composing a 180°-around-Y rotation with any quaternion `(x,y,z,w)`
+reduces to exactly `(z,w,-x,-y)`, verified against the identity case
+(a peer facing -Z, the default, mirrors to facing +Z — i.e. the 180°
+rotation itself) and unit-length preservation for a non-trivial
+rotation. 3 new tests (12 total in `presence.test.ts`).
+
+`FAR_Z` is derived from the current default court preset
+(`-getCourtPreset(defaultCourtPreset).lengthM`, currently `-6`),
+matching the exact far-baseline Z the kubb/king row already use — not
+a separately-hardcoded number. Removed the old `remoteOffset` field
+from `data/multiplayer.json` entirely now that it's superseded, rather
+than leaving dead config around.
+
+Mechanical pass green (173 tests, tsc/eslint/prettier/build/smoke).
+Live-verified the room still joins cleanly with no console errors
+after the change; the actual mirrored placement itself still needs a
+second real peer to see rendered (same limitation as the rest of MP1 —
+noted, not re-litigated here).

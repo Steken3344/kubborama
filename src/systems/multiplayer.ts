@@ -2,17 +2,23 @@ import { createSystem, Object3D, Quaternion, Vector3 } from '@iwsdk/core';
 import type { Entity } from '@iwsdk/core';
 import { joinRoom } from 'trystero';
 import type { MessageAction, Room } from 'trystero';
-import { multiplayer } from '../config.js';
+import { defaultCourtPreset, getCourtPreset, multiplayer } from '../config.js';
 import {
   buildPresenceMessage,
   defaultPose,
+  mirrorPoseToFarBaseline,
   parsePresenceMessage,
 } from '../core/presence.js';
 import type { Pose, PresenceMessage } from '../core/presence.js';
-import type { Vec3 } from '../core/vec3.js';
 import { log } from '../core/log.js';
 
-const REMOTE_OFFSET = multiplayer.remoteOffset as Vec3;
+// The other headset spawns at the far baseline — the one you normally
+// throw at — facing back toward you (Erik, 2026-09-01). Not preset-
+// aware per game mode switch (MultiplayerSystem has no
+// GameModeChanged subscription); good enough for MP1, revisit if the
+// far baseline moves mid-session becomes something players actually
+// do.
+const FAR_Z = -getCourtPreset(defaultCourtPreset).lengthM;
 
 /**
  * MP1 co-presence (docs/PLAN.md §10, Erik's 2 Quests, 2026-08-31):
@@ -28,14 +34,12 @@ const REMOTE_OFFSET = multiplayer.remoteOffset as Vec3;
  * devices, not a real room/matchmaking UI (friend-link rooms are a
  * later step per the plan).
  *
- * KNOWN MP1 LIMITATION, not yet solved: both players' own tracked
- * origin is (0,0,0) by default (no authored player.transform, see
- * CLAUDE.md), so a remote peer's raw position would exactly coincide
- * with the local player's own body. REMOTE_OFFSET
- * (data/multiplayer.json) shifts every incoming pose sideways so the
- * two are visibly distinct for this first test — a real "each player
- * at their own baseline" placement is an open design question for
- * Erik, not guessed at here.
+ * Placement: both players' own tracked origin is (0,0,0) by default
+ * (no authored player.transform, see CLAUDE.md), so a remote peer's
+ * raw position would otherwise exactly coincide with the local
+ * player's own body. Erik's 2026-09-01 decision: the other headset
+ * appears at the far baseline (the one you normally throw at), facing
+ * back toward you — see core/presence.ts's mirrorPoseToFarBaseline().
  */
 export class MultiplayerSystem extends createSystem({}) {
   private room?: Room;
@@ -51,7 +55,6 @@ export class MultiplayerSystem extends createSystem({}) {
   private readonly rightPose: Pose = defaultPose();
   private readonly tmpPos = new Vector3();
   private readonly tmpQuat = new Quaternion();
-  private readonly tmpOffsetPos = new Vector3();
 
   init(): void {
     const roomId = this.roomIdFromUrl();
@@ -150,18 +153,10 @@ export class MultiplayerSystem extends createSystem({}) {
     if (!part) {
       return;
     }
-    this.tmpOffsetPos.set(
-      pose.position[0] + REMOTE_OFFSET[0],
-      pose.position[1] + REMOTE_OFFSET[1],
-      pose.position[2] + REMOTE_OFFSET[2],
-    );
-    part.position.copy(this.tmpOffsetPos);
-    part.quaternion.set(
-      pose.quaternion[0],
-      pose.quaternion[1],
-      pose.quaternion[2],
-      pose.quaternion[3],
-    );
+    const mirrored = mirrorPoseToFarBaseline(pose, FAR_Z);
+    this.tmpPos.set(...mirrored.position);
+    part.position.copy(this.tmpPos);
+    part.quaternion.set(...mirrored.quaternion);
   }
 
   private async createPeerAvatar(

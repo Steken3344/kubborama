@@ -436,11 +436,12 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       the room, sends presence every tick, zero console errors over
       several seconds) — see docs/DECISIONS.md for what could and
       couldn't be verified without a second real client.
-- [ ] **KNOWN LIMITATION, not yet solved**: remote peers are placed at
-      a fixed sideways offset (`data/multiplayer.json`'s
-      `remoteOffset`), not at a real "each player at their own
-      baseline" position — a design decision for Erik, not guessed at
-      here.
+- [x] Remote-player placement resolved (2026-09-01, Erik's decision):
+      the other headset appears at the far baseline — the one you
+      normally throw at — facing back toward you, not a generic
+      sideways offset. `core/presence.ts`'s `mirrorPoseToFarBaseline()`
+      (pure, 3 new tests) rotates the peer's whole local tracked space
+      180° and translates it to the far baseline.
 - **GATE (Erik, 2× headset): open the deployed URL on both Quests,
   confirm each sees the other's head/hands moving live** 🎧🎧
 - No voice yet (MP1's plan includes it — Trystero's addStream — cut

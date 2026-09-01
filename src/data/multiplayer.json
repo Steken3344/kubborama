@@ -1,6 +1,5 @@
 {
   "appId": "kubborama-mp1",
   "defaultRoomId": "kubborama-lobby",
-  "sendIntervalS": 0.05,
-  "remoteOffset": [3, 0, 0]
+  "sendIntervalS": 0.05
 }
