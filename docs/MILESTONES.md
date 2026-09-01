@@ -454,7 +454,28 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       the emulator (mic connects, button toggles, no errors); actually
       hearing a second real peer still needs Erik's 2 headsets.
 - No room/lobby UI (URL param only); no spatial/positional voice (flat
-  stereo for now); no shared match state — **MP2 is a real, scoped
-  next milestone**: turn-based physics authority (who simulates which
-  piece, when authority hands over) needs its own design pass with
-  Erik before building, not a silent guess.
+  stereo for now).
+- [x] **MP2 phase 1 (2026-09-01)**: interviewed Erik on the open MP2
+      design questions (AskUserQuestion) before building — he wants
+      both players throwing and a real turn-based match eventually,
+      with his own authority rule: "först in äger spelet" (whoever
+      joins first is host for the whole session). Full scope needs 4
+      separable pieces of work; built the first 2 tonight:
+  - `core/multiplayerAuthority.ts`'s `isHost()` (pure, 5 tests) —
+    deterministic host election from each peer's local join time.
+  - `core/pieceSync.ts` (pure, zod, 7 tests) + `systems/multiplayer.ts`:
+    the host broadcasts king + all 10 kubbs' transforms at ~20 Hz; the
+    guest applies them via `PhysicsSystem.setBodyTransform()` (snap-
+    correction, not a Kinematic-state swap — see docs/DECISIONS.md for
+    why). Sticks are NOT synced yet.
+  - Mechanical pass green (186 tests). Live-verified in the emulator
+    (room joins, all 11 pieces resolve, king/kubbs stay in their
+    normal resting state, `MultiplayerSystem` runs unpaused) — actual
+    2-peer sync still needs Erik's 2 headsets.
+- [ ] **MP2 phase 2 (not started)**: relay a guest's stick grab/release
+      through the host's physics — needed before "both players throw"
+      is real, since sticks aren't host-owned yet.
+- [ ] **MP2 phase 3 (not started)**: turn enforcement + per-baseline
+      kubb ownership in the rules engine, for an actual refereed 1v1
+      match — `SimpleRulesSystem`/`ToppleSystem` currently assume one
+      practicing player, not two competing sides.

@@ -3547,3 +3547,89 @@ clean state. Full mechanical pass green (174 tests, tsc/eslint/
 prettier, build, smoke). What's NOT verified: actually hearing a
 second real peer's voice — same "one browser tab" tooling limit as
 the rest of MP1, needs Erik's 2 headsets.
+
+## 2026-09-01 — MP2 phase 1: shared court state (king + kubbs)
+
+Interviewed Erik (his own suggestion) on the open MP2 design questions
+before building anything, per CLAUDE.md's "three alternatives" —
+AskUserQuestion, 3 questions. Answers, more ambitious than the
+recommended defaults on the first two:
+
+1. Should the guest be able to grab/throw pieces too, or presence-only
+   for now? **Both should be able to throw.**
+2. Shared single set of pieces, or a real turn-based 1v1 match (each
+   defending their own baseline)? **Real match, right away.**
+3. Scoring: host-only, or figure it out later? **Host-only for now**
+   (the one recommended option he picked).
+
+Erik also supplied the authority rule himself, unprompted: **"först in
+äger spelet"** — whichever peer joined the room first is authoritative
+for the whole session (no per-turn handoff needed, much simpler than
+kubb's real turn-by-turn authority).
+
+**Full scope assessed before writing code**: "both throw + real match"
+genuinely needs three separable pieces of work: (a) host/guest role
+determination, (b) host-authoritative sync of the passive court state
+(king/kubbs — never grabbed, only ever knocked over), and (c) relaying
+a _grabbed and released_ stick through the host's physics (since once
+kubbs are host-owned, a guest's local throw can't be authoritative —
+their release has to become a network request the host applies to its
+own copy of that stick), plus (d) turn enforcement and per-baseline
+kubb ownership in the rules engine for a real match
+(`SimpleRulesSystem`/`ToppleSystem` currently assume one practicing
+player, not two competing sides). (a) and (b) are what actually got
+built tonight — **phase 1**. (c) and (d) are real next phases, not
+attempted here; guessing at a turn-based rules-engine rewrite
+unsupervised, on top of an already-large session, was the wrong call
+versus building the foundation correctly and stopping at a clean,
+verifiable boundary.
+
+**Phase 1 implementation**:
+
+- `core/multiplayerAuthority.ts`'s `isHost()` (pure, 5 tests):
+  implements "först in äger spelet" as a symmetric, deterministic
+  comparison of each peer's local join timestamp (`Date.now()` at
+  `MultiplayerSystem.init()`), with a peer-id tie-break for the
+  same-millisecond case. No signaling server needed — both peers
+  independently compute the same answer once they've exchanged a tiny
+  one-time `hello` message (sent directly to a newly-joined peer via
+  Trystero's `{target: peerId}` option, not the room broadcast, so a
+  late joiner doesn't miss an earlier peer's announcement).
+- `core/pieceSync.ts` (pure, zod, 7 tests): the host's authoritative
+  snapshot format — `{id, position, quaternion}` per piece. Piece ids
+  are exactly the scene node ids (`king`, `kubb-0`..`kubb-9`) — no new
+  ID scheme invented.
+- `systems/multiplayer.ts`: the host broadcasts all 11 piece
+  transforms at the same ~20 Hz as presence, gated on having received
+  `hello` from every _currently connected_ peer first (avoids a
+  transient dual-broadcast race right after connecting, when both
+  sides would otherwise tentatively believe they're alone/host before
+  role information has propagated). The guest applies every incoming
+  snapshot via `PhysicsSystem.setBodyTransform()` — the same API
+  `MenuSystem`'s reset already uses — rather than switching those
+  bodies to `PhysicsState.Kinematic`. The physics skill reference is
+  explicit that changing a body's motion state at runtime needs
+  "deliberate lifecycle handling" (remove and recreate the body with
+  its shape config preserved), and doing that safely across 11 pieces
+  wasn't worth the risk for a first pass when periodic snap-correction
+  (small, bounded visual drift between the ~20 Hz network ticks while
+  local gravity briefly nudges an otherwise-mirrored body) achieves
+  the same "we both see the same kubbs" result far more simply.
+
+**NOT this pass, on purpose**: sticks stay MP1-local (ungrabbed
+guest-side interaction isn't networked yet — that's phase (c) above);
+no turn enforcement or per-side kubb ownership yet (phase (d)); no
+authority _handoff_ mid-session (matches "först in äger spelet"
+literally — one host for the whole session, not per-turn).
+
+**Live-verified in the emulator** (single client, so only the
+non-networked half of this is directly observable): room joins
+cleanly, all 11 `requireSceneEntity()` lookups succeed at init with no
+throw, the king and kubbs remain in their normal resting positions and
+`ecs_list_systems` shows `MultiplayerSystem` running unpaused with the
+rest of the game (10 standing kubbs, no corrupted state) — confirms
+the new broadcast loop doesn't disturb the host's own local
+simulation. What could NOT be verified: an actual guest receiving and
+applying a real snapshot (needs Erik's 2 headsets, same limitation as
+the rest of MP1/MP2). Mechanical pass green (186 tests,
+tsc/eslint/prettier, build, smoke).
