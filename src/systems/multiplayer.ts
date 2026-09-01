@@ -11,6 +11,7 @@ import {
 } from '../core/presence.js';
 import type { Pose, PresenceMessage } from '../core/presence.js';
 import { log } from '../core/log.js';
+import { settingsState } from '../settingsState.js';
 
 // The other headset spawns at the far baseline — the one you normally
 // throw at — facing back toward you (Erik, 2026-09-01). Not preset-
@@ -40,12 +41,27 @@ const FAR_Z = -getCourtPreset(defaultCourtPreset).lengthM;
  * player's own body. Erik's 2026-09-01 decision: the other headset
  * appears at the far baseline (the one you normally throw at), facing
  * back toward you — see core/presence.ts's mirrorPoseToFarBaseline().
+ *
+ * Voice (docs/PLAN.md §10's "voice chat built in" — Trystero's
+ * addStream/onPeerStream, not IWSDK's own AudioSystem, which only
+ * plays pre-loaded clips through a private, unexposed AudioListener,
+ * not live WebRTC MediaStreams). Deliberately NOT spatial audio for
+ * this first pass — a plain hidden `<audio>` element per peer, global
+ * stereo, not panned to the avatar's position — proper 3D voice needs
+ * its own AudioListener wired to the camera, cut here to keep this
+ * pass's scope to "can we hear each other" rather than reimplementing
+ * part of IWSDK's audio pipeline. Muted by default
+ * (settings.micMuted — plan's own "mute button mandatory"); toggled
+ * live via the settings menu, checked every tick rather than only on
+ * toggle since this system has no settings-changed subscription.
  */
 export class MultiplayerSystem extends createSystem({}) {
   private room?: Room;
   private presenceAction?: MessageAction<PresenceMessage>;
   private sendTimerS = 0;
   private peerAvatars = new Map<string, Entity>();
+  private micTrack: MediaStreamTrack | null = null;
+  private remoteAudioElements = new Map<string, HTMLAudioElement>();
 
   // Reused every send tick instead of allocated fresh — see
   // .claude/rules (never allocate in update()); the throttled ~20Hz
@@ -74,11 +90,16 @@ export class MultiplayerSystem extends createSystem({}) {
     this.room.onPeerLeave = (peerId) => {
       log('info', 'net', 'peer left', { peerId });
       this.removePeerAvatar(peerId);
+      this.removeRemoteAudio(peerId);
+    };
+    this.room.onPeerStream = (stream, peerId) => {
+      this.playRemoteAudio(peerId, stream);
     };
     log('info', 'net', 'joined multiplayer room', {
       roomId,
       appId: multiplayer.appId,
     });
+    void this.setUpMicrophone();
   }
 
   destroy(): void {
@@ -87,15 +108,66 @@ export class MultiplayerSystem extends createSystem({}) {
       entity.dispose();
     }
     this.peerAvatars.clear();
+    this.micTrack?.stop();
+    this.micTrack = null;
+    for (const peerId of [...this.remoteAudioElements.keys()]) {
+      this.removeRemoteAudio(peerId);
+    }
   }
 
   update(delta: number): void {
+    if (this.micTrack) {
+      this.micTrack.enabled = !settingsState.current.micMuted;
+    }
     this.sendTimerS += delta;
     if (this.sendTimerS < multiplayer.sendIntervalS) {
       return;
     }
     this.sendTimerS = 0;
     this.sendPresence();
+  }
+
+  private async setUpMicrophone(): Promise<void> {
+    if (!this.room || !navigator.mediaDevices?.getUserMedia) {
+      log('warn', 'net', 'microphone unavailable — voice chat disabled', {});
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      const [track] = stream.getAudioTracks();
+      if (!track) {
+        return;
+      }
+      track.enabled = !settingsState.current.micMuted;
+      this.micTrack = track;
+      this.room.addStream(stream);
+      log('info', 'net', 'microphone connected', {});
+    } catch (error) {
+      log('warn', 'net', 'microphone permission denied or unavailable', {
+        error: String(error),
+      });
+    }
+  }
+
+  private playRemoteAudio(peerId: string, stream: MediaStream): void {
+    this.removeRemoteAudio(peerId);
+    const audio = new Audio();
+    audio.srcObject = stream;
+    audio.autoplay = true;
+    this.remoteAudioElements.set(peerId, audio);
+    log('info', 'net', 'peer voice connected', { peerId });
+  }
+
+  private removeRemoteAudio(peerId: string): void {
+    const audio = this.remoteAudioElements.get(peerId);
+    if (!audio) {
+      return;
+    }
+    audio.pause();
+    audio.srcObject = null;
+    this.remoteAudioElements.delete(peerId);
   }
 
   private roomIdFromUrl(): string {

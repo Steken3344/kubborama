@@ -21,6 +21,8 @@
   "sfxVolume": "SFX: {percent}%",
   "courtLinesOn": "Court lines: On",
   "courtLinesOff": "Court lines: Off",
+  "micOn": "Mic: On",
+  "micOff": "Mic: Off",
   "profileNamePrefix": "Name: {name}",
   "profileNameDefault": "Player",
   "statsFewestSticks": "Fewest throws to fell the king: {value}",

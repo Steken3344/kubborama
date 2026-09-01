@@ -152,6 +152,9 @@
     <Button id="sfx-volume-button" class="button">
       <ButtonLabel id="sfx-volume-label">Ljud: 70%</ButtonLabel>
     </Button>
+    <Button id="mic-button" class="button">
+      <ButtonLabel id="mic-button-label">Mikrofon: Av</ButtonLabel>
+    </Button>
     <Button id="profile-name-button" class="button">
       <ButtonLabel id="profile-name-label">Namn: Spelare</ButtonLabel>
     </Button>

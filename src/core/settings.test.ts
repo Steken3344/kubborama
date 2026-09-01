@@ -9,6 +9,7 @@ describe('defaultSettings', () => {
     expect(settings.hapticsEnabled).toBe(true);
     expect(settings.profileName).toBeNull();
     expect(settings.courtLinesVisible).toBe(false);
+    expect(settings.micMuted).toBe(true);
   });
 });
 
@@ -22,5 +23,14 @@ describe('encode/decode', () => {
     expect(decodeSettings('not json')).toEqual(defaultSettings());
     expect(decodeSettings('{"version": 999}')).toEqual(defaultSettings());
     expect(decodeSettings('{}')).toEqual(defaultSettings());
+  });
+
+  it('loads settings saved before micMuted existed without resetting everything else', () => {
+    const preMicMuted = { ...defaultSettings(), profileName: 'Erik' };
+    // @ts-expect-error simulating pre-micMuted persisted JSON
+    delete preMicMuted.micMuted;
+    const decoded = decodeSettings(JSON.stringify(preMicMuted));
+    expect(decoded.profileName).toBe('Erik');
+    expect(decoded.micMuted).toBe(true);
   });
 });

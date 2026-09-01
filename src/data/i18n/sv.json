@@ -21,6 +21,8 @@
   "sfxVolume": "Ljud: {percent}%",
   "courtLinesOn": "Planlinjer: På",
   "courtLinesOff": "Planlinjer: Av",
+  "micOn": "Mikrofon: På",
+  "micOff": "Mikrofon: Av",
   "profileNamePrefix": "Namn: {name}",
   "profileNameDefault": "Spelare",
   "statsFewestSticks": "Minst kast till kungen: {value}",

@@ -173,6 +173,10 @@ export class MenuSystem extends createSystem({
       );
       this.refreshLabels();
     });
+    this.wireButton('mic-button', () => {
+      this.settingsSystem.setMicMuted(!settingsState.current.micMuted);
+      this.refreshLabels();
+    });
 
     this.refreshLabels();
     this.setActiveTab('main');
@@ -269,6 +273,9 @@ export class MenuSystem extends createSystem({
     });
     this.menuPanel.requireElementById('court-lines-label').setProperties({
       text: s.courtLinesVisible ? t('courtLinesOn') : t('courtLinesOff'),
+    });
+    this.menuPanel.requireElementById('mic-button-label').setProperties({
+      text: s.micMuted ? t('micOff') : t('micOn'),
     });
     this.menuPanel.requireElementById('version-label').setProperties({
       text: t('versionLabel', { version: __APP_VERSION__ }),

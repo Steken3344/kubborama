@@ -105,4 +105,9 @@ export class SettingsSystem extends createSystem({}) {
     settingsState.current = { ...settingsState.current, profileName };
     this.persist();
   }
+
+  setMicMuted(micMuted: boolean): void {
+    settingsState.current = { ...settingsState.current, micMuted };
+    this.persist();
+  }
 }

@@ -414,7 +414,7 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       deployed URL; launches fullscreen from Quest app library
 - Review gate → tag v0.7-m6 → POC COMPLETE 🎉
 
-## M7 — MP1 co-presence (multiplayer) `status: implemented, awaiting Erik's 2-headset test`
+## M7 — MP1 co-presence (multiplayer) `status: presence + voice confirmed live; MP2 (shared court) not started`
 
 - [x] Trystero installed (v0.25.4, default Nostr signaling strategy,
       matching docs/PLAN.md §12's pre-approved choice) — serverless
@@ -442,8 +442,19 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       sideways offset. `core/presence.ts`'s `mirrorPoseToFarBaseline()`
       (pure, 3 new tests) rotates the peer's whole local tracked space
       180° and translates it to the far baseline.
-- **GATE (Erik, 2× headset): open the deployed URL on both Quests,
-  confirm each sees the other's head/hands moving live** 🎧🎧
-- No voice yet (MP1's plan includes it — Trystero's addStream — cut
-  from this first pass to keep the transport test isolated); no
-  room/lobby UI (URL param only); no shared match state (MP2, later).
+- [x] **GATE (Erik, 2× headset) PASSED, 2026-09-01**: opened the
+      deployed URL on both Quests, confirmed each sees the other's
+      head/hands moving live. Also surfaced the real MP1/MP2 boundary
+      — no shared court state yet (kubbs/king/sticks aren't synced,
+      by design — see docs/DECISIONS.md).
+- [x] Voice chat (2026-09-01): Trystero `addStream`/`onPeerStream`,
+      plain non-spatial `<audio>` per peer. Mute is mandatory per the
+      plan — new `micMuted` setting (defaults muted), a
+      "Mikrofon: På/Av" button in the settings tab. Live-verified in
+      the emulator (mic connects, button toggles, no errors); actually
+      hearing a second real peer still needs Erik's 2 headsets.
+- No room/lobby UI (URL param only); no spatial/positional voice (flat
+  stereo for now); no shared match state — **MP2 is a real, scoped
+  next milestone**: turn-based physics authority (who simulates which
+  piece, when authority hands over) needs its own design pass with
+  Erik before building, not a silent guess.

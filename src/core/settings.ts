@@ -15,6 +15,15 @@ const settingsSchema = z.object({
    * answered later; throwing works before it's answered either way
    * (docs/sessions/M4.md). */
   profileName: z.string().nullable(),
+  /** MP1 voice chat's mandatory mute control (docs/PLAN.md §10 —
+   * "Mute button mandatory"). Muted by default: opting IN to
+   * broadcasting your microphone should be a deliberate action, not
+   * the out-of-the-box state. `.default(true)` (not a bare
+   * `z.boolean()`) so settings already saved to a player's
+   * localStorage before this field existed still parse — a missing
+   * key falls back to the default instead of failing the whole
+   * schema and silently resetting every other saved setting too. */
+  micMuted: z.boolean().default(true),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -29,6 +38,7 @@ export function defaultSettings(): Settings {
     hapticsIntensityPercent: 70,
     courtLinesVisible: false,
     profileName: null,
+    micMuted: true,
   };
 }
 

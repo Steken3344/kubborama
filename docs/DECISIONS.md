@@ -3491,3 +3491,59 @@ Live-verified the room still joins cleanly with no console errors
 after the change; the actual mirrored placement itself still needs a
 second real peer to see rendered (same limitation as the rest of MP1 —
 noted, not re-litigated here).
+
+## 2026-09-01 — MP1 voice chat, plus the real MP1/MP2 boundary explained
+
+Erik ran the first real 2-headset test: confirmed seeing the other
+player's head/hands moving correctly, but reported "we seem to be in
+our own separate worlds" — the shared court state (kubbs, king,
+sticks) isn't synced, only presence is. **This is exactly MP1's
+scoped boundary, not a bug**: docs/PLAN.md §10 explicitly defines MP1
+as "shared garden, avatars, voice, waving — no shared match yet (both
+throw at their own pieces)"; syncing the actual game pieces is MP2,
+and needs a real turn-based physics-authority handoff (who simulates
+which piece, when authority changes hands) that the plan flags as its
+own design problem — not something to improvise silently overnight.
+Decided to build the other MP1-scoped item instead of guessing at
+MP2's authority model: **voice chat**, explicitly listed in the plan's
+MP1 scope and technically well-defined, unlike the open authority
+question.
+
+**Voice implementation**: Trystero's `addStream`/`onPeerStream`
+(`getUserMedia({audio:true})` → `room.addStream()`), NOT IWSDK's own
+`AudioSystem` — that system only plays pre-loaded clips through a
+`private`, unexposed `AudioListener`, with no path for a live WebRTC
+`MediaStream`. Deliberately NOT spatial/positional audio for this
+pass — a plain hidden `<audio>` element per peer (global stereo, not
+panned to the avatar). Real 3D voice needs its own `AudioListener`
+wired to the camera, which is a reasonable follow-up but not required
+to answer "can we hear each other," so cut to keep this pass's scope
+honest rather than half-reimplementing part of IWSDK's audio
+pipeline.
+
+**Mute (plan's own "mute button mandatory")**: new `micMuted` setting,
+**defaults to `true`** — broadcasting a live mic should be an opt-in
+action, not the out-of-the-box state. Added via `z.boolean().default(true)`
+rather than a bare `z.boolean()` specifically so a settings JSON
+already saved to a player's `localStorage` before this field existed
+still parses successfully (falls back to the default for the missing
+key) instead of failing zod's whole-object validation and silently
+resetting every other saved setting too — a real migration-safety
+detail, not just a style choice (new test in `settings.test.ts` covers
+exactly this). Wired into the existing reset-menu settings tab
+("Mikrofon: På/Av", matching the haptics/court-lines toggle-button
+pattern already there) — `MultiplayerSystem` checks
+`settingsState.current.micMuted` every tick and sets the local mic
+track's `.enabled` accordingly (no settings-changed subscription
+exists to hook instead).
+
+**Live-verified end to end in the emulator**, not just inspected:
+microphone permission granted, `[net] microphone connected` logged
+with no errors; opened the settings tab, confirmed the button reads
+"Mikrofon: Av" by default (matching the new default-muted setting),
+clicked it, watched the label flip to "Mikrofon: På" with no console
+errors, clicked again to restore the default before reloading to a
+clean state. Full mechanical pass green (174 tests, tsc/eslint/
+prettier, build, smoke). What's NOT verified: actually hearing a
+second real peer's voice — same "one browser tab" tooling limit as
+the rest of MP1, needs Erik's 2 headsets.
