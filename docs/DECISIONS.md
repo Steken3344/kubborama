@@ -3698,3 +3698,86 @@ could NOT be verified: an actual guest's relay arriving and being
 applied on a real host — needs Erik's 2 headsets, same limitation as
 the rest of MP1/MP2. Mechanical pass green (192 tests,
 tsc/eslint/prettier, build, smoke).
+
+## 2026-09-01 — MP2 phase 3: a real winner (with an honest cut)
+
+Continuing straight from phase 2 (Erik: "fortsätt"). This is the
+"riktig match, varsin sida" (real match, each own side) half of his
+original interview answer.
+
+**Scope decision made before writing code, not guessed at mid-build**:
+real kubb's win move is felling the king, but `KingProtected`
+(`SimpleRulesSystem`) is a GLOBAL rule — all 10 kubbs across both
+baselines, no notion of "which side is attacking." Reworking that into
+a genuine per-side protection model is separate, careful rules-engine
+work, not something to improvise on top of the whole multiplayer stack
+in one more pass. **Phase 3 v1's win condition is "clear the
+opponent's kubbs first," full stop — no king-felling win yet.** This
+is a documented, deliberate cut, not a silently-missing feature; noted
+in three places (`core/match.ts`'s doc comment, `systems/
+multiplayer.ts`'s class doc, this entry) so it can't be mistaken for
+an oversight later.
+
+**Side assignment needed zero new state**: `computeCourtLayout()`
+already lays kubb-0..4 as the far baseline and kubb-5..9 as the near
+baseline, and phase 1's `mirrorPoseToFarBaseline()` already places the
+guest at the far baseline. So `core/match.ts`'s `kubbSide()` is pure
+arithmetic on the existing scene ids — guest defends kubb-0..4, host
+defends kubb-5..9 — no kubb repositioning, no new scene authoring.
+
+**Implementation**: `core/match.ts` (pure, 11 tests) is the whole state
+machine — `MatchState` (per-side kubb counts, whose turn, winner),
+`withKubbFelled`/`withTurnAdvanced`, both no-ops once a winner exists
+or a side is already at zero (defensive, no double-count).
+`core/matchSync.ts` (zod, 6 tests) is the wire format, deliberately
+event-driven rather than the ~20 Hz physics-sync cadence — match state
+changes rarely. Wired into `systems/multiplayer.ts` (not a separate
+system — it already owns the host/guest determination and the Room
+instance every message type needs, and splitting that access across
+systems would mean exposing more of its internals than the coupling is
+worth) by subscribing to the EXISTING `KubbFelled`/`RoundEnded`/`Reset`
+events `SimpleRulesSystem`/`RoundSystem`/`MenuSystem` already emit —
+none of those three systems needed a single change. Only the host
+computes transitions; the guest just applies whatever the host
+broadcasts, same authority model as phases 1-2.
+
+**NOT enforced: whose turn it is.** `MatchState.currentTurn` is
+genuinely tracked and synced, but nothing stops the off-turn player
+from grabbing a stick — real enforcement means gating
+`OneHandGrabbable` per-player, the same class of runtime-component
+surgery flagged as too risky back in phase 1's Kinematic-vs-
+snap-correction decision. Honor system for v1, same as two friends
+taking turns at a real court. Also no UI yet for turn/score — visible
+only via `[state]`-channel logs for now; a HUD update is a real,
+separate follow-up, not attempted in this pass given the size of what
+already shipped tonight.
+
+**Live-verified with a REAL topple, not a synthetic state write**:
+first tried setting a kubb's `Transform.orientation` directly via
+`ecs_set_component` to fake a topple — Havok silently overwrote it on
+the very next physics step, confirming (again) the physics skill
+reference's warning that a dynamic body's transform must go through
+the live physics system, never written directly. Fell back to an
+actual physical stick sweep (grabbed, swept fast through a host-side
+kubb, released) — `[state] kubb felled {entityIndex: 31}` fired for
+real, `SimpleRulesSystem`'s sin-bin move happened exactly as before
+(unaffected — confirms this phase didn't regress solo play), and the
+new `KubbFelled` subscriber ran with zero errors. Also fired `Reset`
+via the real "Ny runda" button and confirmed `[state] reset` processed
+cleanly with no exceptions. Mechanical pass green (209 tests,
+tsc/eslint/prettier, build, smoke). What's still unverified: an actual
+match-winning sequence (all 5 of one side down) and 2-peer match-sync
+— both need either more emulator time or Erik's 2 headsets.
+
+**Unrelated but real finding, worth flagging**: during this test, a
+genuine unknown peer connected to and disconnected from the room
+(`[net] peer joined/left` with unfamiliar ids) — Trystero's Nostr
+signaling is public infrastructure, and `kubborama-lobby` is a fixed,
+undifferentiated default room name (MP1's own decision, made for
+zero-setup testing between exactly 2 known devices). This is a real,
+observed privacy detail, not hypothetical: anyone else testing this
+exact deployed URL right now lands in the same room. Low practical
+risk today (no private data beyond voice/avatar position, and this is
+still pre-release), but worth remembering before this ships more
+broadly — a real per-session room code is a legitimate follow-up, not
+just theoretical hardening.

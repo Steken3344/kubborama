@@ -15,6 +15,18 @@ import { defaultCourtPreset, getCourtPreset, multiplayer } from '../config.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { gameEvents } from '../core/events.js';
 import type { GameEvents } from '../core/events.js';
+import {
+  initialMatchState,
+  kubbSide,
+  withKubbFelled,
+  withTurnAdvanced,
+} from '../core/match.js';
+import type { MatchState } from '../core/match.js';
+import {
+  buildMatchSyncMessage,
+  parseMatchSyncMessage,
+} from '../core/matchSync.js';
+import type { MatchSyncMessage } from '../core/matchSync.js';
 import { isHost } from '../core/multiplayerAuthority.js';
 import type { PeerJoinInfo } from '../core/multiplayerAuthority.js';
 import {
@@ -127,15 +139,35 @@ const FAR_Z = -getCourtPreset(defaultCourtPreset).lengthM;
  * client prediction + server reconciliation, not synchronized/locked
  * step.
  *
- * Deliberately NOT built: **turn enforcement or per-baseline kubb
- * ownership** for a real refereed 1v1 match — `SimpleRulesSystem`/
- * `ToppleSystem` still assume one practicing player, not two competing
- * sides. Both players can throw at the SAME shared kubbs right now,
- * which is real co-op, not yet a scored match — a real next phase,
- * not guessed at here (docs/DECISIONS.md). Also unhandled: two players
- * grabbing the exact same physical stick at once (undefined, in
- * practice host's local grab wins) — an edge case, not the common
- * path with 6 sticks to choose from.
+ * MP2 phase 3 (same session, Erik: "fortsätt"): a real match needs a
+ * winner. `core/match.ts`'s `MatchState` splits the 10 kubbs into two
+ * sides by their existing scene ids (`kubbSide()`: kubb-0..4 is the
+ * far baseline, guest's side; kubb-5..9 is near, host's) — no kubb
+ * repositioning needed, this is exactly how phase 1's far-baseline
+ * placement already lines up. Only the HOST computes state
+ * transitions (from `KubbFelled`/`RoundEnded`, events
+ * `SimpleRulesSystem`/`RoundSystem` already emit — neither of those
+ * systems is touched) and broadcasts the result
+ * (`core/matchSync.ts`) event-driven, not at 20 Hz like the physics
+ * syncs above, since match state changes rarely. The guest trusts and
+ * applies whatever the host sends.
+ *
+ * DELIBERATE simplification, not an oversight: real kubb's win move is
+ * felling the king, but `KingProtected` is a GLOBAL rule (all 10
+ * kubbs, both sides) with no per-side concept — see `core/match.ts`'s
+ * own doc comment for why that wasn't reworked here. Phase 3 v1's win
+ * condition is "clear the opponent's kubbs first," full stop; no
+ * king-felling win yet.
+ *
+ * NOT enforced: whose turn it is. `MatchState.currentTurn` is tracked
+ * and synced, but nothing stops the off-turn player from physically
+ * grabbing a stick — real enforcement means gating `OneHandGrabbable`
+ * per-player, which needs the same kind of runtime component surgery
+ * flagged as too risky for a first pass back in phase 1's collider
+ * discussion. Honor system for now, same as two friends at a real
+ * kubb court. Also still unhandled: two players grabbing the exact
+ * same physical stick at once (host's local grab wins in practice) —
+ * an edge case, not the common path with 6 sticks to choose from.
  */
 export class MultiplayerSystem extends createSystem({}) {
   private room?: Room;
@@ -143,6 +175,8 @@ export class MultiplayerSystem extends createSystem({}) {
   private pieceSyncAction?: MessageAction<PieceSyncMessage>;
   private helloAction?: MessageAction<{ joinedAtMs: number }>;
   private throwRelayAction?: MessageAction<ThrowRelayMessage>;
+  private matchSyncAction?: MessageAction<MatchSyncMessage>;
+  private matchState: MatchState = initialMatchState();
   private physicsSystem!: PhysicsSystem;
   private sendTimerS = 0;
   private peerAvatars = new Map<string, Entity>();
@@ -216,9 +250,33 @@ export class MultiplayerSystem extends createSystem({}) {
       }
       this.applyThrowRelay(message);
     };
+    this.matchSyncAction = this.room.makeAction<MatchSyncMessage>('matchSync');
+    this.matchSyncAction.onMessage = (data) => {
+      const message = parseMatchSyncMessage(data);
+      if (!message) {
+        log('warn', 'net', 'dropped malformed match-sync message', {});
+        return;
+      }
+      // Guest just trusts the host's authoritative state; a host
+      // ignores this (it computes its own via the events below) — see
+      // isHostNow()'s own note on why that check is cheap and safe to
+      // repeat even in a 2-peer room.
+      if (!this.isHostNow()) {
+        this.matchState = message.state;
+      }
+    };
     this.cleanupFuncs.push(
       gameEvents.on('Thrown', (event) => {
         this.relayLocalThrowIfGuest(event);
+      }),
+      gameEvents.on('KubbFelled', (event) => {
+        this.onKubbFelledForMatch(event.entityId);
+      }),
+      gameEvents.on('RoundEnded', () => {
+        this.onRoundEndedForMatch();
+      }),
+      gameEvents.on('Reset', () => {
+        this.onResetForMatch();
       }),
     );
     this.room.onPeerJoin = (peerId) => {
@@ -386,6 +444,51 @@ export class MultiplayerSystem extends createSystem({}) {
     });
     entity.setValue(StickState, 'phase', StickPhase.Flying);
     log('info', 'net', 'applied relayed throw', { stickId: message.stickId });
+  }
+
+  /** Only the host computes match transitions — a guest's own local
+   * KubbFelled/RoundEnded/Reset still fire (SimpleRulesSystem/
+   * RoundSystem run on every client independently), but the guest's
+   * copy of MatchState comes from the host via matchSyncAction, never
+   * computed locally, so this bails out immediately for a guest. */
+  private onKubbFelledForMatch(entityId: string): void {
+    if (!this.isHostNow()) {
+      return;
+    }
+    const pieceId = this.entityIndexToPieceId.get(Number(entityId));
+    const kubbIndexMatch = pieceId?.match(/^kubb-(\d+)$/);
+    if (!kubbIndexMatch) {
+      return; // the king, or a piece this session doesn't track — fine
+    }
+    const side = kubbSide(Number(kubbIndexMatch[1]));
+    if (!side) {
+      return;
+    }
+    this.matchState = withKubbFelled(this.matchState, side);
+    if (this.matchState.winner) {
+      log('info', 'state', 'match won', { winner: this.matchState.winner });
+    }
+    this.broadcastMatchState();
+  }
+
+  private onRoundEndedForMatch(): void {
+    if (!this.isHostNow()) {
+      return;
+    }
+    this.matchState = withTurnAdvanced(this.matchState);
+    this.broadcastMatchState();
+  }
+
+  private onResetForMatch(): void {
+    if (!this.isHostNow()) {
+      return;
+    }
+    this.matchState = initialMatchState();
+    this.broadcastMatchState();
+  }
+
+  private broadcastMatchState(): void {
+    void this.matchSyncAction?.send(buildMatchSyncMessage(this.matchState));
   }
 
   private async setUpMicrophone(): Promise<void> {

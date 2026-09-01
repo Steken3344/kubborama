@@ -489,12 +489,31 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       guest-relay path correctly no-ops when solo (=host) — an actual
       guest's relay landing on a real host still needs Erik's 2
       headsets.
-- [ ] **MP2 phase 3 (not started)**: turn enforcement + per-baseline
-      kubb ownership in the rules engine, for an actual refereed 1v1
-      match — `SimpleRulesSystem`/`ToppleSystem` currently assume one
-      practicing player, not two competing sides. Right now both
-      players can throw at the same shared kubbs — real co-op, not
-      yet a scored match.
+- [x] **MP2 phase 3 (2026-09-01)**: a real winner. `core/match.ts`
+      (pure, 11 tests) splits the 10 kubbs by side using the EXISTING
+      scene ids (kubb-0..4 far/guest, kubb-5..9 near/host — no kubb
+      repositioning needed, lines up exactly with phase 1's far-
+      baseline placement) and tracks per-side kubb counts + whose
+      turn + winner. `core/matchSync.ts` (zod, 6 tests) is the
+      event-driven wire format. Wired into `systems/multiplayer.ts` by
+      subscribing to the EXISTING `KubbFelled`/`RoundEnded`/`Reset`
+      events — `SimpleRulesSystem`/`RoundSystem`/`MenuSystem` are all
+      unchanged. **Deliberate cut, documented in 3 places**: win
+      condition is "clear the opponent's kubbs first," NOT
+      king-felling — `KingProtected` is a global (not per-side) rule,
+      and reworking it is separate work. Turn order is tracked/synced
+      but NOT enforced (honor system — real enforcement needs the same
+      risky runtime grab-component surgery flagged in phase 1). No HUD
+      yet — visible only via logs. Mechanical pass green (209 tests).
+      Live-verified with a REAL physical topple (not a synthetic
+      Transform write — that got silently overwritten by Havok on the
+      next physics step, confirming why): `[state] kubb felled]` fired
+      for real with zero errors, a real "Ny runda" reset processed
+      cleanly. **Also discovered**: a genuine unknown peer joined the
+      default `kubborama-lobby` room mid-test — Trystero's Nostr
+      signaling is public infrastructure and the room name is a fixed
+      default; a real per-session room code is a legitimate follow-up
+      (docs/DECISIONS.md).
 - [ ] Known gap, not solved: two players grabbing the exact same
       physical stick at once is undefined (host's local grab wins in
       practice) — edge case, not the common path with 6 sticks to
