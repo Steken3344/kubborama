@@ -3818,3 +3818,16 @@ rest of MP1/MP2. Mechanical pass green (209 tests — no new tests this
 pass; this is UI/event-wiring, consistent with CLAUDE.md's "adapters
 covered by ... emulator MCP checks instead" for this class of change),
 tsc/eslint/prettier, build, smoke.
+
+## 2026-09-02 — Room privacy: keep the shared default (Erik's decision, no code change)
+
+Asked Erik directly (not guessed) about the fixed `kubborama-lobby`
+room-name gap flagged in phase 3's entry: keep the zero-setup shared
+default, or switch to a per-session random code shared via URL
+(private, but requires an extra copy-link step every session)?
+**Decision: keep the current zero-setup default.** Low practical risk
+while the app has few users, and losing the "just open the same URL on
+both headsets" convenience wasn't worth it yet. No code changed. Worth
+revisiting once/if this ships more broadly — logged here so the
+tradeoff and the reasoning aren't lost, not because anything needs
+fixing right now.
