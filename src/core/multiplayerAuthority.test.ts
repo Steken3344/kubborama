@@ -76,6 +76,12 @@ describe('parseHelloMessage', () => {
     expect(parseHelloMessage({ joinedAtMs: '0' })).toBeNull();
   });
 
+  it('rejects zero, negative, and non-integer timestamps', () => {
+    expect(parseHelloMessage({ joinedAtMs: 0 })).toBeNull();
+    expect(parseHelloMessage({ joinedAtMs: -1 })).toBeNull();
+    expect(parseHelloMessage({ joinedAtMs: 1.5 })).toBeNull();
+  });
+
   it('rejects a non-object payload', () => {
     expect(parseHelloMessage(null)).toBeNull();
     expect(parseHelloMessage('hello')).toBeNull();

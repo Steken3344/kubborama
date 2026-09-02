@@ -75,6 +75,23 @@ export class ThrowingSystem extends createSystem({
     this.queries.heldSticks.subscribe('disqualify', (entity) => {
       this.onRelease(entity);
     });
+    // Stamp flight start on ENTRY into the Flying phase, not in
+    // onRelease() — a guest's relayed throw (MultiplayerSystem.
+    // applyThrowRelay) sets phase Flying without going through
+    // onRelease, and the force-settle timeout below must cover those
+    // sticks too (code review, 2026-09-02: they're exactly the sticks
+    // whose settling gates the turn returning to the host). The
+    // disqualify cleanup also removes the stale-entry hazard: a stick
+    // reset mid-flight (phase -> Racked) leaves Flying and drops its
+    // timer, so a later re-throw can never inherit an old timestamp
+    // and force-settle instantly.
+    this.queries.flyingSticks.subscribe('qualify', (entity) => {
+      this.flyingStartS.set(entity.index, this.currentTimeS);
+    });
+    this.queries.flyingSticks.subscribe('disqualify', (entity) => {
+      this.flyingStartS.delete(entity.index);
+      this.restTimerStartS.delete(entity.index);
+    });
   }
 
   update(_delta: number, time: number): void {
@@ -184,7 +201,8 @@ export class ThrowingSystem extends createSystem({
       angularVelocity,
     });
     entity.setValue(StickState, 'phase', StickPhase.Flying);
-    this.flyingStartS.set(entity.index, this.currentTimeS);
+    // flyingStartS is stamped by the flyingSticks qualify subscription
+    // (init()) so relayed throws are covered by the same path.
 
     const hand = this.lastKnownHand.get(entity.index) ?? 'right';
     entity.setValue(StickState, 'lastThrowerHand', hand);
@@ -268,9 +286,9 @@ export class ThrowingSystem extends createSystem({
     timeS: number,
     forcedByTimeout: boolean,
   ): void {
+    // Leaving Flying — the flyingSticks disqualify subscription (init())
+    // clears both timer maps for this entity.
     entity.setValue(StickState, 'phase', StickPhase.Settled);
-    this.restTimerStartS.delete(entity.index);
-    this.flyingStartS.delete(entity.index);
     if (forcedByTimeout) {
       log('warn', 'state', 'stick force-settled — never came to rest', {
         entityIndex: entity.index,

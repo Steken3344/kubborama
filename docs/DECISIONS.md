@@ -4138,3 +4138,59 @@ Mechanical pass green (216 tests), build, smoke. Live-verified in the
 emulator: HUD renders correctly in solo with both new rows correctly
 hidden, zero console errors. The actual announce-on-connect behavior
 needs the next 2-headset session.
+
+## 2026-09-02 — Second review round: force-settle gap on relayed throws + matchSync authentication
+
+A second independent review (same `superpowers:requesting-code-review`
+flow, range `18f56ca..fdebf92`) verified all four earlier fixes correct
+by hand-tracing — including confirming the "ingen är Spelare A"
+diagnosis complete (no other code path produces that symptom) — and
+found one new Critical plus two Important issues, all fixed:
+
+**Critical — the force-settle timeout didn't cover relayed throws.**
+`flyingStartS` was only stamped in `ThrowingSystem.onRelease()`, but a
+guest's relayed throw enters Flying via
+`MultiplayerSystem.applyThrowRelay()` without going through onRelease —
+so on the HOST (the client whose settled count actually gates the turn
+advance) a guest's never-resting stick had no timer and could still
+block the turn forever: the exact live bug the timeout was built for,
+silently unfixed for half the turns. Worse, a STALE entry (host threw
+stick-N last turn, round-end reset set phase Racked without clearing
+ThrowingSystem's maps) would make a later relayed re-throw of stick-N
+force-settle INSTANTLY. Fix: stamp on ENTRY into the Flying phase via
+`queries.flyingSticks.subscribe('qualify', ...)` and clean both timer
+maps on `'disqualify'` — one mechanism covers both throw paths AND
+removes the stale-entry hazard (a mid-flight reset leaves Flying and
+drops its timer). Live-verified in the emulator: a normal local
+grab→throw still settles via the natural rest path (phase SETTLED, no
+force-settle warn).
+
+**Important — `matchSync` had the same sender-authentication gap
+`pieceSync` had**: any peer in the public lobby could set the guest's
+match state, including `winner`. Now gated on
+`peerId === resolvedHostPeerId()` — which also subsumes the old
+"host ignores incoming matchSync" check (a host resolves null, so no
+sender matches). Subtlety: the host's initial announce races its own
+hello to the guest, and gating alone would silently DROP the announce
+when matchSync wins that race — regressing the fix above. So an
+unverifiable-yet message is BUFFERED (`pendingMatchSync`) and retried
+from the hello handler once roles resolve.
+
+**Important — the hello-zod comment overclaimed.** Schema validation
+closes the accidental/malformed path (`{}` defaulting to 0), but a
+deliberately hostile peer can still send any small positive integer
+and win the election — no schema makes a self-reported timestamp
+trustworthy. Schema tightened to `.int().positive()` (rejects the
+literal `{joinedAtMs: 0}` spoof and nonsense values) and the comment
+rewritten to state the honest limit + the accepted threat model (a
+hostile peer in the public lobby can grief a session, nothing
+persistent; the real mitigation is a private room code — see the
+room-privacy entry above).
+
+Minor findings: the new role-row inherits gh#10's "never clears on
+peer disconnect" (noted on that issue rather than filed new);
+`resolvedHostPeerId()`/`isHostNow()` allocate small arrays per call at
+~20 Hz — within the letter of the no-per-frame-allocation rule, left
+as-is until it shows up in a perf pass.
+
+Mechanical pass green (217 tests, +1), build, smoke, CI.

@@ -10,12 +10,22 @@ export interface PeerJoinInfo {
  * compute isHost() below — an untrusted-network boundary like every
  * other message type (CLAUDE.md), so it needs the same zod safeParse
  * treatment. Found missing in code review (2026-09-02): an unvalidated
- * `data.joinedAtMs` let a malformed/empty hello (`{}`, or a hostile
- * `{joinedAtMs: 0}`) fall back to 0 and spuriously win the "earliest
- * timestamp" election, silently flipping the real host to guest.
+ * `data.joinedAtMs` let a malformed/empty hello (`{}`) fall back to 0
+ * and spuriously win the "earliest timestamp" election, silently
+ * flipping the real host to guest.
+ *
+ * HONEST LIMIT (second review, same day): this closes the
+ * ACCIDENTAL/malformed path only. joinedAtMs is self-reported, so a
+ * deliberately hostile peer can still send any small positive integer
+ * and win the election — no schema can make a self-reported timestamp
+ * trustworthy. Accepted threat model for now: the room is shared
+ * between Erik's own two headsets; a hostile peer in the public lobby
+ * can at worst grief a session, not corrupt anything persistent. A
+ * private room code (docs/DECISIONS.md, 2026-09-02 room-privacy entry)
+ * is the real mitigation if that ever matters.
  */
 const helloMessageSchema = z.object({
-  joinedAtMs: z.number(),
+  joinedAtMs: z.number().int().positive(),
 });
 export type HelloMessage = z.infer<typeof helloMessageSchema>;
 

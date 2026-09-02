@@ -223,6 +223,10 @@ export class MultiplayerSystem extends createSystem({}) {
   private networkedPieces = new Map<string, Entity>();
   private entityIndexToPieceId = new Map<number, string>();
   private hasRepositionedAsGuest = false;
+  private pendingMatchSync: {
+    peerId: string;
+    message: MatchSyncMessage;
+  } | null = null;
 
   // Reused every send tick instead of allocated fresh — see
   // .claude/rules (never allocate in update()); the throttled ~20Hz
@@ -268,6 +272,7 @@ export class MultiplayerSystem extends createSystem({}) {
       this.peerJoinedAtMs.set(peerId, message.joinedAtMs);
       this.maybeRepositionAsGuest();
       this.announceMatchStartIfHost();
+      this.applyPendingMatchSync();
     };
     this.pieceSyncAction = this.room.makeAction<PieceSyncMessage>('pieceSync');
     this.pieceSyncAction.onMessage = (data, { peerId }) => {
@@ -304,19 +309,13 @@ export class MultiplayerSystem extends createSystem({}) {
       this.applyThrowRelay(message);
     };
     this.matchSyncAction = this.room.makeAction<MatchSyncMessage>('matchSync');
-    this.matchSyncAction.onMessage = (data) => {
+    this.matchSyncAction.onMessage = (data, { peerId }) => {
       const message = parseMatchSyncMessage(data);
       if (!message) {
-        log('warn', 'net', 'dropped malformed match-sync message', {});
+        log('warn', 'net', 'dropped malformed match-sync message', { peerId });
         return;
       }
-      // Guest just trusts the host's authoritative state; a host
-      // ignores this (it computes its own via the events below) — see
-      // isHostNow()'s own note on why that check is cheap and safe to
-      // repeat even in a 2-peer room.
-      if (!this.isHostNow()) {
-        this.setMatchState(message.state);
-      }
+      this.applyMatchSync(peerId, message);
     };
     this.cleanupFuncs.push(
       gameEvents.on('Thrown', (event) => {
@@ -668,6 +667,38 @@ export class MultiplayerSystem extends createSystem({}) {
     }
     this.setMatchState(initialMatchState());
     this.broadcastMatchState();
+  }
+
+  /** Applies a match-state snapshot only when the sender is the peer
+   * this client itself resolves as host — code review, 2026-09-02: the
+   * same sender-authentication gap pieceSync had; any peer in the
+   * public lobby could previously end/derail the guest's match
+   * (including setting `winner`). The host-side "ignore incoming
+   * matchSync" behavior falls out of the same check: for a host,
+   * resolvedHostPeerId() is null, so no sender ever matches. Before
+   * roles resolve the sender can't be verified yet, so the message is
+   * BUFFERED and retried from the hello handler once they do —
+   * otherwise the host's initial announce (announceMatchStartIfHost)
+   * would race its own hello to the guest and could be silently
+   * dropped, regressing the "match visible from the start" fix. */
+  private applyMatchSync(peerId: string, message: MatchSyncMessage): void {
+    if (!this.rolesResolved()) {
+      this.pendingMatchSync = { peerId, message };
+      return;
+    }
+    if (peerId !== this.resolvedHostPeerId()) {
+      return;
+    }
+    this.setMatchState(message.state);
+  }
+
+  private applyPendingMatchSync(): void {
+    const pending = this.pendingMatchSync;
+    if (!pending || !this.rolesResolved()) {
+      return;
+    }
+    this.pendingMatchSync = null;
+    this.applyMatchSync(pending.peerId, pending.message);
   }
 
   private broadcastMatchState(): void {
