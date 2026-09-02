@@ -529,3 +529,22 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       new cross-system coupling. What's unverified: the row actually
       appearing with a real second peer connected — needs Erik's 2
       headsets.
+- [x] **MP2 phase 4 (2026-09-02)**: the guest's own PHYSICAL presence
+      now actually moves to the far baseline (`maybeRepositionAsGuest()`
+      teleports `this.player`, the XR rig itself, not just their
+      avatar as seen by the host — phase 1's real gap, per Erik's own
+      analysis). This made `applyPoseToPart()`'s mirroring dead code
+      (removed) — both peers now send already-world-correct presence.
+      A second physical rack (`stick-rack-2`/`-collider`) sits at the
+      far baseline; sticks move there when it becomes the guest's
+      turn (`moveSticksToFarRack()`, mirrors each stick's current
+      near-rack pose — no second hardcoded layout). **Bonus**: this
+      gives real turn enforcement for free — the off-turn player's
+      sticks are physically at the other table, no risky grab-
+      component surgery needed after all. Mechanical pass green (209
+      tests — reuses `mirrorPoseToFarBaseline`, no new pure logic).
+      Live-verified: solo play's headset transform stays untouched at
+      default spawn, both racks resolve with zero errors, a normal
+      grab→release still works. Unverified: the guest's own reposition
+      and far-table stick spawn actually happening — needs Erik's 2
+      headsets.

@@ -627,6 +627,43 @@
       }
     },
     {
+      "content": {
+        "asset": "stick-rack",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "stick-rack-2",
+      "name": "Pinnstall 2",
+      "transform": {
+        "position": [-0.0157, 0, -7.0896],
+        "rotationDeg": [0, 0, 0],
+        "scale": 1
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "dimensions": [0.5, 0.03, 0.4],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Box"
+        }
+      },
+      "content": {
+        "type": "group"
+      },
+      "id": "stick-rack-2-collider",
+      "name": "Stick rack 2 collider",
+      "transform": {
+        "position": [-0.0157, 0.935, -7.0896],
+        "rotationDeg": [0, 0, 0],
+        "scale": 1
+      }
+    },
+    {
       "components": {
         "OneHandGrabbable": {
           "rotate": true,

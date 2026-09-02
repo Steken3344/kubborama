@@ -3831,3 +3831,78 @@ both headsets" convenience wasn't worth it yet. No code changed. Worth
 revisiting once/if this ships more broadly — logged here so the
 tradeoff and the reasoning aren't lost, not because anything needs
 fixing right now.
+
+## 2026-09-02 — MP2 phase 4: the guest's own body, and a second table
+
+Erik's own analysis, not a live test report: phase 1's
+`mirrorPoseToFarBaseline()` only ever moved the OTHER player's AVATAR
+— as rendered for the peer watching it. The guest's own physical
+presence stayed at world `(0,0,0)`, exactly like solo play, so a real
+guest would be standing on top of the host and reaching for the HOST's
+stick rack. Erik: "andra spelaren skall bli förflyttad till andra
+baslinjen med ett eget pinnbord. Pinnarna spawnar när ens tur är."
+
+**Two fixes, both reusing the SAME transform** (`mirrorPoseToFarBaseline`)
+instead of three separately-derived pieces of geometry:
+
+1. `maybeRepositionAsGuest()` moves the guest's own XR rig
+   (`this.player`, the `XROrigin` Group everything else — head, both
+   grip spaces — is parented under) to the far baseline, once, as soon
+   as role is known (gated on `rolesResolved()`, a small refactor split
+   out of `isHostNow()` so this and the existing role check share the
+   same "have I heard from every connected peer" test rather than
+   duplicating it). Called from the `hello` handler, since that's
+   exactly when role status can change. Reuses
+   `mirrorPoseToFarBaseline(defaultPose(), FAR_Z)` rather than
+   hardcoding the target transform a second time.
+
+   **This made `applyPoseToPart()`'s own mirroring dead code, and it
+   was removed**: once the guest's rig is physically at the far
+   baseline, `getWorldPosition()` on their own head/hands already
+   returns correct shared-world coordinates — mirroring a SECOND time
+   on receipt would have doubled the transform. Both peers now send
+   already-world-correct presence; the receiver just applies it as-is.
+   A real "should have been done differently from the start" moment,
+   not additive — phase 1's mirroring was solving the SYMPTOM (the
+   other player's avatar looks wrong) rather than the actual problem
+   (the guest's own presence was never actually moved).
+
+2. A second physical rack, `stick-rack-2`/`stick-rack-2-collider`
+   (scene JSON), at the far baseline — the exact mirror of the
+   near rack's own already-authored transform, computed with the SAME
+   function (verified by hand: a 180°-rotated symmetric plank+2-legs
+   prop mirrors to a visually-identical footprint at 0° rotation,
+   since the geometry itself is left-right symmetric — confirmed via
+   `scene_screenshot` before writing any code). `moveSticksToFarRack()`
+   runs in `onRoundEndedForMatch()` only when the new turn is
+   `'guest'`: `MenuSystem`'s own `RoundEnded` handler already reset
+   every stick to its authored NEAR-rack home pose by the time this
+   runs (registered — so subscribed — before `MultiplayerSystem`, see
+   `src/index.ts`), so this just mirrors each stick's now-current pose
+   to place it at the far rack instead of maintaining a second
+   hardcoded layout. Turning turn back to `'host'` needs no
+   corresponding call — the next reset already puts sticks back at the
+   near rack.
+
+**A pleasant side effect, not a separate feature**: this gives real
+turn "enforcement" for free. The off-turn player's sticks are
+physically at the OTHER table, out of reach — no risky
+`OneHandGrabbable` runtime surgery needed, the honor-system caveat from
+phase 3 is now moot for the common case (a player simply can't reach
+sticks that aren't there).
+
+**Live-verified**: `scene_screenshot` confirmed the new rack renders
+correctly at the far baseline before any code was written. After the
+code changes: reloaded, zero console errors, both `Pinnstall`/
+`Pinnstall 2` scene entities resolve with their expected components,
+the player's own headset transform stays at the untouched default
+spawn `(0, 1.6, 0)` in solo play (host is never repositioned — correct
+by construction, `isHostNow()` short-circuits `maybeRepositionAsGuest`),
+and a normal local grab→release still fires cleanly with no errors.
+**What could NOT be verified**: the guest's own reposition actually
+happening, and sticks actually appearing at the far table on a real
+guest's turn — both need a genuine second peer, same limitation as the
+rest of MP1/MP2. Mechanical pass green (209 tests — no new pure-logic
+tests this pass; this reuses `mirrorPoseToFarBaseline`, already
+covered, rather than introducing new pure logic), tsc/eslint/prettier,
+build, smoke.

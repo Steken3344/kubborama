@@ -168,6 +168,34 @@ const FAR_Z = -getCourtPreset(defaultCourtPreset).lengthM;
  * kubb court. Also still unhandled: two players grabbing the exact
  * same physical stick at once (host's local grab wins in practice) —
  * an edge case, not the common path with 6 sticks to choose from.
+ *
+ * MP2 phase 4 (Erik, 2026-09-02, a real finding from thinking through
+ * the design, not a live test): mirroring the REMOTE avatar (phase 1)
+ * was never enough — the GUEST's own physical presence stayed at world
+ * (0,0,0), same as solo play, so a guest would actually be standing on
+ * top of the host and reaching for the HOST's stick rack. Two fixes:
+ *
+ * 1. `maybeRepositionAsGuest()` moves the guest's own XR rig
+ *    (`this.player`) to the far baseline once role is known — reusing
+ *    `mirrorPoseToFarBaseline()` on the identity pose rather than a
+ *    separately hardcoded transform. Everything downstream (head/hand
+ *    world positions, presence broadcasts) is correct for free after
+ *    that, since it all reads through this same moved transform — so
+ *    `applyPoseToPart()` no longer mirrors an incoming pose at all;
+ *    both peers now send already-world-correct positions.
+ * 2. A second physical rack (`stick-rack-2`/`-collider`, scene JSON —
+ *    the exact mirror of the near rack's own authored pose, computed
+ *    with the same function, not hand-derived) exists at the far
+ *    baseline. Sticks move there when it becomes the guest's turn:
+ *    `MenuSystem`'s own `RoundEnded`/`Reset` handler already resets
+ *    every stick to its authored NEAR-rack home pose (registered, so
+ *    subscribed, before this system — see src/index.ts), so
+ *    `moveSticksToFarRack()` only needs to run AFTER that and mirror
+ *    each stick's now-current (near-rack) pose, rather than
+ *    maintaining a second hardcoded layout. This also means the
+ *    off-turn player literally can't reach the sticks — a natural,
+ *    non-invasive turn "enforcement" that needed none of the risky
+ *    grab-component surgery flagged above.
  */
 export class MultiplayerSystem extends createSystem({}) {
   private room?: Room;
@@ -186,6 +214,7 @@ export class MultiplayerSystem extends createSystem({}) {
   private readonly peerJoinedAtMs = new Map<string, number>();
   private networkedPieces = new Map<string, Entity>();
   private entityIndexToPieceId = new Map<number, string>();
+  private hasRepositionedAsGuest = false;
 
   // Reused every send tick instead of allocated fresh — see
   // .claude/rules (never allocate in update()); the throttled ~20Hz
@@ -224,6 +253,7 @@ export class MultiplayerSystem extends createSystem({}) {
     this.helloAction = this.room.makeAction<{ joinedAtMs: number }>('hello');
     this.helloAction.onMessage = (data, { peerId }) => {
       this.peerJoinedAtMs.set(peerId, data.joinedAtMs);
+      this.maybeRepositionAsGuest();
     };
     this.pieceSyncAction = this.room.makeAction<PieceSyncMessage>('pieceSync');
     this.pieceSyncAction.onMessage = (data) => {
@@ -330,20 +360,46 @@ export class MultiplayerSystem extends createSystem({}) {
     }
   }
 
-  /** Only meaningful once every currently-connected peer's `hello` has
-   * arrived — see the class doc's phase-1 note. Alone in the room
-   * (peers.length === 0) trivially counts as "known", so a solo
-   * session still broadcasts (harmless — no one's listening). */
-  private isHostNow(): boolean {
+  /** True once every currently-connected peer's `hello` has arrived —
+   * before that, host/guest status can't be trusted yet (a race right
+   * after connecting, see isHostNow()'s own note). Alone in the room
+   * (peers.length === 0) trivially counts as resolved. */
+  private rolesResolved(): boolean {
     const peerIds = Object.keys(this.room?.getPeers() ?? {});
-    if (!peerIds.every((id) => this.peerJoinedAtMs.has(id))) {
+    return peerIds.every((id) => this.peerJoinedAtMs.has(id));
+  }
+
+  /** Only meaningful once rolesResolved() — see its own note. A solo
+   * session (no peers) trivially counts as host (harmless — no one's
+   * listening). */
+  private isHostNow(): boolean {
+    if (!this.rolesResolved()) {
       return false;
     }
+    const peerIds = Object.keys(this.room?.getPeers() ?? {});
     const peers: PeerJoinInfo[] = peerIds.map((id) => ({
       id,
       joinedAtMs: this.peerJoinedAtMs.get(id) ?? 0,
     }));
     return isHost({ id: selfId, joinedAtMs: this.joinedAtMs }, peers);
+  }
+
+  /** Erik's finding, 2026-09-02 — see the class doc's phase-4 note.
+   * Runs at most once per session (the flag), as soon as this client's
+   * role is known to be guest. */
+  private maybeRepositionAsGuest(): void {
+    if (
+      this.hasRepositionedAsGuest ||
+      !this.rolesResolved() ||
+      this.isHostNow()
+    ) {
+      return;
+    }
+    const farOrigin = mirrorPoseToFarBaseline(defaultPose(), FAR_Z);
+    this.player.position.set(...farOrigin.position);
+    this.player.quaternion.set(...farOrigin.quaternion);
+    this.hasRepositionedAsGuest = true;
+    log('info', 'net', 'repositioned to far baseline as guest', {});
   }
 
   /** Match tracking only means anything with an actual opponent —
@@ -482,8 +538,50 @@ export class MultiplayerSystem extends createSystem({}) {
     if (!this.isHostNow() || !this.hasMultiplayerPeer()) {
       return;
     }
-    this.setMatchState(withTurnAdvanced(this.matchState));
+    const nextState = withTurnAdvanced(this.matchState);
+    this.setMatchState(nextState);
+    if (nextState.currentTurn === 'guest') {
+      this.moveSticksToFarRack();
+    }
     this.broadcastMatchState();
+  }
+
+  /** MenuSystem's own RoundEnded handler already reset every stick to
+   * its authored NEAR-rack home pose by the time this runs (it's
+   * registered, so subscribed, before MultiplayerSystem — see
+   * src/index.ts) — mirror each stick's now-current pose to place it
+   * at the far rack instead, reusing the exact same transform as the
+   * guest's own player teleport rather than a second hardcoded
+   * layout. Turning turn back to 'host' needs no corresponding call:
+   * MenuSystem's next reset already puts sticks back at the near
+   * rack. */
+  private moveSticksToFarRack(): void {
+    for (let i = 0; i < STICKS_PER_ROUND; i++) {
+      const entity = this.networkedPieces.get(`stick-${i}`);
+      const object3D = entity?.object3D;
+      if (!entity || !object3D) {
+        continue;
+      }
+      const nearRackPose: Pose = {
+        position: [
+          object3D.position.x,
+          object3D.position.y,
+          object3D.position.z,
+        ],
+        quaternion: [
+          object3D.quaternion.x,
+          object3D.quaternion.y,
+          object3D.quaternion.z,
+          object3D.quaternion.w,
+        ],
+      };
+      const farRackPose = mirrorPoseToFarBaseline(nearRackPose, FAR_Z);
+      this.physicsSystem.setBodyTransform(entity, {
+        position: farRackPose.position,
+        quaternion: farRackPose.quaternion,
+      });
+      entity.setValue(StickState, 'phase', StickPhase.Racked);
+    }
   }
 
   private onResetForMatch(): void {
@@ -604,15 +702,18 @@ export class MultiplayerSystem extends createSystem({}) {
     this.applyPoseToPart(object3D, 'rightHand', message.rightHand);
   }
 
+  /** No mirroring here anymore (2026-09-02) — now that
+   * maybeRepositionAsGuest() physically moves the guest's own rig,
+   * BOTH peers' outgoing presence is already in correct shared-world
+   * coordinates; the receiver just applies it as-is. */
   private applyPoseToPart(root: Object3D, name: string, pose: Pose): void {
     const part = root.getObjectByName(name);
     if (!part) {
       return;
     }
-    const mirrored = mirrorPoseToFarBaseline(pose, FAR_Z);
-    this.tmpPos.set(...mirrored.position);
+    this.tmpPos.set(...pose.position);
     part.position.copy(this.tmpPos);
-    part.quaternion.set(...mirrored.quaternion);
+    part.quaternion.set(...pose.quaternion);
   }
 
   private async createPeerAvatar(
