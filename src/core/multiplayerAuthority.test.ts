@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { isHost } from './multiplayerAuthority.js';
+import {
+  isHost,
+  parseHelloMessage,
+  resolveHostId,
+} from './multiplayerAuthority.js';
 import type { PeerJoinInfo } from './multiplayerAuthority.js';
 
 describe('isHost', () => {
@@ -33,5 +37,47 @@ describe('isHost', () => {
     const b: PeerJoinInfo = { id: 'b', joinedAtMs: 1000 };
     expect(isHost(a, [b])).toBe(true);
     expect(isHost(b, [a])).toBe(false);
+  });
+});
+
+describe('resolveHostId', () => {
+  it('names self when alone', () => {
+    expect(resolveHostId({ id: 'a', joinedAtMs: 1000 }, [])).toBe('a');
+  });
+
+  it('names the earliest-joined peer, not always self', () => {
+    const self: PeerJoinInfo = { id: 'a', joinedAtMs: 2000 };
+    const peers: PeerJoinInfo[] = [{ id: 'b', joinedAtMs: 1500 }];
+    expect(resolveHostId(self, peers)).toBe('b');
+  });
+
+  it('agrees with isHost on who won', () => {
+    const self: PeerJoinInfo = { id: 'a', joinedAtMs: 1500 };
+    const peerB: PeerJoinInfo = { id: 'b', joinedAtMs: 2000 };
+    const peerC: PeerJoinInfo = { id: 'c', joinedAtMs: 1000 };
+    expect(resolveHostId(self, [peerB, peerC])).toBe('c');
+    expect(isHost(self, [peerB, peerC])).toBe(false);
+    expect(isHost(peerC, [self, peerB])).toBe(true);
+  });
+});
+
+describe('parseHelloMessage', () => {
+  it('accepts a well-formed hello', () => {
+    expect(parseHelloMessage({ joinedAtMs: 12345 })).toEqual({
+      joinedAtMs: 12345,
+    });
+  });
+
+  it('rejects an empty payload rather than defaulting joinedAtMs to 0', () => {
+    expect(parseHelloMessage({})).toBeNull();
+  });
+
+  it('rejects a non-numeric joinedAtMs', () => {
+    expect(parseHelloMessage({ joinedAtMs: '0' })).toBeNull();
+  });
+
+  it('rejects a non-object payload', () => {
+    expect(parseHelloMessage(null)).toBeNull();
+    expect(parseHelloMessage('hello')).toBeNull();
   });
 });

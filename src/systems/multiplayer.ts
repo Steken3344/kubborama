@@ -27,8 +27,16 @@ import {
   parseMatchSyncMessage,
 } from '../core/matchSync.js';
 import type { MatchSyncMessage } from '../core/matchSync.js';
-import { isHost } from '../core/multiplayerAuthority.js';
-import type { PeerJoinInfo } from '../core/multiplayerAuthority.js';
+import {
+  buildHelloMessage,
+  isHost,
+  parseHelloMessage,
+  resolveHostId,
+} from '../core/multiplayerAuthority.js';
+import type {
+  HelloMessage,
+  PeerJoinInfo,
+} from '../core/multiplayerAuthority.js';
 import {
   buildPieceSyncMessage,
   parsePieceSyncMessage,
@@ -201,7 +209,7 @@ export class MultiplayerSystem extends createSystem({}) {
   private room?: Room;
   private presenceAction?: MessageAction<PresenceMessage>;
   private pieceSyncAction?: MessageAction<PieceSyncMessage>;
-  private helloAction?: MessageAction<{ joinedAtMs: number }>;
+  private helloAction?: MessageAction<HelloMessage>;
   private throwRelayAction?: MessageAction<ThrowRelayMessage>;
   private matchSyncAction?: MessageAction<MatchSyncMessage>;
   private matchState: MatchState = initialMatchState();
@@ -250,16 +258,30 @@ export class MultiplayerSystem extends createSystem({}) {
       }
       this.applyPeerPresence(peerId, message);
     };
-    this.helloAction = this.room.makeAction<{ joinedAtMs: number }>('hello');
+    this.helloAction = this.room.makeAction<HelloMessage>('hello');
     this.helloAction.onMessage = (data, { peerId }) => {
-      this.peerJoinedAtMs.set(peerId, data.joinedAtMs);
+      const message = parseHelloMessage(data);
+      if (!message) {
+        log('warn', 'net', 'dropped malformed hello message', { peerId });
+        return;
+      }
+      this.peerJoinedAtMs.set(peerId, message.joinedAtMs);
       this.maybeRepositionAsGuest();
     };
     this.pieceSyncAction = this.room.makeAction<PieceSyncMessage>('pieceSync');
-    this.pieceSyncAction.onMessage = (data) => {
+    this.pieceSyncAction.onMessage = (data, { peerId }) => {
+      // Apply a court snapshot only from the peer we ourselves resolve
+      // as host — code review, 2026-09-02: previously accepted from
+      // ANY sender, so a second/rogue peer broadcasting on this same
+      // action could teleport the shared court on every client.
+      if (peerId !== this.resolvedHostPeerId()) {
+        return;
+      }
       const message = parsePieceSyncMessage(data);
       if (!message) {
-        log('warn', 'net', 'dropped malformed piece-sync message', {});
+        log('warn', 'net', 'dropped malformed piece-sync message', {
+          peerId,
+        });
         return;
       }
       this.applyPieceSync(message);
@@ -305,16 +327,15 @@ export class MultiplayerSystem extends createSystem({}) {
       gameEvents.on('RoundEnded', () => {
         this.onRoundEndedForMatch();
       }),
-      gameEvents.on('Reset', () => {
-        this.onResetForMatch();
+      gameEvents.on('Reset', (event) => {
+        this.onResetForMatch(event.cause);
       }),
     );
     this.room.onPeerJoin = (peerId) => {
       log('info', 'net', 'peer joined', { peerId, roomId });
-      void this.helloAction?.send(
-        { joinedAtMs: this.joinedAtMs },
-        { target: peerId },
-      );
+      void this.helloAction?.send(buildHelloMessage(this.joinedAtMs), {
+        target: peerId,
+      });
     };
     this.room.onPeerLeave = (peerId) => {
       log('info', 'net', 'peer left', { peerId });
@@ -382,6 +403,27 @@ export class MultiplayerSystem extends createSystem({}) {
       joinedAtMs: this.peerJoinedAtMs.get(id) ?? 0,
     }));
     return isHost({ id: selfId, joinedAtMs: this.joinedAtMs }, peers);
+  }
+
+  /** The peerId this client itself resolves as host, or null if that's
+   * either itself or not yet resolvable (see rolesResolved()) — used to
+   * verify an incoming network message actually came from the peer
+   * we'd trust, not merely accept whoever's sending it (see
+   * pieceSyncAction's onMessage above). */
+  private resolvedHostPeerId(): string | null {
+    if (!this.rolesResolved()) {
+      return null;
+    }
+    const peerIds = Object.keys(this.room?.getPeers() ?? {});
+    const peers: PeerJoinInfo[] = peerIds.map((id) => ({
+      id,
+      joinedAtMs: this.peerJoinedAtMs.get(id) ?? 0,
+    }));
+    const hostId = resolveHostId(
+      { id: selfId, joinedAtMs: this.joinedAtMs },
+      peers,
+    );
+    return hostId === selfId ? null : hostId;
   }
 
   /** Erik's finding, 2026-09-02 — see the class doc's phase-4 note.
@@ -584,8 +626,19 @@ export class MultiplayerSystem extends createSystem({}) {
     }
   }
 
-  private onResetForMatch(): void {
-    if (!this.isHostNow() || !this.hasMultiplayerPeer()) {
+  /** Only a genuine 'manual' reset (Reset button, or a mode-switch
+   * relayout) wipes MatchState. RoundSystem's own auto-continuation
+   * emits Reset with cause 'roundEnd' via MenuSystem's nested
+   * resetAll() call (see src/core/events.ts's own note) — that must
+   * NOT touch MatchState, since onRoundEndedForMatch() (subscribed to
+   * the same outer RoundEnded event, running right after this one —
+   * see src/index.ts's registration order) still needs the
+   * pre-round-end matchState to compute the turn advance from.
+   * Verified by reproduction (docs/DECISIONS.md, 2026-09-02): without
+   * this guard, every round-end wiped kubb counts and turn back to
+   * their initial values. */
+  private onResetForMatch(cause: GameEvents['Reset']['cause']): void {
+    if (cause !== 'manual' || !this.isHostNow() || !this.hasMultiplayerPeer()) {
       return;
     }
     this.setMatchState(initialMatchState());

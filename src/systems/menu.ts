@@ -12,6 +12,7 @@ import { audio } from '../config.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { accuracy } from '../core/stats.js';
 import { gameEvents } from '../core/events.js';
+import type { GameEvents } from '../core/events.js';
 import { uiTick } from '../core/haptics.js';
 import { log } from '../core/log.js';
 import { createRng } from '../core/rng.js';
@@ -123,7 +124,7 @@ export class MenuSystem extends createSystem({
     this.wireButton('tab-stats-button', () => this.setActiveTab('stats'));
 
     this.wireButton('reset-button', () => {
-      this.resetAll();
+      this.resetAll('manual');
       this.setMenuOpen(false);
     });
     this.wireButton('language-button', () => {
@@ -186,7 +187,7 @@ export class MenuSystem extends createSystem({
     // implementation, two triggers.
     this.cleanupFuncs.push(
       gameEvents.on('RoundEnded', () => {
-        this.resetAll();
+        this.resetAll('roundEnd');
         this.refreshStats();
       }),
       gameEvents.on('LanguageChanged', () => {
@@ -352,15 +353,15 @@ export class MenuSystem extends createSystem({
     for (const [entityIndex, pose] of homePoses) {
       this.homePoses.set(entityIndex, pose);
     }
-    this.resetAll();
+    this.resetAll('manual');
   }
 
-  private resetAll(): void {
+  private resetAll(cause: GameEvents['Reset']['cause']): void {
     for (const entity of this.queries.resettable.entities) {
       this.resetOne(entity);
     }
-    gameEvents.emit('Reset', { timeS: this.currentTimeS });
-    log('info', 'state', 'reset', {});
+    gameEvents.emit('Reset', { timeS: this.currentTimeS, cause });
+    log('info', 'state', 'reset', { cause });
   }
 
   private resetOne(entity: Entity): void {

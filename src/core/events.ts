@@ -76,6 +76,13 @@ export interface GameEvents {
   };
   Reset: {
     timeS: number;
+    // 'roundEnd' is RoundSystem's own auto-continuation (MenuSystem's
+    // RoundEnded handler resets pieces for the next round) — distinct
+    // from a genuine 'manual' reset (Reset button, or a mode-switch
+    // relayout) so a listener that owns cross-round state (e.g.
+    // MultiplayerSystem's MatchState) can tell "next round" apart from
+    // "wipe everything." See docs/DECISIONS.md, 2026-09-02.
+    cause: 'manual' | 'roundEnd';
   };
   KubbFelled: {
     entityId: string;
