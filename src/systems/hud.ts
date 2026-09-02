@@ -84,6 +84,9 @@ export class HudSystem extends createSystem({}) {
     this.hudPanel
       .requireElementById('match-label')
       .setProperties({ text: t('matchLabel') });
+    this.hudPanel
+      .requireElementById('role-label')
+      .setProperties({ text: t('roleLabel') });
     this.updateThrowStyle();
     this.updateMatchRow();
   }
@@ -112,6 +115,16 @@ export class HudSystem extends createSystem({}) {
       display: 'flex',
     });
     this.hudPanel.requireElementById('match-value').setProperties({ text });
+    // "Du är: Spelare A/B" — each player's own fixed identity for the
+    // whole match, distinct from the turn indicator above (Erik,
+    // 2026-09-02: with only a turn label there was no way to tell WHICH
+    // player you were, so both players read themselves as "B").
+    this.hudPanel.requireElementById('role-row').setProperties({
+      display: 'flex',
+    });
+    this.hudPanel.requireElementById('role-value').setProperties({
+      text: mySide === 'host' ? t('rolePlayerA') : t('rolePlayerB'),
+    });
   }
 
   private updateBestFelled(): void {

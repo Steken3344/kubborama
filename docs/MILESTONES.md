@@ -589,3 +589,11 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       "Spelare A:s tur"/"Spelare B:s tur" (host = A, guest = B) instead
       of relative "din tur"/"motståndarens tur" — Erik found the
       relative framing ambiguous standing next to a second real player.
+- [x] **Initial match-state announcement + "Du är: Spelare A/B" row
+      (2026-09-02)**: Erik's "ingen är Spelare A" report was NOT a role-
+      election bug (the election is provably symmetric) — match state
+      was never emitted/broadcast until its first mutation, so the
+      match-row stayed hidden through the host's whole first turn and
+      the first label anyone saw was "Spelare B:s tur." The host now
+      announces initial state the moment roles resolve, and a new HUD
+      row shows each player's own fixed identity. See docs/DECISIONS.md.

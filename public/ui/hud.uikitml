@@ -67,6 +67,10 @@
     <span id="style-label" class="label">Stil</span>
     <span id="throw-style" class="value">-</span>
   </div>
+  <div id="role-row" class="row" style="display: none">
+    <span id="role-label" class="label">Du är</span>
+    <span id="role-value" class="value">-</span>
+  </div>
   <div id="match-row" class="row" style="display: none">
     <span id="match-label" class="label">Match</span>
     <span id="match-value" class="value">-</span>

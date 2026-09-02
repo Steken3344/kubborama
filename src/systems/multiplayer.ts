@@ -267,6 +267,7 @@ export class MultiplayerSystem extends createSystem({}) {
       }
       this.peerJoinedAtMs.set(peerId, message.joinedAtMs);
       this.maybeRepositionAsGuest();
+      this.announceMatchStartIfHost();
     };
     this.pieceSyncAction = this.room.makeAction<PieceSyncMessage>('pieceSync');
     this.pieceSyncAction.onMessage = (data, { peerId }) => {
@@ -424,6 +425,30 @@ export class MultiplayerSystem extends createSystem({}) {
       peers,
     );
     return hostId === selfId ? null : hostId;
+  }
+
+  /** Root cause of Erik's "ingen är Spelare A" (2026-09-02, second
+   * 2-headset test): match state was only ever emitted/broadcast
+   * REACTIVELY on its first mutation — the earliest of which is round
+   * 1's own RoundEnded turn flip to 'guest'. So the match-row stayed
+   * hidden on BOTH clients through the host's entire first turn, and
+   * the first label anyone ever saw was "Spelare B:s tur." The role
+   * election itself was never wrong — both peers always compare the
+   * same two (id, joinedAtMs) pairs, so they can't disagree.
+   * Announcing the initial state as soon as roles resolve makes both
+   * HUDs show the match — and that it's Player A's turn — from the
+   * start. Re-runs harmlessly on every hello (idempotent), which also
+   * refreshes a re-joining guest. */
+  private announceMatchStartIfHost(): void {
+    if (
+      !this.rolesResolved() ||
+      !this.isHostNow() ||
+      !this.hasMultiplayerPeer()
+    ) {
+      return;
+    }
+    this.setMatchState(this.matchState);
+    this.broadcastMatchState();
   }
 
   /** Erik's finding, 2026-09-02 — see the class doc's phase-4 note.

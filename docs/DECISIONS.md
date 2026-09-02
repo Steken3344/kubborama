@@ -4084,3 +4084,57 @@ the old keys. Mechanical pass green (216 tests), build, smoke.
 Live-verified: solo play's HUD renders identically (match-row still
 correctly hidden with no peer) — the actual "Spelare A/B" text with a
 real opponent connected needs Erik's 2 headsets.
+
+## 2026-09-02 — "Ingen är Spelare A": missing initial match-state announcement
+
+Erik, second 2-headset test: "båda spelarna verkar bli spelare B. Ingen
+är spelare A" — proposing device-id registration to prevent role
+mix-ups. Investigated the role election first rather than building
+that: **the election itself cannot produce this symptom.** Both peers
+compare the exact same two `(id, joinedAtMs)` pairs (each side's own
+stamp plus the one received via `hello`), so they always agree on who
+won — clock skew between headsets doesn't matter since the comparison
+never mixes a clock against itself. "Both think they're guest" is
+impossible by construction.
+
+The actual root cause is a visibility bug: match state was only ever
+emitted/broadcast REACTIVELY on its first mutation. `setMatchState()`
+(which emits `MatchStateChanged`, the only thing that reveals the HUD
+match-row) and `broadcastMatchState()` were only called from the
+host-gated `KubbFelled`/`RoundEnded`/`Reset` handlers — and the
+earliest of those in a normal match is round 1's own `RoundEnded`,
+whose `withTurnAdvanced()` flips `currentTurn` from the initial
+`'host'` to `'guest'`. So on BOTH clients the match-row stayed hidden
+through the host's entire first turn, and the first label anyone ever
+saw was "Spelare B:s tur." Nobody ever saw "Spelare A:s tur" — reading
+exactly like a role mix-up without being one.
+
+**Two fixes:**
+
+1. `announceMatchStartIfHost()` (`src/systems/multiplayer.ts`): as soon
+   as roles resolve (called from the `hello` handler, the moment role
+   knowledge can change — same hook as `maybeRepositionAsGuest()`), the
+   host emits its current match state locally AND broadcasts it, so
+   both HUDs show the match — and that it's Player A's turn — from the
+   start. Re-runs harmlessly on every hello (idempotent), which also
+   refreshes a re-joining guest.
+2. A new always-visible-once-connected "Du är: Spelare A/B" HUD row
+   (`role-row`, `public/ui/hud.uikitml` + `src/systems/hud.ts` +
+   `roleLabel`/`rolePlayerA`/`rolePlayerB` i18n keys) — each player's
+   own fixed identity for the whole match, distinct from the turn
+   indicator. This addresses the "förväxling" concern directly: even if
+   a future bug confuses turn state again, each player can always see
+   which player they ARE.
+
+**Deliberately NOT built (yet)**: Erik's proposed explicit device-id
+registration at room start. The election is deterministic and sound
+(see above), so registering identities would add a pairing/UX flow
+without fixing anything this diagnosis explains. If the next 2-headset
+test still shows role confusion WITH the fixes above, that conclusion
+is wrong and device-id registration (or an explicit host-creates-room
+flow) becomes the right next step — revisit then.
+
+Mechanical pass green (216 tests), build, smoke. Live-verified in the
+emulator: HUD renders correctly in solo with both new rows correctly
+hidden, zero console errors. The actual announce-on-connect behavior
+needs the next 2-headset session.
