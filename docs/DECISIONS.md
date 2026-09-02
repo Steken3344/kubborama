@@ -3954,7 +3954,7 @@ the actual sequence on every round-end was:
 4. Only THEN does the outer `RoundEnded` dispatch reach
    `MultiplayerSystem`'s own `RoundEnded` handler
    (`onRoundEndedForMatch()`), which computes `withTurnAdvanced(this.
-   matchState)` — but `this.matchState` was just wiped in step 3.
+matchState)` — but `this.matchState` was just wiped in step 3.
 
 The reviewer reproduced this standalone with the project's real
 `EventBus`/`core/match.ts` logic: a match with `guestKubbsRemaining: 3`

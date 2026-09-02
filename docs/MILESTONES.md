@@ -557,16 +557,16 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       ("Spelare A/B", not "din/motståndarens tur"), and a stick that
       keeps rolling blocks the turn from ever passing.
 - [x] **Independent code review + 3 Critical fixes (2026-09-02)**:
-      dispatched a fresh reviewer subagent (`superpowers:requesting-code-
-      review`) over the full MP1/MP2 diff before trusting it further.
-      Found and fixed 3 Critical issues (see docs/DECISIONS.md for full
-      detail):
+      dispatched a fresh reviewer subagent
+      (`superpowers:requesting-code-review`) over the full MP1/MP2 diff
+      before trusting it further. Found and fixed 3 Critical issues
+      (see docs/DECISIONS.md for full detail):
   1. `RoundEnded`'s own nested `Reset` (RoundSystem's auto-continuation
      into the next round) was silently wiping `MatchState` — kubb
      counts and turn — on literally every round transition, via
-     `MultiplayerSystem.onResetForMatch()`. Fixed with a `cause: 'manual'
-     | 'roundEnd'` discriminator on the `Reset` event so only a genuine
-     manual reset touches match state.
+     `MultiplayerSystem.onResetForMatch()`. Fixed with a `cause`
+     discriminator (`'manual' | 'roundEnd'`) on the `Reset` event so
+     only a genuine manual reset touches match state.
   2. The `hello` handshake (host election) had no zod validation — an
      empty/hostile payload could spoof host status. Now parsed like
      every other message type (`core/multiplayerAuthority.ts`).
