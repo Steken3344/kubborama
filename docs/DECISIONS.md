@@ -3906,3 +3906,181 @@ rest of MP1/MP2. Mechanical pass green (209 tests — no new pure-logic
 tests this pass; this reuses `mirrorPoseToFarBaseline`, already
 covered, rather than introducing new pure logic), tsc/eslint/prettier,
 build, smoke.
+
+## 2026-09-02 — GATE PASSED: MP1/MP2 confirmed live with 2 real headsets
+
+Erik: "kan bekräfta att de fungerar bra med 2 spelare" — the first
+genuine, positive end-to-end validation of everything built this
+session (co-presence, voice, shared court sync, throw relay, per-side
+match state, guest reposition, second stick rack). Two real findings
+came out of the same test, both addressed in the entries below:
+
+1. The HUD's relative "din tur"/"motståndarens tur" read as ambiguous
+   standing next to a real second player — wants absolute "Spelare
+   A"/"Spelare B" labels instead.
+2. A stick that kept rolling around after the last throw of a turn
+   never let the turn pass to the other player.
+
+## 2026-09-02 — Independent code review surfaces 3 Critical multiplayer bugs
+
+Per `superpowers:requesting-code-review`, dispatched a fresh
+`general-purpose` subagent (no session history) over the full
+`63da6bb..18f56ca` diff — the entire MP1/MP2 feature — before trusting
+it further, especially since none of it had been tested with 2 real
+peers until the entry above. It verified tsc/eslint/prettier/vitest
+clean independently, confirmed the functional-core purity and DRY
+extraction claims by grep rather than trusting the commit messages, and
+hand-verified `mirrorPoseToFarBaseline()`'s geometry for both phase-4
+call sites against the actual authored scene JSON transforms. Full
+review kept for reference; summarizing the 3 Critical findings and
+fixes here since they change committed behavior:
+
+**1. RoundEnded's own nested Reset was wiping MatchState every round.**
+`MenuSystem.resetAll()` (`src/systems/menu.ts`) is called BOTH by the
+manual reset button AND by `RoundSystem`'s `RoundEnded` auto-
+continuation into the next round, and in both cases emits a plain
+`Reset` event synchronously. Because `MenuSystem` is registered (so
+subscribed) before `MultiplayerSystem` in `src/index.ts`, and
+`EventBus.emit` runs the same event's handlers in subscription order,
+the actual sequence on every round-end was:
+
+1. `RoundEnded` fires.
+2. `MenuSystem`'s `RoundEnded` handler runs `resetAll()`, which emits a
+   NESTED `Reset` — fully synchronous, inside step 1's own dispatch.
+3. That nested `Reset` reaches `MultiplayerSystem.onResetForMatch()`,
+   which (before this fix) unconditionally called
+   `setMatchState(initialMatchState())` — wiping kubb counts, turn, and
+   winner back to fresh.
+4. Only THEN does the outer `RoundEnded` dispatch reach
+   `MultiplayerSystem`'s own `RoundEnded` handler
+   (`onRoundEndedForMatch()`), which computes `withTurnAdvanced(this.
+   matchState)` — but `this.matchState` was just wiped in step 3.
+
+The reviewer reproduced this standalone with the project's real
+`EventBus`/`core/match.ts` logic: a match with `guestKubbsRemaining: 3`
+had it reset to 5 on the very next round-end, and turn order collapsed
+permanently. This is completely invisible to everything tested before
+the GATE above — `match.test.ts` only exercises the pure functions in
+isolation, and every live emulator check was single-throw/solo (match
+logic is gated off entirely without a peer). A real match spanning more
+than one round of 6 sticks (i.e. essentially every real match, since a
+full game is 10 kubbs but only 6 sticks/round) hits this on the very
+first round transition.
+
+**Fix**: gave the `Reset` event payload a `cause: 'manual' | 'roundEnd'`
+discriminator (`src/core/events.ts`). `MenuSystem.resetAll(cause)` now
+takes and forwards it — the reset button and `applyCourtLayout()`
+(mode-switch relayout) pass `'manual'`, `RoundSystem`'s own
+auto-continuation passes `'roundEnd'`.
+`MultiplayerSystem.onResetForMatch(cause)` only wipes MatchState when
+`cause === 'manual'`, leaving `onRoundEndedForMatch()`'s turn-advance
+computation untouched by the nested emission. No test existed for the
+cross-system event ordering itself (the reviewer's own Important
+finding #7) — logged as a follow-up (gh issue below), since a proper
+regression test needs simulating two consecutive `RoundEnded` cycles
+through the real event bus, not just `core/match.ts`'s pure functions.
+
+**2. `hello` (host election) had no schema — spoofable.**
+Every other network message type (`presence`/`pieceSync`/`throwRelay`/
+`matchSync`) goes through a `parseXMessage` zod boundary per CLAUDE.md's
+untrusted-boundary rule; `hello` alone trusted `data.joinedAtMs`
+verbatim, falling back to `?? 0` when absent. Since host election picks
+whoever reports the SMALLEST timestamp, any peer sending `{}` or
+`{joinedAtMs: 0}` would be concluded to be host by every other client —
+freezing the real host's `pieceSync` broadcasts. Not hypothetical: a
+genuine unknown peer already connected to the shared default room once
+during MP2 phase 3 testing (see that entry above).
+
+**Fix**: `core/multiplayerAuthority.ts` gained `HelloMessage`
+(`z.object({ joinedAtMs: z.number() })`), `buildHelloMessage()`, and
+`parseHelloMessage()` (never throws, same pattern as every other
+message type) — 4 new tests. `MultiplayerSystem`'s `helloAction.
+onMessage` now drops a malformed hello instead of applying it.
+
+**3. `pieceSync` was applied from ANY sender, not just the trusted host.**
+Unlike `throwRelayAction` (gates on `isHostNow()`) and `matchSyncAction`
+(gates on `!isHostNow()`), `pieceSyncAction.onMessage` called
+`applyPieceSync()` unconditionally regardless of who sent it. Combined
+with #2, or even alone (a second/buggy/malicious peer broadcasting on
+the same action), every client including the real host would apply an
+arbitrary peer's snapshot, teleporting the king/kubbs/sticks anywhere.
+
+**Fix**: `core/multiplayerAuthority.ts`'s `isHost()` is now expressed in
+terms of a new `resolveHostId(self, peers): string` (DRY — both
+functions share one election rule; `resolveHostId` additionally names
+WHICH id won, which `isHost()` alone can't answer) — 3 new tests.
+`MultiplayerSystem` gained `resolvedHostPeerId()`, and
+`pieceSyncAction.onMessage` now checks the sender's `peerId` against it
+before applying anything.
+
+**Deferred, not fixed inline** (reviewer's Important/Minor findings #4-
+9 — role-resolution race dropping a guest's first throw, HUD match-row
+never clearing on peer disconnect, a peer-avatar creation TOCTOU, the
+ordering-dependency test gap already mentioned in #1's fix, a captured-
+home-pose alternative to `moveSticksToFarRack()`'s ordering dependency,
+and a haptic misattribution on a relayed throw): none of these block a
+real match — the reviewer's own assessment was "fix Critical/#2/#3 now,
+#4-9 can reasonably follow after a first successful 2-headset session,"
+and that session already happened (GATE above). Filed as GitHub issues
+per CLAUDE.md's out-of-scope workflow rather than expanding this pass's
+scope further.
+
+Mechanical pass green: tsc/eslint/prettier/vitest (216 tests, +7 from
+this pass), build, smoke. Live-verified in the emulator: solo play
+loads cleanly with zero console errors, HUD match-row correctly stays
+hidden (no peer). The 3 fixes themselves are network-boundary/ordering
+logic that fundamentally needs a second real peer to exercise — Erik's
+next 2-headset session is the real verification.
+
+## 2026-09-02 — Stick force-settle timeout (turn-blocking bug)
+
+Erik, live-tested with 2 real players: "När man kastat sista pinnen,
+vänta max i 5 sekunder efter den har kastas. Vissa pinnar rullar runt
+på scenen och då verkar den inte förstå att turen skall gå över till
+andra spelaren." Root cause: `RoundSystem.maybeEndRound()`
+(`src/systems/round.ts`) only fires once every stick individually
+reaches `StickPhase.Settled`, which `ThrowingSystem.checkForSettling()`
+only grants after a stick has been continuously at rest (`isResting()`,
+both linear and angular speed below threshold) for
+`pieces.throw.restDurationS` (0.5s). A stick that keeps rolling —
+apparently common enough on a real physical throw, not just a
+theoretical edge case — never satisfies that and blocks `RoundEnded`
+forever, which in multiplayer also means the turn never advances.
+
+**Fix**: new `pieces.throw.maxFlightTimeS` (5s, Erik's own proposed
+number) + a per-entity `flyingStartS` timer
+(`src/systems/throwing.ts`), set in `onRelease()`. `checkForSettling()`
+now force-settles a stick once it's been Flying that long, regardless
+of its actual physics rest state — safe because the imminent round-end
+reset (`MenuSystem.resetOne()`) teleports every stick back to its rack
+and clears velocity anyway, so there's no risk of a "phantom moving
+stick" surviving the forced settle. Same established pattern as
+`OneShotAudioSystem`'s existing `MAX_LIFETIME_S` fallback elsewhere in
+this codebase — not a new idiom. A force-settled stick logs a `warn`
+(distinct from the normal `debug` "stick settled" log) so a future
+session can tell how often this actually triggers.
+
+Mechanical pass green: tsc/eslint/prettier/vitest (209 tests, no new
+pure-logic tests — this is adapter-level timing logic, not core; golden-
+throw/emulator coverage per CLAUDE.md's testing rule for adapters),
+build, smoke. Not independently live-verified with an actually-
+never-settling stick (hard to trigger deterministically without a real
+rolling throw) — normal settling behavior confirmed unaffected.
+
+## 2026-09-02 — Absolute turn labels in the HUD
+
+Erik, same 2-headset test: "istället för att de står din eller mot. tur
+så skriv att de är spelar A eller spelar Bs tur." The HUD's `match-row`
+(`src/systems/hud.ts`) now shows "Spelare A:s tur"/"Spelare B:s tur" —
+host is always Player A, guest always Player B, matching the existing
+"först in äger spelet" host-election rule — instead of relative "Din
+tur"/"Motst. tur", which read as ambiguous standing next to a real
+second player rather than playing solo against an abstract opponent.
+`matchWon`/`matchLost` stay relative (still about the local viewer's
+own outcome, unambiguous either way). i18n keys renamed in both
+`sv.json`/`en.json` (`matchYourTurn`/`matchOpponentTurn` →
+`matchPlayerATurn`/`matchPlayerBTurn`); no other call sites referenced
+the old keys. Mechanical pass green (216 tests), build, smoke.
+Live-verified: solo play's HUD renders identically (match-row still
+correctly hidden with no peer) — the actual "Spelare A/B" text with a
+real opponent connected needs Erik's 2 headsets.

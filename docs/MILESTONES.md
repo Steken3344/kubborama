@@ -414,7 +414,7 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       deployed URL; launches fullscreen from Quest app library
 - Review gate → tag v0.7-m6 → POC COMPLETE 🎉
 
-## M7 — MP1 co-presence (multiplayer) `status: presence + voice confirmed live; MP2 (shared court) not started`
+## M7 — MP1 co-presence (multiplayer) `status: MP1+MP2 confirmed live end-to-end with 2 real headsets (2026-09-02); post-review hardening done`
 
 - [x] Trystero installed (v0.25.4, default Nostr signaling strategy,
       matching docs/PLAN.md §12's pre-approved choice) — serverless
@@ -548,3 +548,44 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       grab→release still works. Unverified: the guest's own reposition
       and far-table stick spawn actually happening — needs Erik's 2
       headsets.
+- [x] **GATE (Erik, 2× real headsets) PASSED, 2026-09-02**: "kan
+      bekräfta att de fungerar bra med 2 spelare" — the entire MP1+MP2
+      stack (presence, voice, shared court, throw relay, per-side match
+      state, guest reposition + second rack) confirmed working
+      end-to-end for the first time. Two real findings came out of the
+      same session, addressed below: turn text should be absolute
+      ("Spelare A/B", not "din/motståndarens tur"), and a stick that
+      keeps rolling blocks the turn from ever passing.
+- [x] **Independent code review + 3 Critical fixes (2026-09-02)**:
+      dispatched a fresh reviewer subagent (`superpowers:requesting-code-
+      review`) over the full MP1/MP2 diff before trusting it further.
+      Found and fixed 3 Critical issues (see docs/DECISIONS.md for full
+      detail):
+  1. `RoundEnded`'s own nested `Reset` (RoundSystem's auto-continuation
+     into the next round) was silently wiping `MatchState` — kubb
+     counts and turn — on literally every round transition, via
+     `MultiplayerSystem.onResetForMatch()`. Fixed with a `cause: 'manual'
+     | 'roundEnd'` discriminator on the `Reset` event so only a genuine
+     manual reset touches match state.
+  2. The `hello` handshake (host election) had no zod validation — an
+     empty/hostile payload could spoof host status. Now parsed like
+     every other message type (`core/multiplayerAuthority.ts`).
+  3. `pieceSync` was applied from ANY sender, not just the resolved
+     host. Now gated on `resolvedHostPeerId()`.
+     7 new tests (`multiplayerAuthority.test.ts`). Important/Minor
+     findings (#4-9: role-resolution race, HUD not clearing on peer
+     disconnect, an avatar-creation TOCTOU, an ordering-dependency test
+     gap, a haptic misattribution) filed as GitHub issues, not fixed
+     inline — none block a real match, per CLAUDE.md's out-of-scope
+     workflow.
+- [x] **Stick force-settle timeout (2026-09-02)**: a stick that never
+      comes to physical rest (found live, rolling around after the last
+      throw of a turn) blocked `RoundSystem.maybeEndRound()` forever —
+      and in multiplayer, that's also the turn never passing. New
+      `pieces.throw.maxFlightTimeS` (5s) force-settles a stick that's
+      been Flying too long regardless of actual rest state, same
+      pattern as `OneShotAudioSystem`'s existing lifetime fallback.
+- [x] **Absolute turn labels (2026-09-02)**: HUD's match-row now shows
+      "Spelare A:s tur"/"Spelare B:s tur" (host = A, guest = B) instead
+      of relative "din tur"/"motståndarens tur" — Erik found the
+      relative framing ambiguous standing next to a second real player.
