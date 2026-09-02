@@ -97,13 +97,17 @@ export class HudSystem extends createSystem({}) {
     }
     const t = i18nState.t;
     const { state, mySide } = this.lastMatchState;
+    // Absolute "Spelare A/B" labels, not "din/motst. tur" (Erik,
+    // 2026-09-02: with 2 headsets side by side, "your turn" read as
+    // ambiguous mid-match) — host is always Player A, guest Player B,
+    // matching "först in äger spelet" (core/multiplayerAuthority.ts).
     const text = state.winner
       ? state.winner === mySide
         ? t('matchWon')
         : t('matchLost')
-      : state.currentTurn === mySide
-        ? t('matchYourTurn')
-        : t('matchOpponentTurn');
+      : state.currentTurn === 'host'
+        ? t('matchPlayerATurn')
+        : t('matchPlayerBTurn');
     this.hudPanel.requireElementById('match-row').setProperties({
       display: 'flex',
     });

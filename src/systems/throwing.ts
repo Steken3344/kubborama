@@ -52,6 +52,7 @@ export class ThrowingSystem extends createSystem({
   private poseBuffers = new Map<number, PoseSample[]>();
   private lastKnownHand = new Map<number, Hand>();
   private restTimerStartS = new Map<number, number>();
+  private flyingStartS = new Map<number, number>();
   private currentTimeS = 0;
   private foleyRng = createRng(FOLEY_SFX_SEED);
 
@@ -183,6 +184,7 @@ export class ThrowingSystem extends createSystem({
       angularVelocity,
     });
     entity.setValue(StickState, 'phase', StickPhase.Flying);
+    this.flyingStartS.set(entity.index, this.currentTimeS);
 
     const hand = this.lastKnownHand.get(entity.index) ?? 'right';
     entity.setValue(StickState, 'lastThrowerHand', hand);
@@ -219,38 +221,76 @@ export class ThrowingSystem extends createSystem({
     this.restTimerStartS.delete(entity.index);
   }
 
+  /**
+   * A stick that never comes to rest (rolls around indefinitely —
+   * Erik, 2026-09-02, live-tested with 2 real players) would otherwise
+   * block `RoundSystem.maybeEndRound()` forever, since it only fires
+   * once every stick has settled — and in multiplayer, that's also the
+   * turn never passing to the other player. `maxFlightTimeS` force-
+   * settles a stick that's been Flying too long regardless of its
+   * actual rest state; the imminent round-end reset (MenuSystem)
+   * teleports it back to the rack and clears its velocity anyway, so
+   * forcing the phase here doesn't leave a "phantom moving stick."
+   */
   private checkForSettling(entity: Entity, timeS: number): void {
-    readBodySpeed(entity, this.tmpSpeed);
-    const resting = isResting(this.tmpSpeed[0], this.tmpSpeed[1], pieces.throw);
+    const flyingSinceS = this.flyingStartS.get(entity.index);
+    const timedOut =
+      flyingSinceS !== undefined &&
+      timeS - flyingSinceS >= pieces.throw.maxFlightTimeS;
 
-    if (!resting) {
-      this.restTimerStartS.delete(entity.index);
-      return;
-    }
-
-    const restStartS = this.restTimerStartS.get(entity.index);
-    if (restStartS === undefined) {
-      this.restTimerStartS.set(entity.index, timeS);
-      return;
-    }
-
-    if (timeS - restStartS >= pieces.throw.restDurationS) {
-      entity.setValue(StickState, 'phase', StickPhase.Settled);
-      this.restTimerStartS.delete(entity.index);
-      log('debug', 'state', 'stick settled', { entityIndex: entity.index });
-
-      let position: Vec3 = [0, 0, 0];
-      const object3D = entity.object3D;
-      if (object3D) {
-        object3D.getWorldPosition(this.tmpComPos);
-        position = [this.tmpComPos.x, this.tmpComPos.y, this.tmpComPos.z];
+    if (!timedOut) {
+      readBodySpeed(entity, this.tmpSpeed);
+      const resting = isResting(
+        this.tmpSpeed[0],
+        this.tmpSpeed[1],
+        pieces.throw,
+      );
+      if (!resting) {
+        this.restTimerStartS.delete(entity.index);
+        return;
       }
-      gameEvents.emit('Settled', {
-        stickId: String(entity.index),
-        position,
-        timeS,
-      });
+
+      const restStartS = this.restTimerStartS.get(entity.index);
+      if (restStartS === undefined) {
+        this.restTimerStartS.set(entity.index, timeS);
+        return;
+      }
+      if (timeS - restStartS < pieces.throw.restDurationS) {
+        return;
+      }
     }
+
+    this.settleStick(entity, timeS, timedOut);
+  }
+
+  private settleStick(
+    entity: Entity,
+    timeS: number,
+    forcedByTimeout: boolean,
+  ): void {
+    entity.setValue(StickState, 'phase', StickPhase.Settled);
+    this.restTimerStartS.delete(entity.index);
+    this.flyingStartS.delete(entity.index);
+    if (forcedByTimeout) {
+      log('warn', 'state', 'stick force-settled — never came to rest', {
+        entityIndex: entity.index,
+        maxFlightTimeS: pieces.throw.maxFlightTimeS,
+      });
+    } else {
+      log('debug', 'state', 'stick settled', { entityIndex: entity.index });
+    }
+
+    let position: Vec3 = [0, 0, 0];
+    const object3D = entity.object3D;
+    if (object3D) {
+      object3D.getWorldPosition(this.tmpComPos);
+      position = [this.tmpComPos.x, this.tmpComPos.y, this.tmpComPos.z];
+    }
+    gameEvents.emit('Settled', {
+      stickId: String(entity.index),
+      position,
+      timeS,
+    });
   }
 
   private pulseHapticAndFoley(hand: Hand | null, pattern: HapticPulse): void {
