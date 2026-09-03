@@ -4515,9 +4515,10 @@ printf 'SUBSYSTEM=="usb", ATTR{idVendor}=="2833", MODE="0666", TAG+="uaccess"\n'
 ```
 
 If it still says `no permissions`, unplug/replug the cable once so the
-rule applies to a fresh node. Not yet confirmed applied at the time of
-writing (handed to Erik mid-headset-test); the M5 "72 Hz verified ON
-Quest 2" item depends on adb access being back.
+rule applies to a fresh node. **Confirmed applied the same evening**:
+node came up `crw-rw-rw-+`, adb went `no permissions` → `unauthorized`
+(fresh key exchange after the server restart — Erik re-accepted the
+in-headset prompt) → `device`.
 
 Two more USB-session notes worth keeping: `adb shell am start -a
 android.intent.action.VIEW -d "<url>"` opens the Quest browser directly
