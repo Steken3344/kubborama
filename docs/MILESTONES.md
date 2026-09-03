@@ -450,14 +450,16 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       Fixed by launching the smoke-test's browser with
       `--ignore-certificate-errors`.
 - [x] README updated with "install as an app" instructions.
-- [ ] **GATE (Erik, headset): open the deployed URL in the Quest
-      browser, install via the browser menu, confirm an icon appears in
-      the Quest app library and the installed app launches fullscreen
-      without browser chrome** 🎧 — not yet done, blocks tagging
-      v0.7-m6. This is the one thing the mechanical verification above
-      cannot substitute for.
-- Review gate → tag v0.7-m6 → POC COMPLETE 🎉 (once the gate above
-  passes)
+- [x] **GATE deprioritized by Erik, 2026-09-03**: tried opening the
+      deployed URL in the Quest browser, didn't notice an install
+      prompt/any visible difference, and said it's not worth chasing
+      further — the game is played in-browser day to day regardless, so
+      installability is a nice-to-have, not something blocking further
+      work. Not investigated further (may need a specific browser-menu
+      path on Quest's browser version, or the criteria may need a
+      revisit) — leave as a low-priority follow-up if it ever becomes
+      relevant, not a blocker.
+- Review gate → tag v0.7-m6 → POC COMPLETE 🎉
 
 ## M7 — MP1 co-presence (multiplayer) `status: MP1+MP2 confirmed live end-to-end with 2 real headsets (2026-09-02); post-review hardening done`
 
