@@ -4359,3 +4359,56 @@ tcp:8081` set up, `adb shell am start -a android.intent.action.VIEW -d
 session (a nice trick worth remembering — no need to ask Erik to
 manually type the URL in-headset next time), Erik accepted the cert
 warning, and confirmed the scene rendered (grass court + kubbs visible).
+
+## 2026-09-03 — M2 headset gate PASSED (qualitative), tagged v0.3-m2
+
+The project's oldest open gate, blocked since M2 on "how does Erik's
+real-headset feel data reach a session." First real headset pass over
+the newly-working USB/adb route (see the entry above): Erik threw
+10-15 flat + 10-15 backspin throws at varied distances and reported
+"det flyter på fint" — then, asked specifically about distance
+accuracy, spin realism, release timing, perceived weight, and anything
+distracting (haptics, bounces, grip), answered "allt bra, godkänn
+gaten." Gate passed on his explicit approval; v0.3-m2 tagged.
+
+**Honest scope note**: the gate as written also wanted the throws
+"recorded to JSON." That did NOT happen. Three routes to get telemetry
+out of the headset's browser tab were tried this session and all
+ruled out:
+
+1. **Chrome remote debugging over adb** — the Quest browser DOES expose
+   a `chrome_devtools_remote` socket (`adb forward tcp:9333
+localabstract:chrome_devtools_remote` works), but `/json/list`
+   returns only the browser's own chrome:// UI panels and the
+   registered service worker — the actual content tab is never listed.
+   Meta's browser appears to withhold content-tab targets from the
+   remote protocol even with USB debugging on. Not a config issue on
+   our side.
+2. **IWSDK's own MCP bridge** — the dev summary says the injected
+   runtime "only activates on localhost/local networks," and the Quest
+   tab WAS on `https://localhost:8081` via adb reverse — but
+   `connectedClientCount` stayed 0. The bridge only ever connects the
+   CLI's managed browser, not an arbitrary tab hitting the same URL.
+3. **The tweakpane telemetry-export button** — a flat DOM overlay that
+   disappears once the immersive session starts (no `dom-overlay` WebXR
+   feature is requested anywhere), and its "Export telemetry JSON
+   (console)" button only console.logs anyway — no clipboard, no
+   download — so it needs devtools access to read even in 2D mode,
+   which is route 1 again.
+
+**Follow-up that would close the numbers half properly**: a dev-only
+telemetry relay — the app POSTs each throw record to the Vite dev
+server (a tiny middleware in `vite.config.ts` appending to a local
+JSON file, dev mode only, never in the production build). The headset
+already reaches the dev server over adb reverse, so this needs no new
+network path. Not built this session — Erik was mid-test and the
+qualitative pass was the point; logged here so the next calibration
+session doesn't rediscover the same three dead ends.
+
+**Why passing on words alone is legitimate here**: this is a FEEL
+calibration gate. The numbers were meant to make Erik's perception
+reproducible as golden-throw profiles, not to substitute for it. His
+perception, across both styles with nothing flagged, IS the gate's
+core question answered. The golden-throw regression suite already
+exists (synthetic 72 Hz sweep against the same target bands, see M2 in
+docs/MILESTONES.md) and stays as the automated guard.

@@ -67,7 +67,7 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       Found and fixed two real bugs this way — see docs/DECISIONS.md.
 - Review gate → tag v0.2-m1
 
-## M2 — Throwing (THE milestone) `status: in progress — pending Erik's headset calibration gate`
+## M2 — Throwing (THE milestone) `status: DONE — headset gate PASSED 2026-09-03`
 
 - [x] core/throwRelease.ts (TDD): ring buffer, frame-averaged release,
       lever-arm v_com = v_hand + ω×r — heavily unit-tested (8 tests,
@@ -123,8 +123,17 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       emulator — logged in docs/QUESTIONS.md
 - **GATE (Erik, headset): feel calibration — 10-15 flat + 10-15 backspin
   throws recorded to JSON; structured feedback (words + numbers)** 🎧
-  — not yet done, blocks tagging v0.3-m2
-- Review gate → tag v0.3-m2
+  — ✅ PASSED 2026-09-03, on Erik's explicit approval ("allt bra,
+  godkänn gaten"), first real headset session over the new USB/adb
+  route. Qualitative only: he threw both styles at varied distances and
+  reported the whole thing "flyter på fint" with nothing off on
+  distance, spin, release timing, weight or haptics. The "recorded to
+  JSON" half was NOT done — no route existed to get telemetry out of
+  the headset's browser tab this session (three approaches tried and
+  ruled out, see docs/DECISIONS.md) — so the gate passes on words, not
+  numbers. Tagged v0.3-m2. A dev-only telemetry relay is the follow-up
+  that would close the numbers half for future calibration passes.
+- Review gate → tag v0.3-m2 ✅
 
 ## M3 — Toppling, rounds & stats `status: DONE`
 
