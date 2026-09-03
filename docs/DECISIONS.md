@@ -4526,3 +4526,50 @@ from the session (no in-headset typing); and `adb logcat -d` without a
 tight `-t` limit hangs for minutes over USB on this headset — run the
 filter on-device (`adb shell "logcat -d -t 400 <TAG>:I '*:S'"`) with a
 `timeout`, never a bare dump.
+
+## 2026-09-03 — M5 frame rate measured on the real Quest 2: 90 Hz, 89-90 fps
+
+The M5 checklist wanted "72 Hz verified ON Quest 2 (chrome-devtools via
+adb)". chrome-devtools is off the table (the Quest browser exposes a
+devtools socket but never lists its content tab — see the M2-gate
+entry above), so this used the compositor's own per-app stats instead:
+the `VrApi` logcat tag, which Meta's runtime prints once per second per
+VR client (`FPS=<actual>/<target>,Prd=…,Tear=…,Stale=…,App=<ms>,
+GPU%=…,LCnt=<layers>…`). Method that actually works on this headset:
+
+- Filter ON the device, never dump: `adb shell "logcat -d -t 12000 |
+grep VrApi | grep ' <pid> '"` with `timeout` — a bare `adb logcat -d`
+  hangs for minutes over USB, and `-t N` counts lines of the WHOLE
+  buffer before tag filtering, so a small `-t` with `VrApi:I '*:S'`
+  returns nothing (VrApi is ~2 lines/s among thousands).
+- Map pids first: `adb shell pidof com.oculus.browser` (10742 here) vs
+  `com.oculus.vrshell` (3174) — both log VrApi; only the browser's
+  lines are the game.
+- Aggregate with `LC_ALL=C awk` — the machine's sv_SE locale makes awk
+  read `0.87` as 0 otherwise (cost one confused pass).
+- `LCnt` (layer count) separates phases: 8-12 layers = 2D shell +
+  panel UI during enter/exit-XR transitions; 1-2 layers = the
+  immersive session. Every fps dip in the sample sat in a high-LCnt
+  transition second, not in gameplay.
+
+**Result, ~35 s of live throwing (21:10:38-21:11:12)**: the browser
+negotiated a **90 Hz** target for the WebXR session — Quest 2's
+browser does that when it can, the 72 Hz in the checklist was the
+conservative assumption — and the app held **89-90 fps with 0 stale
+frames** throughout, app render **≈6.5 ms avg, 9.3 ms max** against
+the 11.1 ms budget at 90 Hz. Two honest caveats: (1) one ~2 s hitch
+mid-session (21:11:08-09: 84 fps, 12 stale frames, 2 tears) with no
+identified cause — a round-end reset, a settle burst, or GC are all
+candidates, none confirmed; (2) `GPU%` peaked at 0.93 — the GPU is
+near its ceiling AT 90 Hz, so there's little headroom for the M5
+environment pass's decorative additions at that rate (at 72 Hz the
+budget is 13.9 ms and it would be comfortable). Follow-up if longer
+sessions show hitching: request 72 Hz explicitly with
+`XRSession.updateTargetFrameRate(72)` — trading the 90 Hz smoothness
+nobody asked for against guaranteed headroom. Not done now; one 2 s
+hitch in 35 s isn't evidence enough to give up 90 Hz.
+
+The "72 Hz verified" checklist item is checked on this basis — the
+target was exceeded, not merely met. The M5 GATE (Erik: perf + comfort
+
+- full experience pass) is his call, put to him with these numbers.

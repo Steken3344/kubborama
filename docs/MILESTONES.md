@@ -412,8 +412,19 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       real bug during live testing — the rack's visual mesh had no
       collider, so sticks fell straight through to the ground — before
       any commit. Full writeup in docs/DECISIONS.md.
-- [ ] 72 Hz verified ON QUEST 2 (chrome-devtools via adb — needs USB card)
-- [ ] 72 Hz verified ON QUEST 2 (chrome-devtools via adb — needs USB card)
+- [x] **Frame rate verified ON QUEST 2, 2026-09-03** — not via
+      chrome-devtools (the Quest browser withholds its content tab from
+      remote debugging, see docs/DECISIONS.md) but via the compositor's
+      own `VrApi` logcat stats over the new USB/adb route. The browser
+      negotiated **90 Hz** for the immersive session (not 72) and the
+      app held **89-90 fps, 0 stale frames** through ~35 s of live
+      throwing, app render ≈6.5 ms avg / 9.3 ms max against the 11.1 ms
+      budget at 90 Hz. Caveats: one ~2 s hitch mid-session (84 fps,
+      12 stale frames, cause unknown), and GPU utilisation peaked at
+      93 % — little headroom AT 90 Hz (comfortable at 72). All other
+      dips sat in the enter/exit-XR transitions (`LCnt` 8-12 layers),
+      not gameplay. Follow-up idea if longer sessions hitch: request
+      72 Hz explicitly via `XRSession.updateTargetFrameRate(72)`.
 - **GATE (Erik, headset): perf + comfort + full experience pass** 🎧
 - Review gate → tag v0.6-m5 once the rest of M5 closes out
 
