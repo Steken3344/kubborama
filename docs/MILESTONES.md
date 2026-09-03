@@ -436,9 +436,15 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       precaches the JS/CSS/HTML/physics-wasm app shell (workbox's
       default 2 MB per-file cap raised to 10 MB — both the Havok wasm
       and the main bundle exceed the default and are load-bearing);
-      textures/audio/glTF/fonts use a `CacheFirst` runtime-caching rule
-      instead of precache, since they're numerous and largely
-      per-scene rather than needed before the app can render at all.
+      the UIKitML panels and scene JSON are precached too (both
+      fetch()-loaded at startup, small — needed to START offline); the
+      17 UIKit font chunks are EXCLUDED from precache via a `font-*`
+      manualChunks name + `globIgnores` (~7 MB the app never loads;
+      third review, 2026-09-03 — the first cut precached them all).
+      Textures/audio/glTF go through a `CacheFirst` runtime rule that
+      matches by file extension, since Three's loaders use fetch() and
+      report an empty `request.destination` (an 'audio' destination
+      check never matched a single .ogg). Precache: 19 entries, 9.5 MB.
       `autoUpdate` means a deploy is picked up on next launch with no
       manual cache-bust step and no player stuck on a stale build.
 - [x] Verified installable (mechanically, without a headset): a

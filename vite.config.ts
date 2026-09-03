@@ -68,24 +68,34 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // App-shell precache: JS/CSS/HTML/the physics wasm — small
-        // enough in count to precache safely and needed before the
-        // scene can render at all. Textures/audio/glTF/fonts are
-        // numerous and largely per-scene, so they're left to the
-        // runtime rule below instead of bloating the initial install.
-        globPatterns: ['**/*.{js,css,html,wasm}'],
+        // App-shell precache — everything needed to START the app
+        // offline: JS/CSS/HTML, the physics wasm, the UIKitML panels
+        // and the scene JSON (both fetch()-loaded at startup, small).
+        // Font chunks are excluded (see manualChunks above). Textures/
+        // audio/glTF are numerous and per-scene, so they go through
+        // the runtime rule below instead of bloating the install.
+        globPatterns: [
+          '**/*.{js,css,html,wasm}',
+          'ui/**/*.uikitml',
+          'scenes/**/*.json',
+        ],
+        globIgnores: ['**/font-*.js'],
         // The Havok wasm (~2 MB) and the main bundle exceed workbox's
         // 2 MB default cap — both are load-bearing for the app shell,
         // so raise it rather than silently excluding them.
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         runtimeCaching: [
           {
+            // Three's loaders (audio, glTF, textures, UIKitML) go
+            // through fetch(), so `request.destination` is '' for
+            // them — match by extension, not destination (code review,
+            // 2026-09-03: an 'audio' destination check never matched a
+            // single .ogg).
             urlPattern: ({ request }) =>
-              ['image', 'audio', 'font'].includes(request.destination) ||
-              request.url.endsWith('.glb') ||
-              request.url.endsWith('.gltf') ||
-              request.url.endsWith('.ktx2') ||
-              request.url.endsWith('.hdr'),
+              ['image', 'font'].includes(request.destination) ||
+              /\.(?:ogg|glb|gltf|ktx2|hdr|uikitml|json)$/u.test(
+                new URL(request.url).pathname,
+              ),
             handler: 'CacheFirst',
             options: {
               cacheName: 'kubborama-assets',
@@ -102,7 +112,20 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: process.env.NODE_ENV !== 'production',
     target: 'esnext',
-    rollupOptions: { input: './index.html' },
+    rollupOptions: {
+      input: './index.html',
+      output: {
+        // Every UIKit MSDF font ships as its own ~400-660 KB JS chunk
+        // (17 of them, ~7 MB), only one or two of which the app ever
+        // loads. Naming them `font-*` lets the PWA precache below
+        // exclude them by glob (code review, 2026-09-03: they were
+        // being precached, doubling the install download for nothing).
+        manualChunks(id) {
+          const match = id.match(/\/@pmndrs\/msdfonts\/dist\/([^/]+)\.js$/u);
+          return match ? `font-${match[1]}` : undefined;
+        },
+      },
+    },
   },
   esbuild: { target: 'esnext' },
   optimizeDeps: {

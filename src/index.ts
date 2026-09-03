@@ -94,9 +94,12 @@ World.create(
   // doesn't matter for correctness (subscriptions, not query timing),
   // but registering last keeps init order readable.
   world.registerSystem(TuningLabSystem);
-  // MP1 co-presence (docs/PLAN.md §10): independent of every other
-  // system here — only reads player.head/gripSpaces and creates its
-  // own peer-avatar entities, so registration order doesn't matter.
+  // Multiplayer (docs/PLAN.md §10). Its match logic reacts to
+  // MenuSystem's Reset{cause:'roundEnd'} — emitted after MenuSystem's
+  // own teleport — rather than to RoundEnded, and mirrors a home pose
+  // captured at its own init(), so it is genuinely independent of
+  // registration order (see MultiplayerSystem.onResetForMatch()).
+  // Registered last only for readability.
   world.registerSystem(MultiplayerSystem);
 
   document.getElementById('splash')?.classList.add('splash-hidden');

@@ -42,13 +42,27 @@ try {
   await page.goto(url, { waitUntil: 'load', timeout: TIMEOUT_MS });
   await page.waitForTimeout(5000);
 
-  const info = await page.evaluate(() => ({
+  /* global navigator -- the callback below runs in the browser via page.evaluate */
+  const info = await page.evaluate(async () => ({
     sceneContainerChildren:
       document.getElementById('scene-container')?.children.length ?? 0,
     canvasCount: document.querySelectorAll('canvas').length,
+    // M6 PWA: the production build must ship a linked manifest and an
+    // ACTIVE service worker — the same criteria a browser's install
+    // prompt checks. Regression-guards the PWA claim instead of
+    // relying on a throwaway script (code review, 2026-09-03).
+    manifestLinked: !!document.querySelector('link[rel="manifest"]'),
+    serviceWorkerActive: !!(await navigator.serviceWorker.getRegistration())
+      ?.active,
   }));
 
   const failures = [];
+  if (!info.manifestLinked) {
+    failures.push('PWA manifest <link> missing from index.html');
+  }
+  if (!info.serviceWorkerActive) {
+    failures.push('PWA service worker did not register/activate');
+  }
   if (pageErrors.length > 0) {
     failures.push(`page errors: ${pageErrors.join('; ')}`);
   }

@@ -195,15 +195,15 @@ const FAR_Z = -getCourtPreset(defaultCourtPreset).lengthM;
  *    the exact mirror of the near rack's own authored pose, computed
  *    with the same function, not hand-derived) exists at the far
  *    baseline. Sticks move there when it becomes the guest's turn:
- *    `MenuSystem`'s own `RoundEnded`/`Reset` handler already resets
- *    every stick to its authored NEAR-rack home pose (registered, so
- *    subscribed, before this system — see src/index.ts), so
- *    `moveSticksToFarRack()` only needs to run AFTER that and mirror
- *    each stick's now-current (near-rack) pose, rather than
- *    maintaining a second hardcoded layout. This also means the
- *    off-turn player literally can't reach the sticks — a natural,
- *    non-invasive turn "enforcement" that needed none of the risky
- *    grab-component surgery flagged above.
+ *    the turn advance rides on `MenuSystem`'s `Reset{cause:'roundEnd'}`
+ *    (emitted only after its own teleport of every stick back to the
+ *    near rack), and `moveSticksToFarRack()` mirrors a home pose
+ *    captured once at init() — so neither the timing nor the pose
+ *    source depends on which order the two systems were registered
+ *    in (see onResetForMatch()). This also means the off-turn player
+ *    literally can't reach the sticks — a natural, non-invasive turn
+ *    "enforcement" that needed none of the risky grab-component
+ *    surgery flagged above.
  */
 export class MultiplayerSystem extends createSystem({}) {
   private room?: Room;
@@ -265,19 +265,7 @@ export class MultiplayerSystem extends createSystem({}) {
       if (!object3D) {
         continue;
       }
-      this.stickNearRackHomePoses.set(`stick-${i}`, {
-        position: [
-          object3D.position.x,
-          object3D.position.y,
-          object3D.position.z,
-        ],
-        quaternion: [
-          object3D.quaternion.x,
-          object3D.quaternion.y,
-          object3D.quaternion.z,
-          object3D.quaternion.w,
-        ],
-      });
+      this.stickNearRackHomePoses.set(`stick-${i}`, this.localPoseOf(object3D));
     }
 
     const roomId = this.roomIdFromUrl();
@@ -363,9 +351,9 @@ export class MultiplayerSystem extends createSystem({}) {
       gameEvents.on('KubbFelled', (event) => {
         this.onKubbFelledForMatch(event.entityId);
       }),
-      gameEvents.on('RoundEnded', () => {
-        this.onRoundEndedForMatch();
-      }),
+      // No RoundEnded subscription on purpose — the turn advance rides
+      // on MenuSystem's Reset{cause:'roundEnd'} instead; see
+      // onResetForMatch()/advanceTurnForMatch() for why.
       gameEvents.on('Reset', (event) => {
         this.onResetForMatch(event.cause);
       }),
@@ -388,10 +376,25 @@ export class MultiplayerSystem extends createSystem({}) {
       // HUD's match-row/role-row otherwise stay visible with stale
       // text into subsequent solo play.
       if (!this.hasMultiplayerPeer()) {
+        // Undo the physical side of the match too, not just the state
+        // (second review, 2026-09-03): a former guest otherwise stays
+        // standing at the far baseline — and if the host reloads and
+        // rejoins with a later joinedAtMs, the stranded player becomes
+        // host with the sticks at the near rack, out of reach of both.
+        const sticksAtFarRack = this.matchState.currentTurn === 'guest';
         this.matchState = initialMatchState();
-        this.hasRepositionedAsGuest = false;
         this.pendingMatchSync = null;
         this.pendingThrowRelay = null;
+        if (this.hasRepositionedAsGuest) {
+          const origin = defaultPose();
+          this.player.position.set(...origin.position);
+          this.player.quaternion.set(...origin.quaternion);
+          this.hasRepositionedAsGuest = false;
+          log('info', 'net', 'returned to default origin — room empty', {});
+        }
+        if (sticksAtFarRack) {
+          this.moveSticksToNearRack();
+        }
         gameEvents.emit('MultiplayerPeerDisconnected', {});
       }
     };
@@ -536,20 +539,7 @@ export class MultiplayerSystem extends createSystem({}) {
       if (!object3D) {
         continue;
       }
-      pieces.push({
-        id,
-        position: [
-          object3D.position.x,
-          object3D.position.y,
-          object3D.position.z,
-        ],
-        quaternion: [
-          object3D.quaternion.x,
-          object3D.quaternion.y,
-          object3D.quaternion.z,
-          object3D.quaternion.w,
-        ],
-      });
+      pieces.push({ id, ...this.localPoseOf(object3D) });
     }
     void this.pieceSyncAction.send(buildPieceSyncMessage(pieces));
   }
@@ -591,12 +581,7 @@ export class MultiplayerSystem extends createSystem({}) {
       buildThrowRelayMessage({
         stickId: pieceId,
         position: event.releasePosition,
-        quaternion: [
-          object3D.quaternion.x,
-          object3D.quaternion.y,
-          object3D.quaternion.z,
-          object3D.quaternion.w,
-        ],
+        quaternion: this.localPoseOf(object3D).quaternion,
         linearVelocity: event.releaseVelocity,
         angularVelocity: event.angularVelocity,
         hand: event.handId,
@@ -657,7 +642,38 @@ export class MultiplayerSystem extends createSystem({}) {
     this.broadcastMatchState();
   }
 
-  private onRoundEndedForMatch(): void {
+  /** The one Reset subscriber that cares WHY it was reset. MenuSystem
+   * is the single emitter (src/systems/menu.ts resetAll()), and it
+   * emits only AFTER teleporting every piece back to its home pose:
+   *
+   * - 'roundEnd' — RoundSystem's auto-continuation into the next
+   *   round: advance the turn (and place sticks at whichever rack the
+   *   new turn needs). Driving this from the nested Reset rather than
+   *   from RoundEnded itself is what makes it independent of system
+   *   registration order: no matter which order the two systems
+   *   subscribed to RoundEnded in, the far-rack move here can never
+   *   be undone by MenuSystem's teleport, because it only ever runs in
+   *   response to that teleport having finished. (Second review,
+   *   2026-09-03: the earlier RoundEnded-based version WAS order-
+   *   dependent — flip the registration and the teleport would have
+   *   wiped the far-rack placement — and gh#12 had been closed on the
+   *   mistaken claim that it wasn't.)
+   * - 'manual' — Reset button / mode-switch relayout: wipe the match.
+   *   Sticks are already home (near rack) courtesy of the same
+   *   teleport, which matches the fresh state's 'host' turn. */
+  private onResetForMatch(cause: GameEvents['Reset']['cause']): void {
+    if (cause === 'roundEnd') {
+      this.advanceTurnForMatch();
+      return;
+    }
+    if (!this.isHostNow() || !this.hasMultiplayerPeer()) {
+      return;
+    }
+    this.setMatchState(initialMatchState());
+    this.broadcastMatchState();
+  }
+
+  private advanceTurnForMatch(): void {
     if (!this.isHostNow() || !this.hasMultiplayerPeer()) {
       return;
     }
@@ -670,45 +686,37 @@ export class MultiplayerSystem extends createSystem({}) {
   }
 
   /** Mirrors each stick's captured near-rack home pose
-   * (`stickNearRackHomePoses`, set once in init()) to place it at the
-   * far rack instead — no ordering dependency on MenuSystem's own
-   * reset having already run first (code review, 2026-09-02; see the
-   * home-pose capture's own comment in init()). Turning turn back to
-   * 'host' needs no corresponding call: MenuSystem's next reset
-   * already puts sticks back at the near rack. */
+   * (`stickNearRackHomePoses`, set once in init()) to the far rack —
+   * the same transform as the guest's own player teleport, not a
+   * second hardcoded layout. */
   private moveSticksToFarRack(): void {
+    this.placeSticks((nearRackPose) =>
+      mirrorPoseToFarBaseline(nearRackPose, FAR_Z),
+    );
+  }
+
+  /** Back to the captured near-rack home pose — used when the room
+   * empties while sticks were at the far rack (see onPeerLeave); the
+   * normal turn-back-to-host path needs no call since MenuSystem's own
+   * reset already puts them there. */
+  private moveSticksToNearRack(): void {
+    this.placeSticks((nearRackPose) => nearRackPose);
+  }
+
+  private placeSticks(transform: (nearRackPose: Pose) => Pose): void {
     for (let i = 0; i < STICKS_PER_ROUND; i++) {
       const entity = this.networkedPieces.get(`stick-${i}`);
       const nearRackPose = this.stickNearRackHomePoses.get(`stick-${i}`);
       if (!entity || !nearRackPose) {
         continue;
       }
-      const farRackPose = mirrorPoseToFarBaseline(nearRackPose, FAR_Z);
+      const target = transform(nearRackPose);
       this.physicsSystem.setBodyTransform(entity, {
-        position: farRackPose.position,
-        quaternion: farRackPose.quaternion,
+        position: target.position,
+        quaternion: target.quaternion,
       });
       entity.setValue(StickState, 'phase', StickPhase.Racked);
     }
-  }
-
-  /** Only a genuine 'manual' reset (Reset button, or a mode-switch
-   * relayout) wipes MatchState. RoundSystem's own auto-continuation
-   * emits Reset with cause 'roundEnd' via MenuSystem's nested
-   * resetAll() call (see src/core/events.ts's own note) — that must
-   * NOT touch MatchState, since onRoundEndedForMatch() (subscribed to
-   * the same outer RoundEnded event, running right after this one —
-   * see src/index.ts's registration order) still needs the
-   * pre-round-end matchState to compute the turn advance from.
-   * Verified by reproduction (docs/DECISIONS.md, 2026-09-02): without
-   * this guard, every round-end wiped kubb counts and turn back to
-   * their initial values. */
-  private onResetForMatch(cause: GameEvents['Reset']['cause']): void {
-    if (cause !== 'manual' || !this.isHostNow() || !this.hasMultiplayerPeer()) {
-      return;
-    }
-    this.setMatchState(initialMatchState());
-    this.broadcastMatchState();
   }
 
   /** Applies a match-state snapshot only when the sender is the peer
@@ -839,6 +847,25 @@ export class MultiplayerSystem extends createSystem({}) {
     void this.presenceAction.send(message);
   }
 
+  /** A piece's LOCAL pose as a fresh Pose — pieces are direct children
+   * of the level root, so local == world for them (unlike the player
+   * rig parts writePose() below reads in WORLD space). Allocates, so
+   * only for init/event paths and the 20 Hz send tick, which already
+   * builds a fresh message — never per frame. Extracted on the third
+   * copy of the same eleven-line array literal (second review,
+   * 2026-09-03; CLAUDE.md's extract-on-second-occurrence rule). */
+  private localPoseOf(object3D: Object3D): Pose {
+    return {
+      position: [object3D.position.x, object3D.position.y, object3D.position.z],
+      quaternion: [
+        object3D.quaternion.x,
+        object3D.quaternion.y,
+        object3D.quaternion.z,
+        object3D.quaternion.w,
+      ],
+    };
+  }
+
   private writePose(object3D: Object3D, target: Pose): void {
     object3D.getWorldPosition(this.tmpPos);
     object3D.getWorldQuaternion(this.tmpQuat);
@@ -900,10 +927,16 @@ export class MultiplayerSystem extends createSystem({}) {
     const object3D =
       await this.world.assets.instantiate<Object3D>('peer-avatar');
     this.peerAvatarsInFlight.delete(peerId);
-    if (this.peerAvatars.has(peerId)) {
-      // Peer left and rejoined (or somehow raced past the guard above)
-      // while this instantiate was in flight — don't leak a second
-      // tracked entity for the same peerId.
+    const peerStillPresent = peerId in (this.room?.getPeers() ?? {});
+    if (this.peerAvatars.has(peerId) || !peerStillPresent) {
+      // Either the peer already has an avatar, or it LEFT while this
+      // instantiate was in flight — removePeerAvatar() found nothing to
+      // dispose back then, so an avatar created now would be a ghost
+      // nobody ever removes (second review, 2026-09-03). Route the
+      // freshly-instantiated object through an entity so its GPU
+      // resources are released the same way as any other avatar
+      // (CLAUDE.md: dispose(), never a bare destroy()).
+      this.world.createTransformEntity(object3D).dispose();
       return;
     }
     const entity = this.world.createTransformEntity(object3D);

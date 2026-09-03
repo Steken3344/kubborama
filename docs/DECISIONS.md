@@ -4412,3 +4412,77 @@ perception, across both styles with nothing flagged, IS the gate's
 core question answered. The golden-throw regression suite already
 exists (synthetic 72 Hz sweep against the same target bands, see M2 in
 docs/MILESTONES.md) and stays as the automated guard.
+
+## 2026-09-03 — Third review round: gh#12 was closed on a false premise, plus PWA cache fixes
+
+A third independent review (`fdebf92..46c9fc1`: the second-round
+fixes, the gh#9-#14 closures, M6 PWA) found no Critical issues and
+verified the force-settle subscription, matchSync gating, throw-relay
+buffering and disconnect event correct against the actual elics and
+trystero sources. Four Important findings, all fixed:
+
+**1. gh#12's closure rationale was wrong — the ordering dependency was
+still real.** I had claimed that after gh#13 (captured home pose)
+"flipping the two systems' registration order no longer changes the
+outcome." False: with MultiplayerSystem subscribed to RoundEnded before
+MenuSystem, `moveSticksToFarRack()` would run first and MenuSystem's
+own teleport-home would then put every stick straight back at the near
+rack. gh#13 removed the pose-READ dependency, not the write-ORDER one —
+and three comments (multiplayer.ts class doc, `moveSticksToFarRack`,
+src/index.ts) contradicted each other about it. **Fix, by design
+rather than by guard**: MultiplayerSystem no longer subscribes to
+RoundEnded at all. The turn advance and far-rack placement now ride on
+MenuSystem's `Reset{cause:'roundEnd'}` — the single emitter, fired only
+AFTER its own teleport — so the far-rack move can never be undone by
+that teleport in either registration order. `onResetForMatch()` is now
+the one place that branches on cause ('roundEnd' → advance turn,
+'manual' → wipe). Traced in both orders; all three comments corrected;
+gh#12 annotated with the correction and stays closed because the
+contract it asked to test no longer exists. Lesson logged for myself:
+"order-independent" is a claim to trace in BOTH orders before writing
+it down, not to infer from having fixed one half.
+
+**2. Disconnect left the guest's rig stranded at the far baseline.**
+The gh#10 fix reset `hasRepositionedAsGuest` but never moved
+`this.player` back, so a former guest stayed at the far baseline — and
+if the host reloaded and rejoined with a later `joinedAtMs`, the
+stranded player became host with the sticks at the near rack, out of
+reach for both. Now: when the room empties, the rig returns to the
+default origin and — only if the turn was 'guest' (sticks actually at
+the far rack) — sticks return to the near rack via a new
+`moveSticksToNearRack()` (both rack moves share `placeSticks()`).
+
+**3. PWA precached all 17 UIKit font chunks (~7 MB the app never
+loads)** despite the docs saying fonts were runtime-cached: they're JS
+chunks, so `**/*.js` caught them. Fix: a `manualChunks` rule names every
+`@pmndrs/msdfonts` module `font-<name>`, and workbox `globIgnores:
+['**/font-*.js']` drops them. Precache went 32 entries / 15.6 MB →
+19 entries / 9.5 MB, verified in the generated `dist/sw.js`.
+
+**4. The runtime asset rule never matched audio (or UIKitML, or scene
+JSON).** Three's loaders go through `fetch()`, so `request.destination`
+is `''` — an `'audio'` destination check matched zero `.ogg` files, and
+the panels/scene JSON weren't cached anywhere, so the "installable app
+shell" could not actually start offline. Fix: `ui/**/*.uikitml` and
+`scenes/**/*.json` are now precached (small, needed at startup) and the
+runtime rule matches by extension (`.ogg/.glb/.gltf/.ktx2/.hdr/
+.uikitml/.json`) instead of destination. Offline START is now an
+explicit goal, and the earlier M6 entry's caching description above is
+superseded by this one.
+
+Minor findings also taken: a ghost-avatar path (peer leaves during
+`instantiate()` — now disposed through an entity instead of orphaned);
+a redundant `restTimerStartS.delete` in `onRelease()` (removed — the
+qualify/disqualify subscriptions are the single owner); a one-line note
+on the force-settle stamp being last frame's time when a relay lands
+from a network callback; an eleven-line `Object3D → Pose` array literal
+that had reached its third copy (`localPoseOf()`, CLAUDE.md's
+extract-on-second-occurrence rule); and the throwaway PWA check folded
+into `scripts/smoke-test.mjs` (manifest link + ACTIVE service worker
+are now asserted on every build). Left as notes: `pendingThrowRelay`
+being single-slot (a second guest throw inside one hello RTT is
+implausible); `display: 'fullscreen'` vs `'standalone'` for Quest's
+installer (unverifiable from here, gate deprioritized anyway).
+
+Mechanical pass green: tsc/eslint/prettier/vitest (218), build, smoke
+(now with the PWA assertions).

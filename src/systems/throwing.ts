@@ -86,6 +86,11 @@ export class ThrowingSystem extends createSystem({
     // timer, so a later re-throw can never inherit an old timestamp
     // and force-settle instantly.
     this.queries.flyingSticks.subscribe('qualify', (entity) => {
+      // For a relayed throw this fires from a network callback, so the
+      // stamp is the LAST frame's time — ≤ 1 frame early against a 5 s
+      // timeout. Known edge: if the loop is paused (XR session blurred)
+      // when a relay lands, the stamp is older by the pause and the
+      // stick can force-settle early on resume. Accepted.
       this.flyingStartS.set(entity.index, this.currentTimeS);
     });
     this.queries.flyingSticks.subscribe('disqualify', (entity) => {
@@ -236,7 +241,8 @@ export class ThrowingSystem extends createSystem({
     });
 
     this.poseBuffers.delete(entity.index);
-    this.restTimerStartS.delete(entity.index);
+    // restTimerStartS/flyingStartS are owned by the flyingSticks
+    // qualify/disqualify subscriptions in init() — not cleared here.
   }
 
   /**
