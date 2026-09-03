@@ -240,7 +240,7 @@ browser_get_console_logs pattern filter. Port is dynamic: trust
 ## Toolchain & MCP (verified 2026-08-27)
 
 node v22.23.2 (.nvmrc pins 22.12.0, both satisfy engines range) · npm
-10.9.8 · git 2.43.0 · adb 1.0.41 (udev rules already installed) · gh
+10.9.8 · git 2.43.0 · adb 1.0.41 (Debian's 51-android.rules does NOT list Meta vendor 2833 — a local /etc/udev/rules.d/51-oculus.rules is required or the Quest shows "no permissions" after any USB re-enumeration; see docs/DECISIONS.md 2026-09-03) · gh
 2.96.0 (authed as Steken3344, push protection + secret scanning already
 enabled on the repo) · blender/godot not installed (optional, warn-only
 — godot needed only at Godot-port time, see docs/GODOT_PLAN_B.txt).

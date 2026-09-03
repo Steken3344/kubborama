@@ -4486,3 +4486,42 @@ installer (unverifiable from here, gate deprioritized anyway).
 
 Mechanical pass green: tsc/eslint/prettier/vitest (218), build, smoke
 (now with the PWA assertions).
+
+## 2026-09-03 — adb "no permissions" after USB re-enumeration: Debian's rules don't cover Meta
+
+Mid-session the Quest 2 went from `device` (authorized, working) to
+`no permissions (user erikkalstrom is not in the plugdev group)`. It
+had re-enumerated (`transport_id` 3 → 4, product id 5012 → 5013 — the
+headset switches USB config when it sleeps/wakes or changes mode), and
+the new device node `/dev/bus/usb/001/006` came up `root:root
+crw-rw-r--` — world-READABLE only. Root cause: Debian's
+`/lib/udev/rules.d/51-android.rules` is a per-vendor/product whitelist
+and **Meta/Oculus (vendor `2833`) is not in it**; there was no local
+rule either (`/etc/udev/rules.d/` had only Jabra + powercap). The user
+is also not in `plugdev`. So the first enumeration working was luck
+(most likely a logind `uaccess` ACL on that particular node), not
+configuration — and CLAUDE.md's toolchain note "udev rules already
+installed" was wrong for the Quest specifically. Corrected there.
+
+**Fix (needs sudo — Erik runs it, not the session)**, a permanent rule
+for all Meta headsets, then reload + restart adb:
+
+```
+printf 'SUBSYSTEM=="usb", ATTR{idVendor}=="2833", MODE="0666", TAG+="uaccess"\n' \
+  | sudo tee /etc/udev/rules.d/51-oculus.rules \
+  && sudo udevadm control --reload-rules \
+  && sudo udevadm trigger --subsystem-match=usb --action=add \
+  && adb kill-server; sleep 1; adb devices -l
+```
+
+If it still says `no permissions`, unplug/replug the cable once so the
+rule applies to a fresh node. Not yet confirmed applied at the time of
+writing (handed to Erik mid-headset-test); the M5 "72 Hz verified ON
+Quest 2" item depends on adb access being back.
+
+Two more USB-session notes worth keeping: `adb shell am start -a
+android.intent.action.VIEW -d "<url>"` opens the Quest browser directly
+from the session (no in-headset typing); and `adb logcat -d` without a
+tight `-t` limit hangs for minutes over USB on this headset — run the
+filter on-device (`adb shell "logcat -d -t 400 <TAG>:I '*:S'"`) with a
+`timeout`, never a bare dump.
