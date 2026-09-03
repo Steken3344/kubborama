@@ -115,6 +115,13 @@ export interface GameEvents {
     state: MatchState;
     mySide: MatchSide;
   };
+  /** The room emptied out (the last multiplayer peer left) — a listener
+   * showing anything gated on an opponent being present (HudSystem's
+   * match-row/role-row) must hide it again, or it goes stale into
+   * subsequent solo play. Code review, 2026-09-02 (gh#10): MatchState-
+   * Changed alone can't express "no match anymore," it only ever
+   * carries a real state. */
+  MultiplayerPeerDisconnected: Record<string, never>;
 }
 
 export const gameEvents = new EventBus<GameEvents>();

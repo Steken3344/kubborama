@@ -25,6 +25,12 @@ const throwRelaySchema = z.object({
   quaternion: quaternionSchema,
   linearVelocity: vec3Schema,
   angularVelocity: vec3Schema,
+  // Which hand released the stick — carried through so the host's
+  // applied copy sets StickState.lastThrowerHand correctly (code
+  // review, 2026-09-02: without this, a stick thrown locally by the
+  // host earlier and later reused by the guest kept the HOST's own
+  // last hand, misattributing impact haptics to the wrong controller).
+  hand: z.enum(['left', 'right']),
 });
 export type ThrowRelayMessage = z.infer<typeof throwRelaySchema>;
 

@@ -597,3 +597,21 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       the first label anyone saw was "Spelare B:s tur." The host now
       announces initial state the moment roles resolve, and a new HUD
       row shows each player's own fixed identity. See docs/DECISIONS.md.
+- [x] **Second review round + remaining deferred findings closed
+      (2026-09-02/03)**: a second independent review confirmed all
+      prior fixes correct by hand-tracing and found one more Critical
+      (force-settle timer never stamped for a guest's relayed throw —
+      fixed via a `flyingSticks` qualify/disqualify subscription
+      instead of only `onRelease()`) plus authentication gaps in
+      `matchSync` (same sender-check pieceSync got) and an overclaiming
+      `hello`-validation comment (tightened + corrected). Then, while
+      Erik was AFK, closed all six remaining deferred findings
+      (gh#9-#14): relayed-throw hand attribution, a peer-avatar
+      creation TOCTOU, `moveSticksToFarRack()`'s ordering dependency
+      (now a captured home pose), HUD rows not clearing on peer
+      disconnect (new `MultiplayerPeerDisconnected` event), and a
+      guest's first-throw relay no longer silently dropped during the
+      role-resolution race (buffered + retried). 218 tests green. A
+      genuine unknown peer connected to the shared lobby during
+      verification gave an unplanned real confirmation of the
+      announce/role-row fixes. See docs/DECISIONS.md for full detail.

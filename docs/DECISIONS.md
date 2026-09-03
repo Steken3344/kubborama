@@ -4194,3 +4194,64 @@ peer disconnect" (noted on that issue rather than filed new);
 as-is until it shows up in a perf pass.
 
 Mechanical pass green (217 tests, +1), build, smoke, CI.
+
+## 2026-09-03 — Closed remaining deferred review findings (gh#9-#14)
+
+Worked through the six Important/Minor findings deferred from the two
+prior code reviews while Erik was AFK, since they were all well-scoped
+enough to fix without a live 2-headset session. All closed:
+
+- **gh#14** (haptic misattribution): `ThrowRelayMessage` gained a
+  `hand: 'left' | 'right'` field; `applyThrowRelay()` now sets
+  `StickState.lastThrowerHand` from it, matching what a local throw
+  already does.
+- **gh#11** (peer-avatar TOCTOU): a synchronous `peerAvatarsInFlight`
+  Set, checked/set BEFORE the `instantiate()` await, closes the window
+  where two presence messages arriving before the first instantiate
+  resolved could each pass the old (post-await-only) guard and leak a
+  duplicate entity.
+- **gh#13** (moveSticksToFarRack ordering dependency): each stick's
+  near-rack home pose is now captured ONCE in `init()` — reading the
+  authored transform before anything can move it — instead of reading
+  the CURRENT pose and assuming MenuSystem's reset already ran first.
+  Removes the src/index.ts registration-order dependency entirely; this
+  also incidentally makes the `Reset`-cause fix (2026-09-02) fully
+  order-independent too, since nothing MultiplayerSystem does for a
+  round-end any longer relies on what MenuSystem did first.
+- **gh#10** (HUD rows never clear on disconnect): new
+  `MultiplayerPeerDisconnected` event, emitted once the room's peer
+  count reaches zero (not on every leave in a hypothetical 3+ peer
+  room). `HudSystem` hides `match-row`/`role-row` on it.
+  `MultiplayerSystem` also resets its own `matchState` and
+  `hasRepositionedAsGuest` flag at the same point, so a later rejoin
+  starts clean rather than carrying stale state forward.
+- **gh#9** (guest's first throw dropped during role-resolution race):
+  `throwRelayAction`'s handler now buffers a single pending message
+  (`pendingThrowRelay`) when roles aren't resolved yet instead of
+  dropping it, and retries from the `hello` handler once they are —
+  same pattern as the existing `pendingMatchSync` buffer.
+- **gh#12** (missing regression test for the RoundEnded ordering
+  contract): downgraded rather than closed with a test. The gh#13 fix
+  above removes the last real ordering dependency this issue was about
+  — `moveSticksToFarRack()` no longer needs MenuSystem to have run
+  first, and the `Reset`-cause guard (2026-09-02) already made
+  `onResetForMatch`/`onRoundEndedForMatch` correct regardless of
+  handler registration order (traced by hand: flipping the two
+  systems' registration order in `src/index.ts` no longer changes the
+  outcome, since `onResetForMatch` no-ops on `cause: 'roundEnd'`
+  independent of when it runs relative to the turn advance). A proper
+  integration test through the real ECS/EventBus is still a legitimate
+  future addition but no longer protects against an active bug — left
+  open as tech-debt, not fixed with a test this pass.
+
+Mechanical pass green: tsc/eslint/prettier/vitest (218 tests, +1 for
+the new `hand` field's rejection case), build, smoke. Live-verified in
+the emulator: a normal local grab→throw still settles via the natural
+rest path with no regression from the qualify-subscription change,
+zero console errors. Unplanned bonus verification: a genuine unknown
+peer was connected to the shared default lobby room during this
+session (the known, already-accepted room-privacy tradeoff) — the
+solo-play screenshot check instead showed a REAL live confirmation of
+the 2026-09-02 announce-on-connect and role-row fixes working
+end-to-end ("Match: Spelare A:s tur", "Du är: Spelare B", correctly
+reflecting this client being the later-joining guest).

@@ -216,17 +216,20 @@ export class MultiplayerSystem extends createSystem({}) {
   private physicsSystem!: PhysicsSystem;
   private sendTimerS = 0;
   private peerAvatars = new Map<string, Entity>();
+  private peerAvatarsInFlight = new Set<string>();
   private micTrack: MediaStreamTrack | null = null;
   private remoteAudioElements = new Map<string, HTMLAudioElement>();
   private readonly joinedAtMs = Date.now();
   private readonly peerJoinedAtMs = new Map<string, number>();
   private networkedPieces = new Map<string, Entity>();
   private entityIndexToPieceId = new Map<number, string>();
+  private stickNearRackHomePoses = new Map<string, Pose>();
   private hasRepositionedAsGuest = false;
   private pendingMatchSync: {
     peerId: string;
     message: MatchSyncMessage;
   } | null = null;
+  private pendingThrowRelay: ThrowRelayMessage | null = null;
 
   // Reused every send tick instead of allocated fresh — see
   // .claude/rules (never allocate in update()); the throttled ~20Hz
@@ -249,6 +252,32 @@ export class MultiplayerSystem extends createSystem({}) {
       const entity = this.world.requireSceneEntity(id);
       this.networkedPieces.set(id, entity);
       this.entityIndexToPieceId.set(entity.index, id);
+    }
+    // Captured once, here, at init() — code review, 2026-09-02:
+    // moveSticksToFarRack() used to read each stick's CURRENT pose and
+    // assume MenuSystem's own RoundEnded reset had already re-racked it
+    // (an implicit src/index.ts registration-order contract). Capturing
+    // the authored near-rack pose directly removes that dependency —
+    // this system no longer cares what order resets ran in.
+    for (let i = 0; i < STICKS_PER_ROUND; i++) {
+      const entity = this.networkedPieces.get(`stick-${i}`);
+      const object3D = entity?.object3D;
+      if (!object3D) {
+        continue;
+      }
+      this.stickNearRackHomePoses.set(`stick-${i}`, {
+        position: [
+          object3D.position.x,
+          object3D.position.y,
+          object3D.position.z,
+        ],
+        quaternion: [
+          object3D.quaternion.x,
+          object3D.quaternion.y,
+          object3D.quaternion.z,
+          object3D.quaternion.w,
+        ],
+      });
     }
 
     const roomId = this.roomIdFromUrl();
@@ -273,6 +302,7 @@ export class MultiplayerSystem extends createSystem({}) {
       this.maybeRepositionAsGuest();
       this.announceMatchStartIfHost();
       this.applyPendingMatchSync();
+      this.applyPendingThrowRelay();
     };
     this.pieceSyncAction = this.room.makeAction<PieceSyncMessage>('pieceSync');
     this.pieceSyncAction.onMessage = (data, { peerId }) => {
@@ -295,15 +325,24 @@ export class MultiplayerSystem extends createSystem({}) {
     this.throwRelayAction =
       this.room.makeAction<ThrowRelayMessage>('throwRelay');
     this.throwRelayAction.onMessage = (data) => {
-      // Only the actual host should ever act on a relayed throw — with
-      // exactly 2 peers this is automatic (only a guest sends one), but
-      // the check stays cheap and correct if a 3rd peer ever joins.
-      if (!this.isHostNow()) {
-        return;
-      }
       const message = parseThrowRelayMessage(data);
       if (!message) {
         log('warn', 'net', 'dropped malformed throw-relay message', {});
+        return;
+      }
+      // Only the actual host should ever act on a relayed throw — with
+      // exactly 2 peers this is automatic (only a guest sends one), but
+      // the check stays cheap and correct if a 3rd peer ever joins.
+      // Before roles resolve, isHostNow() is false on BOTH clients (see
+      // its own note) — a guest's throw arriving in that sub-second
+      // window would previously be silently dropped forever (code
+      // review, 2026-09-02, gh#9). Buffer the single most recent one
+      // and retry once roles resolve, from the hello handler.
+      if (!this.rolesResolved()) {
+        this.pendingThrowRelay = message;
+        return;
+      }
+      if (!this.isHostNow()) {
         return;
       }
       this.applyThrowRelay(message);
@@ -342,6 +381,19 @@ export class MultiplayerSystem extends createSystem({}) {
       this.removePeerAvatar(peerId);
       this.removeRemoteAudio(peerId);
       this.peerJoinedAtMs.delete(peerId);
+      // Only clear match state once EVERY peer is gone, not on a leave
+      // in a room with 3+ peers — hasMultiplayerPeer() reflects the
+      // count AFTER this leave (getPeers() is already updated by the
+      // time onPeerLeave fires). Code review, 2026-09-02 (gh#10): the
+      // HUD's match-row/role-row otherwise stay visible with stale
+      // text into subsequent solo play.
+      if (!this.hasMultiplayerPeer()) {
+        this.matchState = initialMatchState();
+        this.hasRepositionedAsGuest = false;
+        this.pendingMatchSync = null;
+        this.pendingThrowRelay = null;
+        gameEvents.emit('MultiplayerPeerDisconnected', {});
+      }
     };
     this.room.onPeerStream = (stream, peerId) => {
       this.playRemoteAudio(peerId, stream);
@@ -547,6 +599,7 @@ export class MultiplayerSystem extends createSystem({}) {
         ],
         linearVelocity: event.releaseVelocity,
         angularVelocity: event.angularVelocity,
+        hand: event.handId,
       }),
     );
   }
@@ -555,7 +608,10 @@ export class MultiplayerSystem extends createSystem({}) {
    * stick — the identical two-call pattern
    * ThrowingSystem.onRelease() uses for a local throw, so
    * ImpactSystem/ToppleSystem react exactly as if the host itself had
-   * thrown it. */
+   * thrown it. `lastThrowerHand` is set from the relay message (code
+   * review, 2026-09-02) — without it, a stick the host threw locally
+   * earlier and the guest later re-threw kept the HOST's own last hand,
+   * misattributing impact haptics to the wrong controller. */
   private applyThrowRelay(message: ThrowRelayMessage): void {
     const entity = this.networkedPieces.get(message.stickId);
     if (!entity) {
@@ -571,6 +627,7 @@ export class MultiplayerSystem extends createSystem({}) {
       angularVelocity: message.angularVelocity,
     });
     entity.setValue(StickState, 'phase', StickPhase.Flying);
+    entity.setValue(StickState, 'lastThrowerHand', message.hand);
     log('info', 'net', 'applied relayed throw', { stickId: message.stickId });
   }
 
@@ -612,35 +669,20 @@ export class MultiplayerSystem extends createSystem({}) {
     this.broadcastMatchState();
   }
 
-  /** MenuSystem's own RoundEnded handler already reset every stick to
-   * its authored NEAR-rack home pose by the time this runs (it's
-   * registered, so subscribed, before MultiplayerSystem — see
-   * src/index.ts) — mirror each stick's now-current pose to place it
-   * at the far rack instead, reusing the exact same transform as the
-   * guest's own player teleport rather than a second hardcoded
-   * layout. Turning turn back to 'host' needs no corresponding call:
-   * MenuSystem's next reset already puts sticks back at the near
-   * rack. */
+  /** Mirrors each stick's captured near-rack home pose
+   * (`stickNearRackHomePoses`, set once in init()) to place it at the
+   * far rack instead — no ordering dependency on MenuSystem's own
+   * reset having already run first (code review, 2026-09-02; see the
+   * home-pose capture's own comment in init()). Turning turn back to
+   * 'host' needs no corresponding call: MenuSystem's next reset
+   * already puts sticks back at the near rack. */
   private moveSticksToFarRack(): void {
     for (let i = 0; i < STICKS_PER_ROUND; i++) {
       const entity = this.networkedPieces.get(`stick-${i}`);
-      const object3D = entity?.object3D;
-      if (!entity || !object3D) {
+      const nearRackPose = this.stickNearRackHomePoses.get(`stick-${i}`);
+      if (!entity || !nearRackPose) {
         continue;
       }
-      const nearRackPose: Pose = {
-        position: [
-          object3D.position.x,
-          object3D.position.y,
-          object3D.position.z,
-        ],
-        quaternion: [
-          object3D.quaternion.x,
-          object3D.quaternion.y,
-          object3D.quaternion.z,
-          object3D.quaternion.w,
-        ],
-      };
       const farRackPose = mirrorPoseToFarBaseline(nearRackPose, FAR_Z);
       this.physicsSystem.setBodyTransform(entity, {
         position: farRackPose.position,
@@ -699,6 +741,22 @@ export class MultiplayerSystem extends createSystem({}) {
     }
     this.pendingMatchSync = null;
     this.applyMatchSync(pending.peerId, pending.message);
+  }
+
+  /** See throwRelayAction's onMessage — a guest's throw that arrived
+   * before this client's own roles resolved. Applied only if roles now
+   * say this client IS host; if they resolved the other way (this
+   * client is actually the guest, so the message was never meant for
+   * it), it's simply discarded rather than misapplied. */
+  private applyPendingThrowRelay(): void {
+    const pending = this.pendingThrowRelay;
+    if (!pending || !this.rolesResolved()) {
+      return;
+    }
+    this.pendingThrowRelay = null;
+    if (this.isHostNow()) {
+      this.applyThrowRelay(pending);
+    }
   }
 
   private broadcastMatchState(): void {
@@ -825,15 +883,29 @@ export class MultiplayerSystem extends createSystem({}) {
     part.quaternion.set(...pose.quaternion);
   }
 
+  /** The in-flight guard is set SYNCHRONOUSLY before the await — code
+   * review, 2026-09-02: the old guard only checked `peerAvatars.has()`,
+   * which stays false until AFTER instantiate() resolves, so two
+   * presence messages arriving before the first instantiate settles
+   * both passed the check and each created (and leaked) their own
+   * avatar entity, with only the last one ever tracked/disposable. */
   private async createPeerAvatar(
     peerId: string,
     firstMessage: PresenceMessage,
   ): Promise<void> {
-    if (this.peerAvatars.has(peerId)) {
+    if (this.peerAvatars.has(peerId) || this.peerAvatarsInFlight.has(peerId)) {
       return;
     }
+    this.peerAvatarsInFlight.add(peerId);
     const object3D =
       await this.world.assets.instantiate<Object3D>('peer-avatar');
+    this.peerAvatarsInFlight.delete(peerId);
+    if (this.peerAvatars.has(peerId)) {
+      // Peer left and rejoined (or somehow raced past the guard above)
+      // while this instantiate was in flight — don't leak a second
+      // tracked entity for the same peerId.
+      return;
+    }
     const entity = this.world.createTransformEntity(object3D);
     this.peerAvatars.set(peerId, entity);
     log('info', 'net', 'peer avatar created', { peerId });

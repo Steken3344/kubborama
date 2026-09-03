@@ -22,6 +22,7 @@ export class HudSystem extends createSystem({}) {
   private unsubscribeThrown?: () => void;
   private unsubscribeLanguageChanged?: () => void;
   private unsubscribeMatchStateChanged?: () => void;
+  private unsubscribeMultiplayerPeerDisconnected?: () => void;
 
   init(): void {
     const statsSystem = this.world.getSystem(StatsSystem);
@@ -58,6 +59,16 @@ export class HudSystem extends createSystem({}) {
         this.updateMatchRow();
       },
     );
+    // gh#10 (code review, 2026-09-02): without this, match-row/role-row
+    // stayed visible with stale text once the opponent disconnected —
+    // MatchStateChanged alone never fires again to hide them.
+    this.unsubscribeMultiplayerPeerDisconnected = gameEvents.on(
+      'MultiplayerPeerDisconnected',
+      () => {
+        this.lastMatchState = null;
+        this.hidePeerRows();
+      },
+    );
   }
 
   destroy(): void {
@@ -65,6 +76,7 @@ export class HudSystem extends createSystem({}) {
     this.unsubscribeThrown?.();
     this.unsubscribeLanguageChanged?.();
     this.unsubscribeMatchStateChanged?.();
+    this.unsubscribeMultiplayerPeerDisconnected?.();
   }
 
   private refreshLabels(): void {
@@ -124,6 +136,15 @@ export class HudSystem extends createSystem({}) {
     });
     this.hudPanel.requireElementById('role-value').setProperties({
       text: mySide === 'host' ? t('rolePlayerA') : t('rolePlayerB'),
+    });
+  }
+
+  private hidePeerRows(): void {
+    this.hudPanel.requireElementById('match-row').setProperties({
+      display: 'none',
+    });
+    this.hudPanel.requireElementById('role-row').setProperties({
+      display: 'none',
     });
   }
 

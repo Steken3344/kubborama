@@ -11,6 +11,7 @@ const base = {
   quaternion: [0, 0, 0, 1] as [number, number, number, number],
   linearVelocity: [1.2, 3.4, -5.6] as [number, number, number],
   angularVelocity: [0.1, 0.2, 0.3] as [number, number, number],
+  hand: 'right' as const,
 };
 
 describe('buildThrowRelayMessage', () => {
@@ -48,6 +49,11 @@ describe('parseThrowRelayMessage (untrusted network boundary)', () => {
       ...buildThrowRelayMessage(base),
       linearVelocity: [1, 2],
     };
+    expect(parseThrowRelayMessage(malformed)).toBeNull();
+  });
+
+  it('rejects a hand value outside left/right', () => {
+    const malformed = { ...buildThrowRelayMessage(base), hand: 'both' };
     expect(parseThrowRelayMessage(malformed)).toBeNull();
   });
 });
