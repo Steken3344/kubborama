@@ -58,11 +58,14 @@ secure context) — no extra setup needed for options 1 and 2 below.
    `npm run dev:status` to get the real port. On the Quest, open
    `https://<this-computer's-LAN-IP>:<port>` and accept the self-signed
    certificate warning. Useful for iterating without redeploying.
-3. **USB (once available).** `adb reverse tcp:<port> tcp:<port>` (port
-   from `npm run dev:status`), then open `http://localhost:<port>` in
-   the Quest browser — localhost is a secure context on its own, and
-   this route is fastest for iteration since it skips Wi-Fi entirely.
-   Requires developer mode enabled on the headset.
+3. **USB.** `adb reverse tcp:<port> tcp:<port>` (port from
+   `npm run dev:status`), then open `https://localhost:<port>` in the
+   Quest browser and accept the self-signed certificate warning — the
+   dev server only ever speaks HTTPS, even on localhost, so `http://`
+   gets an empty response rather than falling back. Fastest route for
+   iteration since it skips Wi-Fi entirely. Requires developer mode
+   enabled on the headset and "Allow USB debugging" accepted in-headset
+   when first plugged in.
 
 ### Install as an app (M6)
 

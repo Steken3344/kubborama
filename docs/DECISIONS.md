@@ -4326,3 +4326,36 @@ flagged one moderate transitive dev-only vulnerability (`qs`, pulled in
 by workbox's build tooling, never shipped to the runtime bundle) —
 resolved with `npm audit fix`, zero vulnerabilities remaining. README
 updated with install instructions.
+
+## 2026-09-03 — USB adb testing now available; README's own instruction was wrong
+
+Erik got a USB card installed, enabling the `adb`-over-USB testing
+route (README option 3) for the first time this project. First real
+attempt hit an immediate, confusing failure: the Quest browser reported
+"empty response" opening `http://localhost:8081` — exactly reproduced
+locally with `curl http://localhost:8081/` ("Empty reply from server"),
+while `curl https://localhost:8081/` returned `200` instantly. The dev
+server (`npx iwsdk dev status`) reports its own `localUrl` as
+`https://localhost:8081/` — it only ever speaks TLS, even on localhost,
+so a plain HTTP request isn't rejected with a redirect or an error page,
+it just gets silence (a raw TLS server has nothing to say to a
+plaintext HTTP request).
+
+README's USB section had this backwards ("open `http://localhost:<port>`
+... localhost is a secure context on its own") — true of the BROWSER's
+security policy (localhost is exempt from requiring HTTPS to be treated
+as a secure context), but irrelevant here since the SERVER itself
+doesn't listen for plain HTTP at all. Fixed the README to say
+`https://` and accept the self-signed cert warning, same as the
+existing Wi-Fi (option 2) instruction already correctly said. Not
+investigated further why iwsdk's dev server doesn't also serve plain
+HTTP on localhost — not blocking, `https://` + accepting the cert
+warning works fine and matches the already-correct Wi-Fi path.
+
+Live-verified end to end over real USB: `adb devices` shows the Quest 2
+authorized (`device`, not `unauthorized`), `adb reverse tcp:8081
+tcp:8081` set up, `adb shell am start -a android.intent.action.VIEW -d
+"https://localhost:8081"` opened the Quest's browser directly from this
+session (a nice trick worth remembering — no need to ask Erik to
+manually type the URL in-headset next time), Erik accepted the cert
+warning, and confirmed the scene rendered (grass court + kubbs visible).
