@@ -4255,3 +4255,74 @@ solo-play screenshot check instead showed a REAL live confirmation of
 the 2026-09-02 announce-on-connect and role-row fixes working
 end-to-end ("Match: Spelare A:s tur", "Du är: Spelare B", correctly
 reflecting this client being the later-joining guest).
+
+## 2026-09-03 — M6: PWA packaging (autonomous, per pre-approved kickoff)
+
+Erik asked (AFK) whether there was more M/MP work to do; `docs/
+sessions/M6.md`'s kickoff was already pre-approved ("vite-plugin-pwa
+(pre-approved)"), so built it directly rather than waiting.
+
+`vite-plugin-pwa` (v1.3.0, matching docs/PLAN.md §12's earlier note)
+generates the web manifest and service worker at build time —
+`registerType: 'autoUpdate'` so a deploy is picked up on next launch
+automatically, never leaving a player stuck on a stale cached build (a
+real risk for a solo dev pushing frequently, per the kickoff's "never
+cache-bust the deploy flow" instruction).
+
+**Manifest**: `start_url`/`scope` set to `'./'`, not `'/'` — matching
+`vite.config.ts`'s own `base: './'` convention that's been load-bearing
+since M0 for the app to work under GitHub Pages' `/kubborama/` subpath
+at all. An absolute `'/'` scope would have silently broken installation
+under that subpath. Icons reuse the existing kubb-king-motif
+`icon-192.png`/`icon-512.png` (built in an earlier branding session) —
+no new asset work needed. `background_color`/`theme_color` match
+`index.html`'s existing splash screen (`#1c4a36`) so the OS launcher
+splash and the app's own splash don't visibly flash two different
+colors during the handoff.
+
+**Service worker caching split**: precache (`globPatterns`) covers only
+JS/CSS/HTML/the Havok wasm — the actual app shell needed before the
+scene can render at all. Textures/audio/glTF/fonts go through a
+`CacheFirst` RUNTIME rule instead, since precaching every font weight
+and every scene asset up front would bloat the initial install for
+content not all of which is even used at runtime. Workbox's default
+2 MB per-file precache cap had to be raised to 10 MB — the Havok wasm
+(~2.1 MB) and the main bundle (~6.8 MB) both exceed it and are
+load-bearing, so silently excluding them (workbox's default behavior
+when a file exceeds the cap) would have shipped a broken offline app
+shell with no error.
+
+**Verification, no headset available for GATE**: `chrome-devtools-mcp`'s
+Lighthouse PWA audit was the first choice but this machine has no
+Chrome binary installed for the tool's `stable` channel (an environment
+gap — logged here so a future session doesn't waste time re-diagnosing
+it, and knows this isn't fixable without installing Chrome). Fell back
+to a throwaway Playwright script against the real production build,
+checking exactly what a browser's install prompt itself checks: the
+manifest link resolves and parses, both icon URLs return 200, and
+`navigator.serviceWorker.getRegistration()` resolves with an `active`
+worker at the correct scope. All passed. This is strong evidence the
+PWA is installable but is NOT the same as Erik's own Quest-browser
+install — that GATE stays open (docs/MILESTONES.md), same discipline as
+every other real-hardware confirmation this project treats as
+non-self-approvable.
+
+**Found and fixed a real regression while verifying**: adding the
+service worker broke `scripts/smoke-test.mjs` — Chromium's SW
+registration validates the origin's TLS cert through a code path that
+Playwright's context-level `ignoreHTTPSErrors` doesn't cover (a known
+Playwright/Chromium gap, confirmed by the exact error: "SSL certificate
+error occurred when fetching the script" for `sw.js` specifically,
+while every other https request on the same self-signed `vite preview`
+origin loaded fine). GitHub Pages' real deploy has a valid cert, so
+this only ever affected the local smoke test. Fixed by launching the
+smoke-test's browser with `--ignore-certificate-errors`.
+
+Mechanical pass green: tsc/eslint/prettier/vitest (218 tests,
+unaffected — no core/systems logic touched), build (now emits
+`manifest.webmanifest`/`sw.js`/`workbox-*.js`/`registerSW.js`
+alongside the existing bundle), smoke (fixed and passing). `npm audit`
+flagged one moderate transitive dev-only vulnerability (`qs`, pulled in
+by workbox's build tooling, never shipped to the runtime bundle) —
+resolved with `npm audit fix`, zero vulnerabilities remaining. README
+updated with install instructions.

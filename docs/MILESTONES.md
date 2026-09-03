@@ -408,11 +408,56 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
 - **GATE (Erik, headset): perf + comfort + full experience pass** 🎧
 - Review gate → tag v0.6-m5 once the rest of M5 closes out
 
-## M6 — PWA (optional) `status: not started`
+## M6 — PWA (optional) `status: built + emulator-verified; awaiting Erik's Quest confirmation`
 
-- [ ] vite-plugin-pwa: manifest, icons, service worker; installable from
-      deployed URL; launches fullscreen from Quest app library
-- Review gate → tag v0.7-m6 → POC COMPLETE 🎉
+- [x] vite-plugin-pwa (v1.3.0, per docs/PLAN.md §12) wired into
+      vite.config.ts: web manifest (name/short_name "KubbOrama",
+      bilingual sv/en description — the manifest spec has no per-
+      language description array, so this is one string covering both),
+      `start_url`/`scope` set to `'./'` to match the project's existing
+      relative-base convention (verified working under the
+      `/kubborama/` GitHub Pages subpath since M0 — an absolute `'/'`
+      would have broken there), `display: 'fullscreen'`,
+      `background_color`/`theme_color` matching index.html's existing
+      splash screen color so the OS/launcher splash and the app's own
+      splash don't flash two different colors during the handoff.
+      Icons reuse the existing `icon-192.png`/`icon-512.png` (kubb king + crossed sticks motif, already built for the favicon/splash in
+      an earlier session — no new asset needed).
+- [x] Service worker (`registerType: 'autoUpdate'`, generateSW mode):
+      precaches the JS/CSS/HTML/physics-wasm app shell (workbox's
+      default 2 MB per-file cap raised to 10 MB — both the Havok wasm
+      and the main bundle exceed the default and are load-bearing);
+      textures/audio/glTF/fonts use a `CacheFirst` runtime-caching rule
+      instead of precache, since they're numerous and largely
+      per-scene rather than needed before the app can render at all.
+      `autoUpdate` means a deploy is picked up on next launch with no
+      manual cache-bust step and no player stuck on a stale build.
+- [x] Verified installable (mechanically, without a headset): a
+      throwaway Playwright script against the production build
+      confirmed the manifest link resolves, both icon URLs return 200,
+      and `navigator.serviceWorker.getRegistration()` resolves with an
+      `active` worker at the correct scope — the actual criteria a
+      browser's install prompt checks. `chrome-devtools-mcp`'s
+      Lighthouse PWA audit was attempted first but this machine has no
+      Chrome binary installed for it (environment gap, not a project
+      issue) — the manual script above covers the same ground.
+- [x] Fixed a real smoke-test regression the SW introduced:
+      `sw.js` registration failed against `vite preview`'s self-signed
+      local HTTPS cert (Chromium validates a service worker's origin
+      cert through a path that Playwright's `ignoreHTTPSErrors` context
+      option doesn't cover — a known Playwright/Chromium gap, not a
+      project bug; the real GitHub Pages deploy has a valid cert).
+      Fixed by launching the smoke-test's browser with
+      `--ignore-certificate-errors`.
+- [x] README updated with "install as an app" instructions.
+- [ ] **GATE (Erik, headset): open the deployed URL in the Quest
+      browser, install via the browser menu, confirm an icon appears in
+      the Quest app library and the installed app launches fullscreen
+      without browser chrome** 🎧 — not yet done, blocks tagging
+      v0.7-m6. This is the one thing the mechanical verification above
+      cannot substitute for.
+- Review gate → tag v0.7-m6 → POC COMPLETE 🎉 (once the gate above
+  passes)
 
 ## M7 — MP1 co-presence (multiplayer) `status: MP1+MP2 confirmed live end-to-end with 2 real headsets (2026-09-02); post-review hardening done`
 

@@ -9,9 +9,9 @@ no menus in the way.
 **Play now:** https://steken3344.github.io/kubborama/ (open in the
 Quest browser, tap "Enter XR")
 
-Status: early prototype (M4 — wind, game modes, settings panel). See
-[docs/MILESTONES.md](docs/MILESTONES.md) for what's built and what's
-next.
+Status: early prototype (M7 — 2-headset multiplayer, confirmed working
+live). See [docs/MILESTONES.md](docs/MILESTONES.md) for what's built
+and what's next.
 
 ## Tech stack
 
@@ -63,6 +63,17 @@ secure context) — no extra setup needed for options 1 and 2 below.
    the Quest browser — localhost is a secure context on its own, and
    this route is fastest for iteration since it skips Wi-Fi entirely.
    Requires developer mode enabled on the headset.
+
+### Install as an app (M6)
+
+The deployed build is an installable PWA. In the Quest browser, open
+https://steken3344.github.io/kubborama/, then use the browser menu's
+"Install app" / "Add to library" option (wording varies by browser
+version). Once installed, KubbOrama gets its own icon in the Quest app
+library and launches fullscreen, without browser chrome or the address
+bar — the same experience as a native app. Updates to the deployed site
+are picked up automatically the next time it's launched, no
+reinstalling needed.
 
 ## Project layout
 

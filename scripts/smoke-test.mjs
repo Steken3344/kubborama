@@ -17,7 +17,16 @@ if (!url) {
   throw new Error('vite preview did not report a local URL');
 }
 
-const browser = await chromium.launch();
+// M6 (PWA service worker): Playwright's context-level
+// `ignoreHTTPSErrors` covers ordinary page fetches, but Chromium's
+// service-worker registration validates the origin's TLS cert through
+// a separate path that ignores it — so registering `sw.js` against
+// vite preview's self-signed local cert fails here even though the
+// real GitHub Pages deploy has a valid cert. `--ignore-certificate-
+// errors` is the standard fix for this specific known gap.
+const browser = await chromium.launch({
+  args: ['--ignore-certificate-errors'],
+});
 const page = await browser.newPage({ ignoreHTTPSErrors: true });
 
 const pageErrors = [];
