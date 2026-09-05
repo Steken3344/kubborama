@@ -11,22 +11,27 @@ import type { Entity } from '@iwsdk/core';
 import { joinRoom, selfId } from 'trystero';
 import type { MessageAction, Room } from 'trystero';
 import { StickPhase, StickState } from '../components/stick-state.js';
-import { defaultCourtPreset, getCourtPreset, multiplayer } from '../config.js';
+import { match, multiplayer } from '../config.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { gameEvents } from '../core/events.js';
 import type { GameEvents } from '../core/events.js';
 import {
   initialMatchState,
-  kubbSide,
+  isFinished,
+  withKingFelled,
   withKubbFelled,
   withTurnAdvanced,
 } from '../core/match.js';
 import type { MatchState } from '../core/match.js';
 import {
   buildMatchSyncMessage,
+  MATCH_SYNC_SCHEMA_VERSION,
   parseMatchSyncMessage,
+  peekSchemaVersion,
 } from '../core/matchSync.js';
 import type { MatchSyncMessage } from '../core/matchSync.js';
+import { buildResetRequest, parseResetRequest } from '../core/resetRelay.js';
+import type { ResetRequestMessage } from '../core/resetRelay.js';
 import {
   buildHelloMessage,
   isHost,
@@ -57,6 +62,7 @@ import type { ThrowRelayMessage } from '../core/throwRelay.js';
 import { STICKS_PER_ROUND } from '../core/scoring.js';
 import { log } from '../core/log.js';
 import { settingsState } from '../settingsState.js';
+import { activeFarBaselineZ } from './activeCourt.js';
 
 // King, both kubb baselines, and every stick — MP2's shared court
 // state (see class doc). A stick's initial throw is relayed
@@ -67,14 +73,6 @@ const NETWORKED_PIECE_IDS = [
   ...Array.from({ length: KUBB_COUNT * 2 }, (_, i) => `kubb-${i}`),
   ...Array.from({ length: STICKS_PER_ROUND }, (_, i) => `stick-${i}`),
 ];
-
-// The other headset spawns at the far baseline — the one you normally
-// throw at — facing back toward you (Erik, 2026-09-01). Not preset-
-// aware per game mode switch (MultiplayerSystem has no
-// GameModeChanged subscription); good enough for MP1, revisit if the
-// far baseline moves mid-session becomes something players actually
-// do.
-const FAR_Z = -getCourtPreset(defaultCourtPreset).lengthM;
 
 /**
  * MP1 co-presence (docs/PLAN.md §10, Erik's 2 Quests, 2026-08-31):
@@ -204,6 +202,16 @@ const FAR_Z = -getCourtPreset(defaultCourtPreset).lengthM;
  *    literally can't reach the sticks — a natural, non-invasive turn
  *    "enforcement" that needed none of the risky grab-component
  *    surgery flagged above.
+ *
+ * MP3a (Erik, 2026-09-05, docs/superpowers/specs/2026-09-05-match-
+ * rules-design.md): a REAL match supersedes phase 3's "clear the
+ * kubbs" win. The king decides — after every opponent kubb: the thrower
+ * wins; earlier: the thrower loses — applied after a short grace so a
+ * kubb toppled by the same stick counts first (`kingFelledAtS`).
+ * `KingProtected` is not used in a match. Physical consequences
+ * (sin-bin per side, auto-restart) live in systems/matchRules.ts; this
+ * system only runs the reducer and syncs. A guest's "Ny runda" is
+ * relayed to the host (`resetRequest`), since only the host resets.
  */
 export class MultiplayerSystem extends createSystem({}) {
   private room?: Room;
@@ -230,6 +238,13 @@ export class MultiplayerSystem extends createSystem({}) {
     message: MatchSyncMessage;
   } | null = null;
   private pendingThrowRelay: ThrowRelayMessage | null = null;
+  private resetRequestAction?: MessageAction<ResetRequestMessage>;
+  /** MP3a: KingFelled is applied after `match.kingDecisionGraceS`, not
+   * immediately — ToppleSystem emits per piece in rest order, so a kubb
+   * toppled by the same stick must get counted first (spec review I1).
+   * null = no decision pending. */
+  private kingFelledAtS: number | null = null;
+  private nowS = 0;
 
   // Reused every send tick instead of allocated fresh — see
   // .claude/rules (never allocate in update()); the throttled ~20Hz
@@ -339,10 +354,39 @@ export class MultiplayerSystem extends createSystem({}) {
     this.matchSyncAction.onMessage = (data, { peerId }) => {
       const message = parseMatchSyncMessage(data);
       if (!message) {
-        log('warn', 'net', 'dropped malformed match-sync message', { peerId });
+        // With the PWA's autoUpdate one headset can run the previous
+        // build until it reloads — make that diagnosable (spec review
+        // I8) instead of a generic "malformed".
+        const version = peekSchemaVersion(data);
+        if (version !== null && version !== MATCH_SYNC_SCHEMA_VERSION) {
+          log('warn', 'net', 'match-sync schema version mismatch', {
+            peerId,
+            theirs: version,
+            ours: MATCH_SYNC_SCHEMA_VERSION,
+          });
+        } else {
+          log('warn', 'net', 'dropped malformed match-sync message', {
+            peerId,
+          });
+        }
         return;
       }
       this.applyMatchSync(peerId, message);
+    };
+    this.resetRequestAction =
+      this.room.makeAction<ResetRequestMessage>('resetRequest');
+    this.resetRequestAction.onMessage = (data, { peerId }) => {
+      // A guest's "Ny runda" (spec review C2). Only the host acts, and
+      // only for a peer that is actually in the room.
+      if (!this.isHostNow() || !(peerId in (this.room?.getPeers() ?? {}))) {
+        return;
+      }
+      if (!parseResetRequest(data)) {
+        log('warn', 'net', 'dropped malformed reset request', { peerId });
+        return;
+      }
+      log('info', 'net', 'guest requested a reset', { peerId });
+      gameEvents.emit('ResetRequested', {});
     };
     this.cleanupFuncs.push(
       gameEvents.on('Thrown', (event) => {
@@ -350,6 +394,14 @@ export class MultiplayerSystem extends createSystem({}) {
       }),
       gameEvents.on('KubbFelled', (event) => {
         this.onKubbFelledForMatch(event.entityId);
+      }),
+      gameEvents.on('KingFelled', () => {
+        if (!this.isHostNow() || !this.hasMultiplayerPeer()) {
+          return;
+        }
+        if (this.kingFelledAtS === null && !isFinished(this.matchState)) {
+          this.kingFelledAtS = this.nowS;
+        }
       }),
       // No RoundEnded subscription on purpose — the turn advance rides
       // on MenuSystem's Reset{cause:'roundEnd'} instead; see
@@ -385,6 +437,7 @@ export class MultiplayerSystem extends createSystem({}) {
         this.matchState = initialMatchState();
         this.pendingMatchSync = null;
         this.pendingThrowRelay = null;
+        this.kingFelledAtS = null;
         if (this.hasRepositionedAsGuest) {
           const origin = defaultPose();
           this.player.position.set(...origin.position);
@@ -421,7 +474,23 @@ export class MultiplayerSystem extends createSystem({}) {
     }
   }
 
-  update(delta: number): void {
+  update(delta: number, time: number): void {
+    this.nowS = time;
+    if (
+      this.kingFelledAtS !== null &&
+      time - this.kingFelledAtS >= match.kingDecisionGraceS
+    ) {
+      this.kingFelledAtS = null;
+      const next = withKingFelled(this.matchState);
+      if (next !== this.matchState) {
+        log('info', 'state', 'match decided by the king', {
+          winner: next.winner,
+          endReason: next.endReason,
+        });
+        this.setMatchState(next);
+        this.broadcastMatchState();
+      }
+    }
     if (this.micTrack) {
       this.micTrack.enabled = !settingsState.current.micMuted;
     }
@@ -516,7 +585,12 @@ export class MultiplayerSystem extends createSystem({}) {
     ) {
       return;
     }
-    const farOrigin = mirrorPoseToFarBaseline(defaultPose(), FAR_Z);
+    // The far baseline of the ACTIVE court, not the default preset's
+    // (Advanced plays on the 8 m tournament court) — see activeCourt.ts.
+    const farOrigin = mirrorPoseToFarBaseline(
+      defaultPose(),
+      activeFarBaselineZ(),
+    );
     this.player.position.set(...farOrigin.position);
     this.player.quaternion.set(...farOrigin.quaternion);
     this.hasRepositionedAsGuest = true;
@@ -626,17 +700,14 @@ export class MultiplayerSystem extends createSystem({}) {
       return;
     }
     const pieceId = this.entityIndexToPieceId.get(Number(entityId));
-    const kubbIndexMatch = pieceId?.match(/^kubb-(\d+)$/);
-    if (!kubbIndexMatch) {
-      return; // the king, or a piece this session doesn't track — fine
-    }
-    const side = kubbSide(Number(kubbIndexMatch[1]));
-    if (!side) {
+    if (!pieceId) {
       return;
     }
-    const nextState = withKubbFelled(this.matchState, side);
-    if (nextState.winner) {
-      log('info', 'state', 'match won', { winner: nextState.winner });
+    // The reducer ignores non-kubb ids, duplicates and own-side
+    // ricochets by returning the same reference — nothing to broadcast.
+    const nextState = withKubbFelled(this.matchState, pieceId);
+    if (nextState === this.matchState) {
+      return;
     }
     this.setMatchState(nextState);
     this.broadcastMatchState();
@@ -666,9 +737,18 @@ export class MultiplayerSystem extends createSystem({}) {
       this.advanceTurnForMatch();
       return;
     }
-    if (!this.isHostNow() || !this.hasMultiplayerPeer()) {
+    if (!this.hasMultiplayerPeer()) {
       return;
     }
+    if (!this.isHostNow()) {
+      // Guest pressed "Ny runda" (spec review C2): not authoritative —
+      // relay it. The host's resulting reset + fresh match state
+      // overwrite the guest's local teleport via pieceSync/matchSync
+      // within a tick.
+      void this.resetRequestAction?.send(buildResetRequest());
+      return;
+    }
+    this.kingFelledAtS = null;
     this.setMatchState(initialMatchState());
     this.broadcastMatchState();
   }
@@ -691,7 +771,7 @@ export class MultiplayerSystem extends createSystem({}) {
    * second hardcoded layout. */
   private moveSticksToFarRack(): void {
     this.placeSticks((nearRackPose) =>
-      mirrorPoseToFarBaseline(nearRackPose, FAR_Z),
+      mirrorPoseToFarBaseline(nearRackPose, activeFarBaselineZ()),
     );
   }
 
