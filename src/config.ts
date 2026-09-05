@@ -20,6 +20,7 @@ import sinBinData from './data/sin-bin.json' with { type: 'json' };
 import stickRackData from './data/stick-rack.json' with { type: 'json' };
 import multiplayerData from './data/multiplayer.json' with { type: 'json' };
 import matchData from './data/match.json' with { type: 'json' };
+import avatarData from './data/avatar.json' with { type: 'json' };
 
 export const courtPresets = courtPresetsData.presets;
 export type CourtPresetName = keyof typeof courtPresets;
@@ -59,6 +60,8 @@ export const stickRack = stickRackData;
 export const multiplayer = multiplayerData;
 /** MP3a match rules: king-decision grace and the auto-restart delay. */
 export const match = matchData;
+/** MP3b procedural peer-avatar body dimensions (core/avatarPose.ts). */
+export const avatar = avatarData;
 
 export function getCourtPreset(name: CourtPresetName = defaultCourtPreset) {
   return courtPresets[name];

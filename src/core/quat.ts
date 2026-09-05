@@ -53,3 +53,63 @@ export function angularVelocityBetween(a: Quat, b: Quat, dtS: number): Vec3 {
     (z / sinHalfAngle) * (angleRad / dtS),
   ];
 }
+
+/* ---- MP3b avatar-body helpers (2026-09-05) ------------------------------
+ * Closed-form, no three.js — src/core stays pure. Only what the avatar
+ * solver (core/avatarPose.ts) needs; still not a general math library. */
+
+/** v' = q v q* — the standard expansion. */
+export function rotateVectorByQuaternion(v: Vec3, q: Quat): Vec3 {
+  const [x, y, z] = v;
+  const [qx, qy, qz, qw] = q;
+  // t = 2 * cross(q.xyz, v)
+  const tx = 2 * (qy * z - qz * y);
+  const ty = 2 * (qz * x - qx * z);
+  const tz = 2 * (qx * y - qy * x);
+  // v' = v + qw * t + cross(q.xyz, t)
+  return [
+    x + qw * tx + (qy * tz - qz * ty),
+    y + qw * ty + (qz * tx - qx * tz),
+    z + qw * tz + (qx * ty - qy * tx),
+  ];
+}
+
+/** Rotation about +Y. Yaw 0 faces -Z (the player's default facing);
+ * positive yaw turns left (counter-clockwise seen from above). */
+export function quaternionFromYaw(yawRad: number): Quat {
+  return [0, Math.sin(yawRad / 2), 0, Math.cos(yawRad / 2)];
+}
+
+/** The yaw of a rotation's forward (-Z) vector, pitch/roll ignored. */
+export function yawFromQuaternion(q: Quat): number {
+  const [fx, , fz] = rotateVectorByQuaternion([0, 0, -1], q);
+  return Math.atan2(-fx, -fz);
+}
+
+/**
+ * The rotation taking +Y onto `dir` (normalised defensively). Used to
+ * lay a unit-length capsule along a limb. +Y → identity; -Y → 180° about
+ * +X (any axis perpendicular to Y works; X is the conventional pick).
+ */
+export function quaternionAligningY(dir: Vec3): Quat {
+  const len = Math.hypot(dir[0], dir[1], dir[2]);
+  if (len === 0) {
+    return [0, 0, 0, 1];
+  }
+  const dx = dir[0] / len;
+  const dy = dir[1] / len;
+  const dz = dir[2] / len;
+  // dot(+Y, d) = dy; cross(+Y, d) = (dz, 0, -dx).
+  if (dy > 1 - 1e-9) {
+    return [0, 0, 0, 1];
+  }
+  if (dy < -1 + 1e-9) {
+    return [1, 0, 0, 0];
+  }
+  // Half-angle form: q = [cross, 1 + dot] normalised.
+  const cx = dz;
+  const cz = -dx;
+  const w = 1 + dy;
+  const n = Math.hypot(cx, cz, w);
+  return [cx / n, 0, cz / n, w / n];
+}

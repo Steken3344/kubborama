@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { angularVelocityBetween, fromAxisAngle } from './quat.js';
+import {
+  angularVelocityBetween,
+  fromAxisAngle,
+  quaternionAligningY,
+  quaternionFromYaw,
+  rotateVectorByQuaternion,
+  yawFromQuaternion,
+} from './quat.js';
+import type { Quat } from './quat.js';
 
 describe('quat', () => {
   it('returns zero angular velocity between identical orientations', () => {
@@ -53,5 +61,59 @@ describe('quat', () => {
     const omegaA = angularVelocityBetween(identity, q2, dtS);
     const omegaB = angularVelocityBetween(identity, q2Negated, dtS);
     expect(omegaB[1]).toBeCloseTo(omegaA[1], 5);
+  });
+});
+
+const close = (a: readonly number[], b: readonly number[]) => {
+  expect(a).toHaveLength(b.length);
+  a.forEach((v, i) => expect(v).toBeCloseTo(b[i] ?? NaN, 6));
+};
+
+describe('rotateVectorByQuaternion (MP3b)', () => {
+  it('identity leaves the vector alone', () => {
+    close(rotateVectorByQuaternion([1, 2, 3], [0, 0, 0, 1]), [1, 2, 3]);
+  });
+  it('90° about +Y takes -Z to -X (turning left)', () => {
+    close(
+      rotateVectorByQuaternion([0, 0, -1], quaternionFromYaw(Math.PI / 2)),
+      [-1, 0, 0],
+    );
+  });
+  it('180° about +X flips Y and Z', () => {
+    const q: Quat = [1, 0, 0, 0];
+    close(rotateVectorByQuaternion([0, 1, 2], q), [0, -1, -2]);
+  });
+  it('agrees with fromAxisAngle for an arbitrary rotation', () => {
+    const q = fromAxisAngle([0, 0, 1], Math.PI / 2);
+    close(rotateVectorByQuaternion([1, 0, 0], q), [0, 1, 0]);
+  });
+});
+
+describe('quaternionAligningY (MP3b)', () => {
+  const cases: [string, [number, number, number]][] = [
+    ['+Y', [0, 1, 0]],
+    ['-Y', [0, -1, 0]],
+    ['+X', [1, 0, 0]],
+    ['diagonal', [0.6, 0, 0.8]],
+    ['down-forward', [0, -Math.SQRT1_2, -Math.SQRT1_2]],
+  ];
+  for (const [name, dir] of cases) {
+    it(`maps +Y onto ${name}`, () => {
+      const q = quaternionAligningY(dir);
+      close(rotateVectorByQuaternion([0, 1, 0], q), dir);
+      expect(Math.hypot(...q)).toBeCloseTo(1, 6);
+    });
+  }
+});
+
+describe('yawFromQuaternion (MP3b)', () => {
+  it('round-trips quaternionFromYaw', () => {
+    for (const yaw of [0, 0.3, Math.PI / 2, -1.2, 2.9]) {
+      expect(yawFromQuaternion(quaternionFromYaw(yaw))).toBeCloseTo(yaw, 6);
+    }
+  });
+  it('is 0 for facing -Z and ignores pitch', () => {
+    const pitch: Quat = [Math.sin(0.15), 0, 0, Math.cos(0.15)];
+    expect(yawFromQuaternion(pitch)).toBeCloseTo(0, 6);
   });
 });
