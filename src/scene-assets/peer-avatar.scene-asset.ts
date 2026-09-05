@@ -1,38 +1,84 @@
-import { Group, Mesh, SphereGeometry } from '@iwsdk/core';
+import {
+  BoxGeometry,
+  CylinderGeometry,
+  Group,
+  Mesh,
+  MeshStandardMaterial,
+  SphereGeometry,
+} from '@iwsdk/core';
+import { avatar } from '../config.js';
 import { avatarMaterial } from './materials.js';
 
-const HEAD_RADIUS_M = 0.11;
-const HAND_RADIUS_M = 0.05;
-
 /**
- * MP1 co-presence placeholder (docs/PLAN.md §10, Erik's 2 Quests):
- * head + two hands, nothing else — matches the plan's own avatar
- * design ("replicate only what is tracked... NO legs and NO IK").
- * Real character avatars are a later step; this only has to prove
- * the transport works. Each part is named so MultiplayerSystem can
- * find it inside a freshly instantiated clone via getObjectByName —
- * a fresh clone per remote peer, never the prototype itself (see
- * .claude/rules/assets-and-manifest.md).
+ * MP3b peer avatar (Erik, 2026-09-05: "mer än bara 3 bollar"): a
+ * procedural body built ONLY from what is tracked — head + two hands —
+ * with the torso, shoulders and straight arms derived by
+ * core/avatarPose.ts at runtime. No legs, no elbow IK (see the spec).
+ *
+ * Every part is named so PeerAvatarSystem can find it inside a freshly
+ * instantiated clone via getObjectByName — a fresh clone per remote
+ * peer, never the prototype itself. The arms are UNIT-length cylinders
+ * along +Y; the system scales `scale.y` to the solved arm length. All
+ * body parts share `avatarMaterial` here; the system swaps in a
+ * per-instance clone tinted with that player's chosen palette color.
+ * The visor keeps its own dark material so gaze stays readable in any
+ * body color.
+ *
+ * Dimensions come from src/data/avatar.json via config.ts — assets may
+ * import config (deterministic, side-effect free; see CLAUDE.md on the
+ * two JS realms this module is evaluated in).
  */
-const avatar = new Group();
-avatar.name = 'PeerAvatar';
+const dims = avatar;
 
-const head = new Mesh(new SphereGeometry(HEAD_RADIUS_M, 12, 8), avatarMaterial);
+const visorMaterial = new MeshStandardMaterial({
+  color: '#1c1c22',
+  roughness: 0.25,
+  metalness: 0.2,
+});
+
+const root = new Group();
+root.name = 'PeerAvatar';
+
+const head = new Mesh(
+  new SphereGeometry(dims.headRadiusM, 16, 12),
+  avatarMaterial,
+);
 head.name = 'head';
-avatar.add(head);
+root.add(head);
 
-const leftHand = new Mesh(
-  new SphereGeometry(HAND_RADIUS_M, 10, 6),
+// A dark band across the -Z face of the head: the direction the other
+// player is looking, which the sphere alone never shows.
+const visor = new Mesh(
+  new BoxGeometry(dims.headRadiusM * 1.5, dims.headRadiusM * 0.55, 0.02),
+  visorMaterial,
+);
+visor.name = 'visor';
+visor.position.set(0, 0.01, -dims.headRadiusM + 0.005);
+head.add(visor);
+
+const torso = new Mesh(
+  new BoxGeometry(dims.torsoWidthM, dims.torsoHeightM, dims.torsoDepthM),
   avatarMaterial,
 );
-leftHand.name = 'leftHand';
-avatar.add(leftHand);
+torso.name = 'torso';
+root.add(torso);
 
-const rightHand = new Mesh(
-  new SphereGeometry(HAND_RADIUS_M, 10, 6),
-  avatarMaterial,
-);
-rightHand.name = 'rightHand';
-avatar.add(rightHand);
+for (const side of ['left', 'right'] as const) {
+  const arm = new Mesh(
+    new CylinderGeometry(dims.armRadiusM, dims.armRadiusM, 1, 10),
+    avatarMaterial,
+  );
+  arm.name = `${side}Arm`;
+  root.add(arm);
 
-export default avatar;
+  // A rounded-off mitten rather than a sphere: flat, slightly longer
+  // than wide, so the hand's orientation (the controller's) reads.
+  const hand = new Mesh(
+    new BoxGeometry(dims.handSizeM, dims.handSizeM * 0.5, dims.handSizeM * 1.2),
+    avatarMaterial,
+  );
+  hand.name = `${side}Hand`;
+  root.add(hand);
+}
+
+export default root;

@@ -8,6 +8,7 @@ import { HudSystem } from './systems/hud.js';
 import { ImpactSystem } from './systems/impact.js';
 import { MenuSystem } from './systems/menu.js';
 import { MatchRulesSystem } from './systems/matchRules.js';
+import { PeerAvatarSystem } from './systems/peerAvatar.js';
 import { MultiplayerSystem } from './systems/multiplayer.js';
 import { OneShotAudioSystem } from './systems/oneShotAudio.js';
 import { RoundSystem } from './systems/round.js';
@@ -105,6 +106,9 @@ World.create(
   // MP3a: physical side of a multiplayer match (sin-bin per side, king
   // unprotected, auto-restart). Event-driven only — order irrelevant.
   world.registerSystem(MatchRulesSystem);
+  // MP3b: remote players' avatars, fed by PeerPresence/PeerLeft events
+  // from MultiplayerSystem — event-driven only, order irrelevant.
+  world.registerSystem(PeerAvatarSystem);
 
   document.getElementById('splash')?.classList.add('splash-hidden');
 });

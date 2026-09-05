@@ -8,7 +8,15 @@ import type { Vec3 } from './vec3.js';
  * simulated-piece state yet (that's MP2's shared-match authority
  * model); this is presence only.
  */
-export const PRESENCE_SCHEMA_VERSION = 1;
+/** v2 (MP3b, 2026-09-05): `colorIndex` — the sender's chosen avatar
+ * palette index. Both headsets run the same deploy; a v1 peer is simply
+ * dropped by safeParse below, as any mismatch always was. */
+export const PRESENCE_SCHEMA_VERSION = 2;
+
+/** Generous upper bound, not the palette length — core must not import
+ * config; the receiver clamps onto the real palette (config.ts's
+ * avatarPaletteEntry). */
+const MAX_COLOR_INDEX = 15;
 
 const poseSchema = z.object({
   position: vec3Schema,
@@ -21,6 +29,7 @@ const presenceMessageSchema = z.object({
   head: poseSchema,
   leftHand: poseSchema,
   rightHand: poseSchema,
+  colorIndex: z.number().int().min(0).max(MAX_COLOR_INDEX),
 });
 export type PresenceMessage = z.infer<typeof presenceMessageSchema>;
 
@@ -32,6 +41,7 @@ export function buildPresenceMessage(input: {
   head: Pose;
   leftHand: Pose;
   rightHand: Pose;
+  colorIndex: number;
 }): PresenceMessage {
   return { version: PRESENCE_SCHEMA_VERSION, ...input };
 }

@@ -224,8 +224,6 @@ export class MultiplayerSystem extends createSystem({}) {
   private matchState: MatchState = initialMatchState();
   private physicsSystem!: PhysicsSystem;
   private sendTimerS = 0;
-  private peerAvatars = new Map<string, Entity>();
-  private peerAvatarsInFlight = new Set<string>();
   private micTrack: MediaStreamTrack | null = null;
   private remoteAudioElements = new Map<string, HTMLAudioElement>();
   private readonly joinedAtMs = Date.now();
@@ -292,7 +290,9 @@ export class MultiplayerSystem extends createSystem({}) {
         log('warn', 'net', 'dropped malformed presence message', { peerId });
         return;
       }
-      this.applyPeerPresence(peerId, message);
+      // MP3b: avatars live in PeerAvatarSystem — hand the validated
+      // message over on the bus rather than owning Object3Ds here.
+      gameEvents.emit('PeerPresence', { peerId, message });
     };
     this.helloAction = this.room.makeAction<HelloMessage>('hello');
     this.helloAction.onMessage = (data, { peerId }) => {
@@ -420,7 +420,7 @@ export class MultiplayerSystem extends createSystem({}) {
     };
     this.room.onPeerLeave = (peerId) => {
       log('info', 'net', 'peer left', { peerId });
-      this.removePeerAvatar(peerId);
+      gameEvents.emit('PeerLeft', { peerId });
       this.removeRemoteAudio(peerId);
       this.peerJoinedAtMs.delete(peerId);
       // Only clear match state once EVERY peer is gone, not on a leave
@@ -465,10 +465,6 @@ export class MultiplayerSystem extends createSystem({}) {
 
   destroy(): void {
     this.room?.leave();
-    for (const entity of this.peerAvatars.values()) {
-      entity.dispose();
-    }
-    this.peerAvatars.clear();
     this.micTrack?.stop();
     this.micTrack = null;
     for (const peerId of [...this.remoteAudioElements.keys()]) {
@@ -941,6 +937,7 @@ export class MultiplayerSystem extends createSystem({}) {
       head: this.headPose,
       leftHand: this.leftPose,
       rightHand: this.rightPose,
+      colorIndex: settingsState.current.avatarColorIndex,
     });
     void this.presenceAction.send(message);
   }
@@ -974,83 +971,5 @@ export class MultiplayerSystem extends createSystem({}) {
     target.quaternion[1] = this.tmpQuat.y;
     target.quaternion[2] = this.tmpQuat.z;
     target.quaternion[3] = this.tmpQuat.w;
-  }
-
-  private applyPeerPresence(peerId: string, message: PresenceMessage): void {
-    const avatarEntity = this.peerAvatars.get(peerId);
-    if (!avatarEntity) {
-      // First message from a new peer — instantiate its avatar
-      // asynchronously; messages that arrive before it resolves are
-      // simply dropped (the next ~20Hz tick catches up).
-      void this.createPeerAvatar(peerId, message);
-      return;
-    }
-    const object3D = avatarEntity.object3D;
-    if (!object3D) {
-      return;
-    }
-    this.applyPoseToPart(object3D, 'head', message.head);
-    this.applyPoseToPart(object3D, 'leftHand', message.leftHand);
-    this.applyPoseToPart(object3D, 'rightHand', message.rightHand);
-  }
-
-  /** No mirroring here anymore (2026-09-02) — now that
-   * maybeRepositionAsGuest() physically moves the guest's own rig,
-   * BOTH peers' outgoing presence is already in correct shared-world
-   * coordinates; the receiver just applies it as-is. */
-  private applyPoseToPart(root: Object3D, name: string, pose: Pose): void {
-    const part = root.getObjectByName(name);
-    if (!part) {
-      return;
-    }
-    this.tmpPos.set(...pose.position);
-    part.position.copy(this.tmpPos);
-    part.quaternion.set(...pose.quaternion);
-  }
-
-  /** The in-flight guard is set SYNCHRONOUSLY before the await — code
-   * review, 2026-09-02: the old guard only checked `peerAvatars.has()`,
-   * which stays false until AFTER instantiate() resolves, so two
-   * presence messages arriving before the first instantiate settles
-   * both passed the check and each created (and leaked) their own
-   * avatar entity, with only the last one ever tracked/disposable. */
-  private async createPeerAvatar(
-    peerId: string,
-    firstMessage: PresenceMessage,
-  ): Promise<void> {
-    if (this.peerAvatars.has(peerId) || this.peerAvatarsInFlight.has(peerId)) {
-      return;
-    }
-    this.peerAvatarsInFlight.add(peerId);
-    const object3D =
-      await this.world.assets.instantiate<Object3D>('peer-avatar');
-    this.peerAvatarsInFlight.delete(peerId);
-    const peerStillPresent = peerId in (this.room?.getPeers() ?? {});
-    if (this.peerAvatars.has(peerId) || !peerStillPresent) {
-      // Either the peer already has an avatar, or it LEFT while this
-      // instantiate was in flight — removePeerAvatar() found nothing to
-      // dispose back then, so an avatar created now would be a ghost
-      // nobody ever removes (second review, 2026-09-03). Route the
-      // freshly-instantiated object through an entity so its GPU
-      // resources are released the same way as any other avatar
-      // (CLAUDE.md: dispose(), never a bare destroy()).
-      this.world.createTransformEntity(object3D).dispose();
-      return;
-    }
-    const entity = this.world.createTransformEntity(object3D);
-    this.peerAvatars.set(peerId, entity);
-    log('info', 'net', 'peer avatar created', { peerId });
-    this.applyPoseToPart(object3D, 'head', firstMessage.head);
-    this.applyPoseToPart(object3D, 'leftHand', firstMessage.leftHand);
-    this.applyPoseToPart(object3D, 'rightHand', firstMessage.rightHand);
-  }
-
-  private removePeerAvatar(peerId: string): void {
-    const entity = this.peerAvatars.get(peerId);
-    if (!entity) {
-      return;
-    }
-    entity.dispose();
-    this.peerAvatars.delete(peerId);
   }
 }

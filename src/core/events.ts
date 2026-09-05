@@ -1,5 +1,6 @@
 import type { Language } from './i18n.js';
 import type { MatchSide, MatchState } from './match.js';
+import type { PresenceMessage } from './presence.js';
 import type { RoundResult } from './scoring.js';
 import type { Settings } from './settings.js';
 import type { Vec3 } from './vec3.js';
@@ -128,6 +129,20 @@ export interface GameEvents {
    * MenuSystem, the one owner of resetAll(). Keeps the reset trigger on
    * the bus instead of three systems calling into MenuSystem. */
   ResetRequested: Record<string, never>;
+  /** MP3b: a validated presence message from a peer, forwarded by
+   * MultiplayerSystem (which owns the network) so PeerAvatarSystem
+   * (which owns the avatars) never touches Trystero — and HudSystem can
+   * read the opponent's chosen color from the same event. */
+  PeerPresence: {
+    peerId: string;
+    message: PresenceMessage;
+  };
+  /** MP3b: that peer left the room — dispose its avatar. Distinct from
+   * MultiplayerPeerDisconnected, which fires only when the room is
+   * EMPTY (match teardown). */
+  PeerLeft: {
+    peerId: string;
+  };
 }
 
 export const gameEvents = new EventBus<GameEvents>();

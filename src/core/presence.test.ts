@@ -24,6 +24,7 @@ describe('buildPresenceMessage', () => {
       head: headPose,
       leftHand: leftPose,
       rightHand: rightPose,
+      colorIndex: 2,
     });
     expect(message.version).toBe(PRESENCE_SCHEMA_VERSION);
     expect(message.head).toEqual(headPose);
@@ -36,6 +37,7 @@ describe('parsePresenceMessage (untrusted network boundary)', () => {
       head: headPose,
       leftHand: leftPose,
       rightHand: rightPose,
+      colorIndex: 2,
     });
     expect(parsePresenceMessage(message)).toEqual(message);
   });
@@ -56,6 +58,7 @@ describe('parsePresenceMessage (untrusted network boundary)', () => {
       head: headPose,
       leftHand: leftPose,
       rightHand: rightPose,
+      colorIndex: 2,
     });
     expect(parsePresenceMessage({ ...message, version: 999 })).toBeNull();
   });
@@ -78,6 +81,30 @@ describe('parsePresenceMessage (untrusted network boundary)', () => {
       rightHand: rightPose,
     };
     expect(parsePresenceMessage(malformed)).toBeNull();
+  });
+
+  it('rejects a v1 message (no colorIndex) — MP3b bumped to v2', () => {
+    const v1 = {
+      version: 1,
+      head: headPose,
+      leftHand: leftPose,
+      rightHand: rightPose,
+    };
+    expect(PRESENCE_SCHEMA_VERSION).toBe(2);
+    expect(parsePresenceMessage(v1)).toBeNull();
+  });
+
+  it('bounds colorIndex to a small non-negative integer', () => {
+    const base = buildPresenceMessage({
+      head: headPose,
+      leftHand: leftPose,
+      rightHand: rightPose,
+      colorIndex: 0,
+    });
+    expect(parsePresenceMessage({ ...base, colorIndex: 15 })).not.toBeNull();
+    expect(parsePresenceMessage({ ...base, colorIndex: -1 })).toBeNull();
+    expect(parsePresenceMessage({ ...base, colorIndex: 16 })).toBeNull();
+    expect(parsePresenceMessage({ ...base, colorIndex: 1.5 })).toBeNull();
   });
 });
 
