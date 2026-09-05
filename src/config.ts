@@ -19,6 +19,7 @@ import windIndicatorData from './data/wind-indicator.json' with { type: 'json' }
 import sinBinData from './data/sin-bin.json' with { type: 'json' };
 import stickRackData from './data/stick-rack.json' with { type: 'json' };
 import multiplayerData from './data/multiplayer.json' with { type: 'json' };
+import matchData from './data/match.json' with { type: 'json' };
 
 export const courtPresets = courtPresetsData.presets;
 export type CourtPresetName = keyof typeof courtPresets;
@@ -56,6 +57,8 @@ export const windIndicator = windIndicatorData;
 export const sinBin = sinBinData;
 export const stickRack = stickRackData;
 export const multiplayer = multiplayerData;
+/** MP3a match rules: king-decision grace and the auto-restart delay. */
+export const match = matchData;
 
 export function getCourtPreset(name: CourtPresetName = defaultCourtPreset) {
   return courtPresets[name];

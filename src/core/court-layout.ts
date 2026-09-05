@@ -40,6 +40,15 @@ const NEAR_BASELINE_SETBACK_M = 0.05;
  * felled-out-of-total count) don't re-hardcode the piece total. */
 export const KUBB_COUNT = 5;
 
+/** The far baseline's z — the player origin is the near baseline at
+ * z=0 facing -Z (see computeCourtLayout). Shared by everything that
+ * mirrors to the far end (player teleport, second stick rack, guest
+ * sin-bin row) so no system hardcodes the default preset's length
+ * (spec review I5: Advanced uses the 8 m tournament court). */
+export function farBaselineZ(preset: CourtPreset): number {
+  return -preset.lengthM;
+}
+
 /**
  * Player origin is world (0,0,0), facing -Z. The near baseline (player's
  * baseline) sits at z=0; the far baseline (kubbs + king row) sits at
