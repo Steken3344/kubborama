@@ -127,12 +127,14 @@ export class HudSystem extends createSystem({}) {
     this.hudPanel.requireElementById('role-value').setProperties({
       text: mySide === 'host' ? t('rolePlayerA') : t('rolePlayerB'),
     });
-    // Score `A – B`, Player A (host) always left so it lines up with the
-    // role row (Erik, 2026-09-05, MP3a).
+    // Score `A - B`, Player A (host) always left so it lines up with the
+    // role row (Erik, 2026-09-05, MP3a). Plain hyphen on purpose: the
+    // UIKit MSDF font has no glyph for an en dash ("Missing glyph info
+    // for character '–'" in the emulator — same charset limit as gh#5).
     show('match-row');
     this.hudPanel
       .requireElementById('match-value')
-      .setProperties({ text: `${s.host} – ${s.guest}` });
+      .setProperties({ text: `${s.host} - ${s.guest}` });
     // Absolute "Spelare A/B" turn labels, not "din/motst. tur" (Erik,
     // 2026-09-02); once decided, the relative won/lost verdict.
     show('turn-row');
