@@ -122,6 +122,12 @@ export interface GameEvents {
    * Changed alone can't express "no match anymore," it only ever
    * carries a real state. */
   MultiplayerPeerDisconnected: Record<string, never>;
+  /** MP3a: "please perform a full manual reset" — emitted by
+   * MatchRulesSystem (auto-restart timer, room emptied) and by
+   * MultiplayerSystem (a guest's relayed "Ny runda"); handled by
+   * MenuSystem, the one owner of resetAll(). Keeps the reset trigger on
+   * the bus instead of three systems calling into MenuSystem. */
+  ResetRequested: Record<string, never>;
 }
 
 export const gameEvents = new EventBus<GameEvents>();

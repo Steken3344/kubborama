@@ -14,6 +14,7 @@
   "roleLabel": "Du är",
   "rolePlayerA": "Spelare A",
   "rolePlayerB": "Spelare B",
+  "lockedDuringMatch": " (låst under match)",
   "matchWon": "Du vann!",
   "matchLost": "Du förlorade",
   "throwStyleUnderhand": "Underhand",

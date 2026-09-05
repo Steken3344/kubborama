@@ -2,6 +2,7 @@ import { createSystem, PhysicsBody, Transform } from '@iwsdk/core';
 import type { Entity } from '@iwsdk/core';
 import { KingPiece } from '../components/king-piece.js';
 import { KingProtected } from '../components/king-protected.js';
+import { OutOfPlay } from '../components/out-of-play.js';
 import { Resettable } from '../components/resettable.js';
 import { StickState } from '../components/stick-state.js';
 import { getGameMode, pieces } from '../config.js';
@@ -47,7 +48,11 @@ export class ToppleSystem extends createSystem({
     // until every kubb is down (SimpleRulesSystem owns the tag) — the
     // king simply never enters this query while it's present, so no
     // rest/angle tracking exists for it to fire early on.
-    excluded: [StickState, KingProtected],
+    // OutOfPlay (MP3a): a kubb already in the sin-bin must not re-emit
+    // KubbFelled if a stray stick knocks it over — felledReported is
+    // cleared on every Reset, so the tag is the guard that survives a
+    // round end (the match reducer's duplicate check is the second one).
+    excluded: [StickState, KingProtected, OutOfPlay],
   },
 }) {
   private restAccumS = new Map<number, number>();

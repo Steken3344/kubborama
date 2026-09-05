@@ -8,6 +8,7 @@ import { pieces, sinBin } from '../config.js';
 import { sinBinSlotPosition } from '../core/sinBin.js';
 import { gameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
+import { matchActivity } from '../matchActivityState.js';
 import { settingsState } from '../settingsState.js';
 
 const IDENTITY_QUATERNION: [number, number, number, number] = [0, 0, 0, 1];
@@ -19,6 +20,11 @@ const IDENTITY_QUATERNION: [number, number, number, number] = [0, 0, 0, 1];
  * keeps today's free-throw-any-order behavior, per the design
  * decision to build this INTO the existing Simple/Advanced toggle
  * rather than as a separate setting (see docs/DECISIONS.md).
+ *
+ * While a multiplayer match is active (src/matchActivityState.ts) this
+ * system stands down entirely — MatchRulesSystem owns the sin-bin and
+ * the king for the match; the disconnect path ends with a manual Reset,
+ * which is when protection is re-derived for solo play again (MP3a).
  *
  * Purely event-driven (no per-frame work needed): KubbFelled moves
  * the piece and re-derives whether the king should still be
@@ -77,6 +83,9 @@ export class SimpleRulesSystem extends createSystem({
   }
 
   private onKubbFelled(entityId: string): void {
+    if (matchActivity.current.active) {
+      return; // MP3a: MatchRulesSystem owns sin-bin/king during a match
+    }
     if (settingsState.current.gameMode !== 'simple') {
       return;
     }
@@ -99,6 +108,9 @@ export class SimpleRulesSystem extends createSystem({
   }
 
   private onReset(): void {
+    if (matchActivity.current.active) {
+      return; // MP3a: MatchRulesSystem owns sin-bin/king during a match
+    }
     this.sinBinNextIndex = 0;
     for (const entity of [...this.queries.outOfPlay.entities]) {
       entity.removeComponent(OutOfPlay);
@@ -107,6 +119,9 @@ export class SimpleRulesSystem extends createSystem({
   }
 
   private applyKingProtection(): void {
+    if (matchActivity.current.active) {
+      return; // MP3a: the king is never protected in a match
+    }
     const kingEntities = this.queries.king.entities;
     if (kingEntities.size !== 1) {
       // Should be structurally impossible (exactly one KingPiece is

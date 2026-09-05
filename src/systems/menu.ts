@@ -6,6 +6,7 @@ import {
   UIKitMLAsset,
 } from '@iwsdk/core';
 import type { Entity } from '@iwsdk/core';
+import { OutOfPlay } from '../components/out-of-play.js';
 import { Resettable } from '../components/resettable.js';
 import { StickPhase, StickState } from '../components/stick-state.js';
 import { audio } from '../config.js';
@@ -13,6 +14,7 @@ import { KUBB_COUNT } from '../core/court-layout.js';
 import { accuracy } from '../core/stats.js';
 import { gameEvents } from '../core/events.js';
 import type { GameEvents } from '../core/events.js';
+import { matchActivity } from '../matchActivityState.js';
 import { uiTick } from '../core/haptics.js';
 import { log } from '../core/log.js';
 import { createRng } from '../core/rng.js';
@@ -56,6 +58,10 @@ const PROFILE_NAME_OPTIONS: Array<string | null> = [null, 'Erik', 'Gast'];
  */
 export class MenuSystem extends createSystem({
   resettable: { required: [Resettable] },
+  // MP3a: during a match a ROUND-end reset must leave sin-binned kubbs
+  // where they are; only a manual reset (abort / auto-restart) moves
+  // everything. Two queries, picked by cause — not an if in the loop.
+  resettableInPlay: { required: [Resettable], excluded: [OutOfPlay] },
 }) {
   private grabSystem!: GrabSystem;
   private physicsSystem!: PhysicsSystem;
@@ -131,6 +137,9 @@ export class MenuSystem extends createSystem({
       this.settingsSystem.toggleLanguage();
     });
     this.wireButton('game-mode-button', () => {
+      if (matchActivity.current.active) {
+        return; // MP3a: a court relayout mid-match is undefined; locked
+      }
       this.settingsSystem.toggleGameMode();
       this.refreshLabels();
     });
@@ -193,6 +202,11 @@ export class MenuSystem extends createSystem({
       gameEvents.on('LanguageChanged', () => {
         this.refreshLabels();
       }),
+      // MP3a: MatchRulesSystem (auto-restart, room emptied) and a
+      // guest's relayed "Ny runda" all ask for a full reset here.
+      gameEvents.on('ResetRequested', () => {
+        this.resetAll('manual');
+      }),
     );
   }
 
@@ -251,9 +265,13 @@ export class MenuSystem extends createSystem({
     });
     this.menuPanel.requireElementById('game-mode-button-label').setProperties({
       text:
-        s.gameMode === 'simple'
+        (s.gameMode === 'simple'
           ? t('gameModeNameSimple')
-          : t('gameModeNameAdvanced'),
+          : t('gameModeNameAdvanced')) +
+        // MP3a: the button is a no-op during a match (see wireButton) —
+        // say so on the label rather than styling a "disabled" look
+        // UIKitML may not honour.
+        (matchActivity.current.active ? t('lockedDuringMatch') : ''),
     });
     this.menuPanel.requireElementById('haptics-button-label').setProperties({
       text: s.hapticsEnabled ? t('hapticsOn') : t('hapticsOff'),
@@ -357,7 +375,11 @@ export class MenuSystem extends createSystem({
   }
 
   private resetAll(cause: GameEvents['Reset']['cause']): void {
-    for (const entity of this.queries.resettable.entities) {
+    const query =
+      cause === 'roundEnd' && matchActivity.current.active
+        ? this.queries.resettableInPlay
+        : this.queries.resettable;
+    for (const entity of query.entities) {
       this.resetOne(entity);
     }
     gameEvents.emit('Reset', { timeS: this.currentTimeS, cause });
