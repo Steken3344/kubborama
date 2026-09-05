@@ -4730,3 +4730,48 @@ snapshot; empty end-reason label documented; spec's stale
 
 Verdict was "ready with fixes"; all fixes landed the same pass. 232
 tests, tsc/eslint/prettier, build, smoke green.
+
+## 2026-09-05 — MP3b avatars implemented (autonomous, Erik AFK)
+
+Per `docs/superpowers/specs/2026-09-05-avatars-design.md` /
+`docs/superpowers/plans/2026-09-05-avatars.md` (Erik's choices: a
+procedural body from what is tracked, player-chosen color from a 6-color
+palette cycled by a settings button, `PeerAvatarSystem` + pure core):
+
+- `core/quat.ts` gained `rotateVectorByQuaternion`, `quaternionFromYaw`,
+  `yawFromQuaternion`, `quaternionAligningY`; `core/avatarPose.ts`
+  `solveAvatarPose()` derives torso (straight below the head — nodding
+  must not move the body), shoulders and straight shoulder→hand arm
+  segments; dims in `src/data/avatar.json`. 15 new tests.
+- Settings `avatarColorIndex` (`.default(0)`), `src/data/avatar-palette.
+json` (red/blue/orange/purple/teal/white — no green against grass),
+  `avatarPaletteEntry()` clamping, a settings-tab button cycling it.
+- Presence v2 carries `colorIndex`; `MultiplayerSystem` no longer owns
+  avatars — it emits `PeerPresence`/`PeerLeft` and lost ~90 lines. New
+  `PeerAvatarSystem`: per-instance material clone tinted from the
+  sender's index, torso yaw low-passed toward head yaw
+  (`yawSmoothingS`, wall-clock dt since there is no update loop), unit
+  arm cylinders scaled to the solved length. Scene asset rebuilt: head +
+  dark visor, torso box, arms, mitten hands, all named parts.
+- HUD score digits colored per player (own color from settings, the
+  opponent's from its presence).
+
+**Two self-inflicted incidents worth remembering**: (1) I overwrote the
+EXISTING `src/core/quat.ts` (fromAxisAngle/angularVelocityBetween, used
+by throwRelease/topple) with a new file of the same name — `tsc` caught
+it immediately; restored from git and appended the new helpers instead.
+Lesson: `Write` on a path I haven't read this session must be preceded
+by a check that it doesn't exist. (2) A CSS comment inside a UIKitML
+`<style>` block breaks the production build ("Unsupported stylesheet
+selector") while tsc/eslint/vitest stay green — and the smoke test
+happily ran against the previous `dist/`, so the commit gate missed it.
+Gate now includes `npm run build` + smoke on a fresh build. Noted in the
+uikitml header for the next author.
+
+**Emulator**: zero console errors after reload; `PeerAvatarSystem`
+registered (index 36); the rebuilt asset renders validly via
+`scene_render_file` on a scratch scene (7 meshes, 2 materials — the
+config import works in the editor realm too); solo HUD unchanged. NOT
+verifiable without a peer: the posed body, the color sync, the score
+tint — the 2-headset gate. 251 tests, tsc/eslint/prettier, build, smoke
+green.

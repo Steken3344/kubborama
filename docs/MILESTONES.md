@@ -521,6 +521,28 @@ docs/superpowers/plans/2026-09-05-match-rules.md · Log: docs/DECISIONS.md
 - Filed: gh#15 host/guest game-mode mismatch, gh#16 relayed-throw stats
   pollution.
 
+## MP3b — Avatars `status: built + emulator-verified (asset renders, no errors); awaiting Erik's 2-headset gate`
+
+Spec: docs/superpowers/specs/2026-09-05-avatars-design.md · Plan:
+docs/superpowers/plans/2026-09-05-avatars.md · Log: docs/DECISIONS.md
+2026-09-05.
+
+- [x] Pure body solver (`core/avatarPose.ts`) + quaternion helpers in the
+      existing `core/quat.ts`; dims in `avatar.json`; 15 tests.
+- [x] Player-chosen color: `avatarColorIndex` setting, 6-color palette,
+      settings-tab button cycling it, synced in presence v2.
+- [x] `PeerAvatarSystem` (owns avatars; MultiplayerSystem only forwards
+      `PeerPresence`/`PeerLeft`), rebuilt `peer-avatar` asset: head +
+      visor, torso, straight arms, mitten hands, per-instance color.
+- [x] HUD score digits tinted per player.
+- [x] Emulator: asset renders (7 meshes), system registered, zero errors;
+      251 tests, build, smoke green.
+- [ ] **GATE (Erik, 2 headsets)**: the opponent has a body; arms follow the
+      hands; the visor shows where they look; torso turns smoothly with
+      the head; the chosen color shows on the other headset and tints the
+      score; changing color mid-session updates the other side. Tune
+      `avatar.json` dims if proportions look off. 🎧 Not self-approvable.
+
 ## M7 — MP1 co-presence (multiplayer) `status: MP1+MP2 confirmed live end-to-end with 2 real headsets (2026-09-02); post-review hardening done`
 
 - [x] Trystero installed (v0.25.4, default Nostr signaling strategy,

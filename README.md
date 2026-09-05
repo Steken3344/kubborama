@@ -10,9 +10,10 @@ no menus in the way.
 Quest browser, tap "Enter XR")
 
 Status: early prototype (M7 — 2-headset multiplayer, confirmed working
-live; MP3a — real match rules with sin-bin, score and the king deciding,
-awaiting the 2-headset gate). See [docs/MILESTONES.md](docs/MILESTONES.md)
-for what's built and what's next.
+live; MP3a — real match rules with sin-bin, score and the king deciding;
+MP3b — procedural body avatars in a player-chosen color; both awaiting
+the 2-headset gate). See [docs/MILESTONES.md](docs/MILESTONES.md) for
+what's built and what's next.
 
 ## Tech stack
 
