@@ -1,8 +1,8 @@
 [
-  { "id": "red", "hex": "#d9534f" },
-  { "id": "blue", "hex": "#4a90d9" },
-  { "id": "orange", "hex": "#f0883e" },
-  { "id": "purple", "hex": "#9b59b6" },
-  { "id": "teal", "hex": "#1abc9c" },
-  { "id": "white", "hex": "#f2ead9" }
+  { "id": "red", "hex": "#d9534f", "nameKey": "avatarColorRed" },
+  { "id": "blue", "hex": "#4a90d9", "nameKey": "avatarColorBlue" },
+  { "id": "orange", "hex": "#f0883e", "nameKey": "avatarColorOrange" },
+  { "id": "purple", "hex": "#9b59b6", "nameKey": "avatarColorPurple" },
+  { "id": "teal", "hex": "#1abc9c", "nameKey": "avatarColorTeal" },
+  { "id": "white", "hex": "#f2ead9", "nameKey": "avatarColorWhite" }
 ]

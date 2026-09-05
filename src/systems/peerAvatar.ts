@@ -78,7 +78,13 @@ export class PeerAvatarSystem extends createSystem({}) {
     if (!instance) {
       return;
     }
-    instance.entity.dispose();
+    // Only the per-instance resource is ours: the geometries (and the
+    // visor material) are SHARED with the prototype and every other
+    // instance — instantiate() is a SkeletonUtils.clone, which copies
+    // references — so a plain dispose() would GPU-release them for
+    // everyone (code review, 2026-09-05). Still dispose(), never
+    // destroy() (CLAUDE.md trap table).
+    instance.entity.dispose({ disposeResources: false });
     instance.material.dispose();
     this.avatars.delete(peerId);
     log('info', 'net', 'peer avatar removed', { peerId });
@@ -93,12 +99,21 @@ export class PeerAvatarSystem extends createSystem({}) {
       return;
     }
     this.inFlight.add(peerId);
-    const root = await this.world.assets.instantiate<Object3D>('peer-avatar');
-    this.inFlight.delete(peerId);
+    let root: Object3D;
+    try {
+      root = await this.world.assets.instantiate<Object3D>('peer-avatar');
+    } finally {
+      // A rejected instantiate must not leave the peer stuck in-flight
+      // forever (every later presence dropped, PeerLeft stashed).
+      this.inFlight.delete(peerId);
+    }
     if (this.avatars.has(peerId) || this.leftWhileInFlight.delete(peerId)) {
-      // Route through an entity so GPU resources are released the same
-      // way as any other avatar (CLAUDE.md: dispose(), never destroy()).
-      this.world.createTransformEntity(root).dispose();
+      // Nothing per-instance exists yet (no material clone), and the
+      // clone's geometries are the prototype's — release the entity
+      // only (CLAUDE.md: dispose(), never destroy()).
+      this.world.createTransformEntity(root).dispose({
+        disposeResources: false,
+      });
       return;
     }
     const material = this.tintBodyMaterial(root, event.message.colorIndex);

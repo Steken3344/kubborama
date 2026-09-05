@@ -27,6 +27,7 @@ export class HudSystem extends createSystem({}) {
   private unsubscribeMatchStateChanged?: () => void;
   private unsubscribeMultiplayerPeerDisconnected?: () => void;
   private unsubscribePeerPresence?: () => void;
+  private unsubscribeAvatarColorChanged?: () => void;
   /** MP3b: the opponent's chosen palette index, from its last presence
    * message — colors their half of the score. null until one arrives. */
   private opponentColorIndex: number | null = null;
@@ -87,6 +88,12 @@ export class HudSystem extends createSystem({}) {
       this.opponentColorIndex = e.message.colorIndex;
       this.updateMatchRow();
     });
+    this.unsubscribeAvatarColorChanged = gameEvents.on(
+      'AvatarColorChanged',
+      () => {
+        this.updateMatchRow(); // my own digit — reads settingsState
+      },
+    );
   }
 
   destroy(): void {
@@ -96,6 +103,7 @@ export class HudSystem extends createSystem({}) {
     this.unsubscribeMatchStateChanged?.();
     this.unsubscribeMultiplayerPeerDisconnected?.();
     this.unsubscribePeerPresence?.();
+    this.unsubscribeAvatarColorChanged?.();
   }
 
   private refreshLabels(): void {

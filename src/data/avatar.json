@@ -4,7 +4,7 @@
   "torsoWidthM": 0.36,
   "torsoDepthM": 0.18,
   "shoulderWidthM": 0.4,
-  "armRadiusM": 0.04,
+  "armRadiusM": 0.025,
   "headRadiusM": 0.11,
   "handSizeM": 0.09,
   "yawSmoothingS": 0.25

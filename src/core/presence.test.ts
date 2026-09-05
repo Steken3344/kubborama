@@ -94,6 +94,24 @@ describe('parsePresenceMessage (untrusted network boundary)', () => {
     expect(parsePresenceMessage(v1)).toBeNull();
   });
 
+  it('clamps an out-of-range colorIndex at build time so the message stays valid', () => {
+    const tooHigh = buildPresenceMessage({
+      head: headPose,
+      leftHand: leftPose,
+      rightHand: rightPose,
+      colorIndex: 99,
+    });
+    expect(tooHigh.colorIndex).toBe(15);
+    expect(parsePresenceMessage(tooHigh)).not.toBeNull();
+    const negative = buildPresenceMessage({
+      head: headPose,
+      leftHand: leftPose,
+      rightHand: rightPose,
+      colorIndex: -3.7,
+    });
+    expect(negative.colorIndex).toBe(0);
+  });
+
   it('bounds colorIndex to a small non-negative integer', () => {
     const base = buildPresenceMessage({
       head: headPose,

@@ -21,8 +21,10 @@ const pose = (
   quaternion: [number, number, number, number] = [0, 0, 0, 1],
 ): Pose => ({ position, quaternion });
 
-const close = (a: readonly number[], b: readonly number[]) =>
+const close = (a: readonly number[], b: readonly number[]) => {
+  expect(a).toHaveLength(b.length);
   a.forEach((v, i) => expect(v).toBeCloseTo(b[i] ?? NaN, 6));
+};
 
 describe('solveAvatarPose', () => {
   const head = pose([0.5, 1.6, -0.2]);
@@ -64,22 +66,30 @@ describe('solveAvatarPose', () => {
     close(r.torso.quaternion, quaternionFromYaw(Math.PI));
   });
 
-  it('makes each arm a straight segment from shoulder to hand', () => {
+  it('makes each arm a straight segment from shoulder toward the hand, stopping at its surface', () => {
     const r = solveAvatarPose(
       { head, leftHand: left, rightHand: right, torsoYawRad: 0 },
       DIMS,
     );
     const [sx, sy, sz] = r.rightShoulder;
     const [hx, hy, hz] = right.position;
-    expect(r.rightArm.lengthM).toBeCloseTo(
-      Math.hypot(hx - sx, hy - sy, hz - sz),
-      6,
-    );
-    close(r.rightArm.position, [(sx + hx) / 2, (sy + hy) / 2, (sz + hz) / 2]);
+    const distance = Math.hypot(hx - sx, hy - sy, hz - sz);
+    const inset = DIMS.handSizeM / 2;
+    expect(r.rightArm.lengthM).toBeCloseTo(distance - inset, 6);
+    // Centre sits half a (shortened) length along the shoulder→hand line.
+    const u = [
+      (hx - sx) / distance,
+      (hy - sy) / distance,
+      (hz - sz) / distance,
+    ];
+    const half = r.rightArm.lengthM / 2;
+    close(r.rightArm.position, [
+      sx + (u[0] ?? 0) * half,
+      sy + (u[1] ?? 0) * half,
+      sz + (u[2] ?? 0) * half,
+    ]);
     // The segment's +Y axis points from shoulder to hand.
-    const dir = rotateVectorByQuaternion([0, 1, 0], r.rightArm.quaternion);
-    const len = r.rightArm.lengthM;
-    close(dir, [(hx - sx) / len, (hy - sy) / len, (hz - sz) / len]);
+    close(rotateVectorByQuaternion([0, 1, 0], r.rightArm.quaternion), u);
   });
 
   it('never produces a zero-length arm', () => {

@@ -48,12 +48,14 @@ root.add(head);
 
 // A dark band across the -Z face of the head: the direction the other
 // player is looking, which the sphere alone never shows.
+// Narrow enough that its corners stay inside the sphere's curvature
+// instead of floating in front of it (code review, 2026-09-05).
 const visor = new Mesh(
-  new BoxGeometry(dims.headRadiusM * 1.5, dims.headRadiusM * 0.55, 0.02),
+  new BoxGeometry(dims.headRadiusM * 1.2, dims.headRadiusM * 0.5, 0.02),
   visorMaterial,
 );
 visor.name = 'visor';
-visor.position.set(0, 0.01, -dims.headRadiusM + 0.005);
+visor.position.set(0, 0.01, -dims.headRadiusM + 0.02);
 head.add(visor);
 
 const torso = new Mesh(

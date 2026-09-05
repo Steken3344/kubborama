@@ -137,6 +137,12 @@ export interface GameEvents {
     peerId: string;
     message: PresenceMessage;
   };
+  /** MP3b: the LOCAL player picked another avatar color in the menu —
+   * HudSystem re-tints its own score digit; the remote side learns it
+   * through the next presence message, not through this. */
+  AvatarColorChanged: {
+    colorIndex: number;
+  };
   /** MP3b: that peer left the room — dispose its avatar. Distinct from
    * MultiplayerPeerDisconnected, which fires only when the room is
    * EMPTY (match teardown). */

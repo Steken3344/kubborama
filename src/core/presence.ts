@@ -16,7 +16,7 @@ export const PRESENCE_SCHEMA_VERSION = 2;
 /** Generous upper bound, not the palette length — core must not import
  * config; the receiver clamps onto the real palette (config.ts's
  * avatarPaletteEntry). */
-const MAX_COLOR_INDEX = 15;
+export const MAX_COLOR_INDEX = 15;
 
 const poseSchema = z.object({
   position: vec3Schema,
@@ -43,7 +43,16 @@ export function buildPresenceMessage(input: {
   rightHand: Pose;
   colorIndex: number;
 }): PresenceMessage {
-  return { version: PRESENCE_SCHEMA_VERSION, ...input };
+  // Clamp at the SEND side (code review, 2026-09-05): a stale or
+  // hand-edited settings index ≥ 16 would otherwise make every presence
+  // message this player sends fail the receiver's schema — no avatar at
+  // all, and nothing visibly wrong locally. The invariant lives with the
+  // schema so the two can never drift apart.
+  const colorIndex = Math.min(
+    Math.max(0, Math.trunc(input.colorIndex)),
+    MAX_COLOR_INDEX,
+  );
+  return { version: PRESENCE_SCHEMA_VERSION, ...input, colorIndex };
 }
 
 /** Never throws — a peer on a mismatched schema version or sending

@@ -540,8 +540,12 @@ docs/superpowers/plans/2026-09-05-avatars.md · Log: docs/DECISIONS.md
 - [ ] **GATE (Erik, 2 headsets)**: the opponent has a body; arms follow the
       hands; the visor shows where they look; torso turns smoothly with
       the head; the chosen color shows on the other headset and tints the
-      score; changing color mid-session updates the other side. Tune
-      `avatar.json` dims if proportions look off. 🎧 Not self-approvable.
+      score; changing color mid-session updates the other side AND your
+      own HUD digit. Check specifically: arm cylinders end at the mitten
+      (not through it); the visor sits on the head; a full look-up does
+      not twitch the torso; the two-span score row lays out (never
+      rendered in solo). Tune `avatar.json` dims if proportions look
+      off. 🎧 Not self-approvable.
 
 ## M7 — MP1 co-presence (multiplayer) `status: MP1+MP2 confirmed live end-to-end with 2 real headsets (2026-09-02); post-review hardening done`
 

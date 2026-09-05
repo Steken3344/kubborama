@@ -73,32 +73,52 @@ export function solveAvatarPose(
   const half = dims.shoulderWidthM / 2;
   const rightShoulder: Vec3 = [hx + rightX * half, neckY, hz + rightZ * half];
   const leftShoulder: Vec3 = [hx - rightX * half, neckY, hz - rightZ * half];
+  // The arm ends at the hand's near SURFACE, not its centre — otherwise
+  // the cylinder pokes through the flat mitten (code review, 2026-09-05).
+  const insetM = dims.handSizeM / 2;
   return {
     torso,
     leftShoulder,
     rightShoulder,
-    leftArm: segment(leftShoulder, input.leftHand.position, dims.armRadiusM),
-    rightArm: segment(rightShoulder, input.rightHand.position, dims.armRadiusM),
+    leftArm: segment(
+      leftShoulder,
+      input.leftHand.position,
+      insetM,
+      dims.armRadiusM,
+    ),
+    rightArm: segment(
+      rightShoulder,
+      input.rightHand.position,
+      insetM,
+      dims.armRadiusM,
+    ),
   };
 }
 
-function segment(from: Vec3, to: Vec3, minLengthM: number): Segment {
+/** Straight limb from `from` toward `to`, stopping `insetM` short of it. */
+function segment(
+  from: Vec3,
+  to: Vec3,
+  insetM: number,
+  minLengthM: number,
+): Segment {
   const dx = to[0] - from[0];
   const dy = to[1] - from[1];
   const dz = to[2] - from[2];
   const distance = Math.hypot(dx, dy, dz);
   // A hand exactly at the shoulder (tracking glitch, arm folded) must not
-  // collapse the capsule to a point or feed a zero vector to the aligner.
-  const lengthM = Math.max(distance, minLengthM);
-  const quaternion =
-    distance === 0 ? ([0, 0, 0, 1] as Quat) : quaternionAligningY([dx, dy, dz]);
+  // collapse the cylinder to a point or feed a zero vector to the aligner.
+  const lengthM = Math.max(distance - insetM, minLengthM);
+  if (distance === 0) {
+    return { position: [...from], quaternion: [0, 0, 0, 1], lengthM };
+  }
+  const ux = dx / distance;
+  const uy = dy / distance;
+  const uz = dz / distance;
+  const half = lengthM / 2;
   return {
-    position: [
-      (from[0] + to[0]) / 2,
-      (from[1] + to[1]) / 2,
-      (from[2] + to[2]) / 2,
-    ],
-    quaternion,
+    position: [from[0] + ux * half, from[1] + uy * half, from[2] + uz * half],
+    quaternion: quaternionAligningY([ux, uy, uz]),
     lengthM,
   };
 }

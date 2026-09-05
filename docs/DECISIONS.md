@@ -4775,3 +4775,45 @@ config import works in the editor realm too); solo HUD unchanged. NOT
 verifiable without a peer: the posed body, the color sync, the score
 tint — the 2-headset gate. 251 tests, tsc/eslint/prettier, build, smoke
 green.
+
+## 2026-09-05 — MP3b code review: shared-geometry dispose, send-side color clamp
+
+A fresh reviewer traced the avatar math by hand (all correct), the event
+flow, and IWSDK's instantiate/dispose internals. No Critical; two
+Important, both fixed:
+
+1. **`entity.dispose()` released SHARED resources.** `assets.instantiate`
+   for an Object3D prototype is a `SkeletonUtils.clone` — meshes copy
+   geometry/material REFERENCES — and `Entity.dispose()` defaults to
+   disposing every descendant's geometry and material. Every peer leave
+   therefore GPU-released the head/torso/arm/hand geometries and the
+   shared visor material for the prototype and all other instances (a
+   re-upload hiccup on next render, not a crash — but wrong). Fix:
+   `entity.dispose({ disposeResources: false })` + an explicit
+   `material.dispose()` of the one per-instance clone; same on the ghost
+   path. Still `dispose()`, never `destroy()`.
+2. **Presence sent the RAW settings color index** while the receiver's
+   schema caps it at 15 — a stale/hand-edited index ≥ 16 would have made
+   every presence message from that player invalid: no avatar, nothing
+   visibly wrong locally. `buildPresenceMessage` now clamps, so the
+   invariant lives with the schema; tested.
+
+Minor, taken: the palette JSON now carries its own `nameKey` per color
+(CLAUDE.md: mappings in JSON) and `src/avatarPalette.test.ts` asserts
+every key exists in sv+en — the earlier `Record` + `?? 'avatarColorRed'`
+fallback claimed compile-time safety it did not have; a new
+`AvatarColorChanged` bus event re-tints your own HUD digit the moment
+you cycle the color (the opponent's side already updated via presence);
+`try/finally` around `instantiate()` so a rejection can't leave a peer
+stuck in-flight; the arm segment now stops at the hand's surface
+(`handSizeM/2` inset) instead of the centre, `armRadiusM` 0.04 → 0.025,
+visor narrowed and moved into the sphere — all cosmetic and still
+"starting values" for the headset; `close()` test helper asserts length.
+Recorded deviation: the spec said arm _capsules_ and _rounded_ boxes;
+cylinders and plain boxes were used — a capsule's end caps would squash
+under `scale.y`, and rounded boxes buy nothing at this size. Left as a
+headset-gate note: `yawFromQuaternion` degenerates when the head looks
+straight up/down (forward ≈ ±Y) — the low-pass hides a brief twitch;
+switch to the head's projected right axis if it shows in play. Also
+noted: the two-span `.score` row has never been RENDERED (hidden in
+solo) — on the checklist.

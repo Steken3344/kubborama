@@ -1040,3 +1040,23 @@ only connects the managed browser; `adb logcat -d` must be filtered
 on-device with a tight `-t`; the UIKit MSDF font lacks an en dash;
 chrome-devtools-mcp has no Chrome binary on this machine; a genuine
 stranger has twice joined the public default lobby room.
+
+## 2026-09-05 (later) — MP3b avatars built; both MP3 halves await the headset
+
+After MP3a, Erik chose the avatar design in brainstorming (procedural
+body from tracked parts, 6-color palette chosen in settings and synced)
+and went AFK with "fortsätt till denna MP är klar". Built, reviewed and
+pushed: `core/quat.ts` helpers + `core/avatarPose.ts` solver (TDD),
+color setting + palette + menu button, presence v2, `PeerAvatarSystem`
+(MultiplayerSystem no longer owns avatars), rebuilt `peer-avatar` asset
+(head + visor, torso, straight arms, mitten hands, per-instance color),
+HUD score tinted per player. Review found no Critical; fixed the two
+Important (shared-geometry dispose, send-side color clamp) and the
+minors. Two incidents logged in DECISIONS: I overwrote the existing
+`core/quat.ts` (recovered from git — check existence before `Write`),
+and a CSS comment in a UIKitML `<style>` broke only the production
+build (gate now includes a fresh build + smoke).
+
+**Erik's next actions**: the MP3a and MP3b headset gates in
+docs/MILESTONES.md (both need two Quests), then the M5 perf/comfort
+gate word so v0.6-m5 / v0.7-m6 can be tagged. Open issues: gh#15-17.

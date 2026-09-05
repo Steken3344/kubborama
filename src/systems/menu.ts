@@ -56,26 +56,6 @@ const PROFILE_NAME_OPTIONS: Array<string | null> = [null, 'Erik', 'Gast'];
  * value and advances on click — see reset-menu.uikitml's header
  * comment for why, over a native Toggle/Slider/Input.
  */
-/** Palette id → i18n key for the color's display name (MP3b). Kept as a
- * record rather than string-building the key so a palette entry without
- * a translation is a compile-time gap, not a runtime "avatarColorFoo". */
-const AVATAR_COLOR_NAME_KEYS: Record<
-  string,
-  | 'avatarColorRed'
-  | 'avatarColorBlue'
-  | 'avatarColorOrange'
-  | 'avatarColorPurple'
-  | 'avatarColorTeal'
-  | 'avatarColorWhite'
-> = {
-  red: 'avatarColorRed',
-  blue: 'avatarColorBlue',
-  orange: 'avatarColorOrange',
-  purple: 'avatarColorPurple',
-  teal: 'avatarColorTeal',
-  white: 'avatarColorWhite',
-};
-
 export class MenuSystem extends createSystem({
   resettable: { required: [Resettable] },
   // MP3a: during a match a ROUND-end reset must leave sin-binned kubbs
@@ -215,6 +195,11 @@ export class MenuSystem extends createSystem({
         (settingsState.current.avatarColorIndex + 1) % avatarPalette.length,
       );
       this.refreshLabels();
+      // The HUD tints my score digit with this color and has no settings
+      // subscription of its own (code review, 2026-09-05).
+      gameEvents.emit('AvatarColorChanged', {
+        colorIndex: settingsState.current.avatarColorIndex,
+      });
     });
 
     this.refreshLabels();
@@ -322,10 +307,14 @@ export class MenuSystem extends createSystem({
     this.menuPanel.requireElementById('court-lines-label').setProperties({
       text: s.courtLinesVisible ? t('courtLinesOn') : t('courtLinesOff'),
     });
+    // The palette JSON carries its own i18n key per color (CLAUDE.md:
+    // mappings live in JSON); src/avatarPalette.test.ts asserts every key
+    // exists in both languages, which is what makes the cast here safe.
     this.menuPanel.requireElementById('avatar-color-label').setProperties({
       text: `${t('avatarColorLabel')}: ${t(
-        AVATAR_COLOR_NAME_KEYS[avatarPaletteEntry(s.avatarColorIndex).id] ??
-          'avatarColorRed',
+        avatarPaletteEntry(s.avatarColorIndex).nameKey as Parameters<
+          typeof t
+        >[0],
       )}`,
     });
     this.menuPanel.requireElementById('mic-button-label').setProperties({
