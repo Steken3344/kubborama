@@ -1,40 +1,37 @@
 import { KUBB_COUNT } from './court-layout.js';
 
 export type MatchSide = 'host' | 'guest';
+export type MatchEndReason = 'allKubbsAndKing' | 'kingFelledEarly';
 
 export interface MatchState {
   currentTurn: MatchSide;
-  /** Kubbs defending each side, still standing. `computeCourtLayout()`
-   * lays out kubb-0..4 as the far baseline and kubb-5..9 as the near
-   * baseline; per MP1's mirrorPoseToFarBaseline() decision the guest
-   * appears at the far baseline, so guest defends kubb-0..4 and host
-   * defends kubb-5..9 — see `kubbSide()`. */
-  hostKubbsRemaining: number;
-  guestKubbsRemaining: number;
+  /** Scene ids (`kubb-N`) of felled kubbs, keyed by the SIDE that owns/
+   * defends them, in felling order. `computeCourtLayout()` lays out
+   * kubb-0..4 as the far baseline (guest's side, per MP1's
+   * mirrorPoseToFarBaseline() decision) and kubb-5..9 as the near
+   * baseline (host's side) — see `kubbSide()`. */
+  felledKubbIds: { host: string[]; guest: string[] };
   winner: MatchSide | null;
+  endReason: MatchEndReason | null;
 }
 
 /**
- * MP2 phase 3 (Erik, 2026-09-01: "riktig match, varsin sida"). A
- * DELIBERATE simplification, not an oversight: real kubb's win move is
- * felling the king, but the king is protected GLOBALLY (all 10 kubbs,
- * both sides) by the existing `SimpleRulesSystem`/`KingProtected` —
- * built for one practicing player, with no notion of "which side" is
- * attacking. Reworking that into a per-side protection model is a
- * separate, careful piece of work, not something to improvise on top
- * of the whole multiplayer stack in one pass. Phase 3 v1's win
- * condition is instead "clear the opponent's kubbs first" — still a
- * real, understandable win, and a documented, honest cut rather than a
- * silently-missing feature. See docs/DECISIONS.md.
+ * MP3a (Erik, 2026-09-05, see docs/superpowers/specs/2026-09-05-match-
+ * rules-design.md): a real kubb match. Felled kubbs stay down for the
+ * whole match, the score is how many OPPONENT kubbs each side has
+ * felled, and the king decides: felled after every opponent kubb is
+ * down = the thrower wins; felled while any still stands = the thrower
+ * loses. Only the host calls these transitions; the guest receives
+ * whole states (core/matchSync.ts). Every transition returns the input
+ * object unchanged (same reference) when nothing applies, so callers
+ * can skip a broadcast with `===`.
  */
-export function initialMatchState(
-  kubbsPerSide: number = KUBB_COUNT,
-): MatchState {
+export function initialMatchState(): MatchState {
   return {
     currentTurn: 'host',
-    hostKubbsRemaining: kubbsPerSide,
-    guestKubbsRemaining: kubbsPerSide,
+    felledKubbIds: { host: [], guest: [] },
     winner: null,
+    endReason: null,
   };
 }
 
@@ -43,9 +40,8 @@ export function otherSide(side: MatchSide): MatchSide {
 }
 
 /** kubb-0..(kubbsPerSide-1) are the far baseline (guest's side);
- * kubb-(kubbsPerSide)..(2*kubbsPerSide-1) are the near baseline
- * (host's side) — see MatchState's doc comment. `null` for an
- * out-of-range index (defensive; every real kubb id is in range). */
+ * kubb-(kubbsPerSide)..(2*kubbsPerSide-1) the near baseline (host's).
+ * `null` for an out-of-range index. */
 export function kubbSide(
   kubbIndex: number,
   kubbsPerSide: number = KUBB_COUNT,
@@ -56,38 +52,76 @@ export function kubbSide(
   return kubbIndex < kubbsPerSide ? 'guest' : 'host';
 }
 
-/** A felled kubb only ever counts once — calling this again for a
- * kubb whose side is already at 0 is a safe no-op (defensive against
- * a duplicate event, not expected in normal play). */
-export function withKubbFelled(state: MatchState, side: MatchSide): MatchState {
-  if (state.winner) {
+/** `kubb-7` → 7; anything that isn't a kubb scene id → null. */
+export function kubbIndexFromId(kubbId: string): number | null {
+  const match = /^kubb-(\d+)$/u.exec(kubbId);
+  return match ? Number(match[1]) : null;
+}
+
+export function isFinished(state: MatchState): boolean {
+  return state.winner !== null;
+}
+
+/** Ignored (same reference back): not a kubb id, already felled, or on
+ * the THROWER's own side — a ricochet into your own baseline neither
+ * scores for the opponent nor goes to the sin-bin; the round-end reset
+ * stands it back up, as in real kubb (spec review I2). */
+export function withKubbFelled(
+  state: MatchState,
+  kubbId: string,
+  kubbsPerSide: number = KUBB_COUNT,
+): MatchState {
+  if (isFinished(state)) {
     return state;
   }
-  if (side === 'host') {
-    if (state.hostKubbsRemaining <= 0) {
-      return state;
-    }
-    const hostKubbsRemaining = state.hostKubbsRemaining - 1;
-    return {
-      ...state,
-      hostKubbsRemaining,
-      winner: hostKubbsRemaining === 0 ? 'guest' : state.winner,
-    };
-  }
-  if (state.guestKubbsRemaining <= 0) {
+  const index = kubbIndexFromId(kubbId);
+  const side = index === null ? null : kubbSide(index, kubbsPerSide);
+  if (side === null || side === state.currentTurn) {
     return state;
   }
-  const guestKubbsRemaining = state.guestKubbsRemaining - 1;
+  if (state.felledKubbIds[side].includes(kubbId)) {
+    return state;
+  }
   return {
     ...state,
-    guestKubbsRemaining,
-    winner: guestKubbsRemaining === 0 ? 'host' : state.winner,
+    felledKubbIds: {
+      ...state.felledKubbIds,
+      [side]: [...state.felledKubbIds[side], kubbId],
+    },
+  };
+}
+
+/** The thrower is `currentTurn` (guaranteed today by locomotion being
+ * off and sticks living at exactly one rack per turn — see the spec's
+ * locked assumptions). */
+export function withKingFelled(
+  state: MatchState,
+  kubbsPerSide: number = KUBB_COUNT,
+): MatchState {
+  if (isFinished(state)) {
+    return state;
+  }
+  const thrower = state.currentTurn;
+  const opponent = otherSide(thrower);
+  const opponentCleared = state.felledKubbIds[opponent].length >= kubbsPerSide;
+  return {
+    ...state,
+    winner: opponentCleared ? thrower : opponent,
+    endReason: opponentCleared ? 'allKubbsAndKing' : 'kingFelledEarly',
   };
 }
 
 export function withTurnAdvanced(state: MatchState): MatchState {
-  if (state.winner) {
+  if (isFinished(state)) {
     return state;
   }
   return { ...state, currentTurn: otherSide(state.currentTurn) };
+}
+
+/** Each side's score is how many of the OPPONENT's kubbs it has felled. */
+export function score(state: MatchState): { host: number; guest: number } {
+  return {
+    host: state.felledKubbIds.guest.length,
+    guest: state.felledKubbIds.host.length,
+  };
 }
