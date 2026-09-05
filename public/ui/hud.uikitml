@@ -9,6 +9,11 @@
   å/ä/ö and ✓ now render correctly (gh#5, see public/ui/reset-menu
   .uikitml and docs/DECISIONS.md for the fix). Labels driven by
   src/i18nState.ts, refreshed by HudSystem on language change.
+
+  NOTE: no CSS comments inside <style> — the UIKitML stylesheet parser
+  rejects them (build error "Unsupported stylesheet selector"). The
+  .score rule (MP3b) lays the two score numbers out as separate spans
+  so each can carry its player's avatar color.
 -->
 <style>
   @font-face {
@@ -39,8 +44,6 @@
     padding-bottom: 4px;
   }
 
-  /* MP3b: the score's two numbers are separate spans so each can carry
-     its player's avatar color. */
   .score {
     flex-direction: row;
     gap: 4px;
