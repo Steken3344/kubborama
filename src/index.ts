@@ -1,5 +1,7 @@
 import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
+import { installDebugRelay } from './debug/debugRelay.js';
+import { DebugWatchSystem } from './systems/debugWatch.js';
 import { CourtLayoutSystem } from './systems/courtLayout.js';
 import { CourtLinesSystem } from './systems/courtLines.js';
 import { GrabHighlightSystem } from './systems/grabHighlight.js';
@@ -24,6 +26,10 @@ import { TriggerGrabSystem } from './systems/triggerGrab.js';
 import { TuningLabSystem } from './systems/tuningLab.js';
 import { WindIndicatorSystem } from './systems/windIndicator.js';
 import { WindSystem } from './systems/wind.js';
+
+// Debug mode (`?debug=1`, dev server only) — installed before anything
+// else logs so the very first lines reach the relay too.
+installDebugRelay();
 
 // NOT `await World.create(...)` at module top level — that breaks the
 // production build (Rollup's entry-chunk bundling hangs forever on it;
@@ -109,6 +115,10 @@ World.create(
   // MP3b: remote players' avatars, fed by PeerPresence/PeerLeft events
   // from MultiplayerSystem — event-driven only, order irrelevant.
   world.registerSystem(PeerAvatarSystem);
+  // Debug mode only (no-op unless ?debug=1): below-ground stick watchdog
+  // and other breadcrumbs — registered last so it observes the frame's
+  // final state.
+  world.registerSystem(DebugWatchSystem);
 
   document.getElementById('splash')?.classList.add('splash-hidden');
 });

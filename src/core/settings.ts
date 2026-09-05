@@ -28,6 +28,10 @@ const settingsSchema = z.object({
    * OTHER player sees you as, synced via presence. `.default(0)` for
    * the same migration reason as micMuted above. */
   avatarColorIndex: z.number().int().min(0).default(0),
+  /** Debug mode (2026-09-05): ship structured logs to the dev server
+   * (src/debug/debugRelay.ts). A no-op in the production build, so a
+   * persisted `true` is harmless there; `.default(false)` for migration. */
+  debugRelay: z.boolean().default(false),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -44,6 +48,7 @@ export function defaultSettings(): Settings {
     profileName: null,
     micMuted: true,
     avatarColorIndex: 0,
+    debugRelay: false,
   };
 }
 

@@ -7,6 +7,7 @@ import {
   encodeSettings,
 } from '../core/settings.js';
 import type { Settings } from '../core/settings.js';
+import { disableDebugRelay, enableDebugRelay } from '../debug/debugRelay.js';
 import { refreshTranslator } from '../i18nState.js';
 import { settingsState } from '../settingsState.js';
 
@@ -44,6 +45,21 @@ export class SettingsSystem extends createSystem({}) {
   init(): void {
     settingsState.current = loadSettings();
     refreshTranslator();
+    // Debug mode persisted from the settings tab — a no-op in the
+    // production build (see src/debug/debugRelay.ts).
+    if (settingsState.current.debugRelay) {
+      enableDebugRelay();
+    }
+  }
+
+  setDebugRelay(debugRelay: boolean): void {
+    settingsState.current = { ...settingsState.current, debugRelay };
+    this.persist();
+    if (debugRelay) {
+      enableDebugRelay();
+    } else {
+      disableDebugRelay();
+    }
   }
 
   private persist(): void {

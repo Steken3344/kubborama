@@ -158,6 +158,9 @@
     <Button id="avatar-color-button" class="button">
       <ButtonLabel id="avatar-color-label">Färg: Röd</ButtonLabel>
     </Button>
+    <Button id="debug-button" class="button">
+      <ButtonLabel id="debug-button-label">Debug: Av</ButtonLabel>
+    </Button>
     <Button id="profile-name-button" class="button">
       <ButtonLabel id="profile-name-label">Namn: Spelare</ButtonLabel>
     </Button>

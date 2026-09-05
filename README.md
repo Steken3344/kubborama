@@ -80,6 +80,26 @@ bar — the same experience as a native app. Updates to the deployed site
 are picked up automatically the next time it's launched, no
 reinstalling needed.
 
+## Debug mode (live logs from a headset)
+
+The Quest browser's console is unreachable from outside, so the app can
+ship its structured logs to the dev server instead. Dev server only —
+the production build has no relay.
+
+1. Start the dev server (`npm run dev`), note the port from
+   `npm run dev:status`.
+2. On the headset, open the app with `?debug=1` appended to the URL
+   (e.g. `https://localhost:<port>/?debug=1` over USB, or the LAN URL over
+   Wi-Fi), **or** toggle "Debug: På" in the settings tab of the in-game
+   menu — it persists.
+3. On the computer: `npm run debug:tail` (optionally filter:
+   `npm run debug:tail -- net`, `-- guest`). Raw NDJSON lives in
+   `.iwsdk/runtime/logs/kubb-debug.ndjson` (gitignored).
+
+Every line carries the client id and its host/guest role, so two headsets
+posting to the same server interleave into one timeline. Debug mode also
+turns on a below-ground stick watchdog and per-second network counters.
+
 ## Project layout
 
 See the generated `CLAUDE.md` for IWSDK-specific project conventions

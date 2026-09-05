@@ -1064,3 +1064,11 @@ gate word so v0.6-m5 / v0.7-m6 can be tagged. Open issues: gh#15-17.
 **2026-09-05, evening — POC COMPLETE.** Erik approved the M5 gate;
 v0.6-m5 and v0.7-m6 tagged. Remaining human gates: MP3a and MP3b (two
 headsets). Open issues gh#15-17.
+
+**2026-09-05, late — debug mode.** Erik reported small bugs (sticks
+under the ground on the guest) and asked for a debug mode to follow a
+headset live. Built: log sink → dev-server relay (`?debug=1` or the
+settings-tab Debug button), `npm run debug:tail`, below-ground stick
+watchdog with pieceSync attribution, per-second network counters,
+match/sin-bin/king breadcrumbs. Next: Erik plugs in USB-C, opens the app
+with `?debug=1`, reproduces; I follow the NDJSON live.

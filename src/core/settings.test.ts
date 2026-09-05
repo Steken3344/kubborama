@@ -11,6 +11,7 @@ describe('defaultSettings', () => {
     expect(settings.courtLinesVisible).toBe(false);
     expect(settings.micMuted).toBe(true);
     expect(settings.avatarColorIndex).toBe(0);
+    expect(settings.debugRelay).toBe(false);
   });
 });
 

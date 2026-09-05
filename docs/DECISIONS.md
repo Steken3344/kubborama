@@ -4865,3 +4865,59 @@ the guest, HUD "Du är: Spelare B"), so stick POSITIONS were the host's
 via pieceSync and the console-log tool kept attaching to the editor
 tab; the ECS state is the evidence. 259 tests, tsc/eslint/prettier,
 fresh build, smoke green.
+
+## 2026-09-05 — Debug mode: logs shipped to the dev server, below-ground stick watchdog
+
+Erik: "lägg in ett debuggläge i koden så du kan detaljerat följa vad som
+händer … När vi gör det så kopplar jag in USB-C så kan du följa i
+realtid." First reported bug to chase: "pinnarna hamnar ibland under
+marken vid gästen".
+
+**Why a relay, not the console**: every earlier attempt to read a
+headset's console failed for structural reasons (2026-09-03: the Quest
+browser withholds its content tab from remote devtools; IWSDK's MCP
+bridge only connects the managed desktop browser). The one channel that
+always exists is the dev server the headset is already loading from — so
+the APP ships its log lines there. `core/log.ts` gained a sink hook
+(`setLogSink`) so the pure logger stays ignorant of transport;
+`src/debug/debugRelay.ts` batches entries every 250 ms and POSTs them to
+`/__kubb/log`, tagging each with a client id and host/guest role
+(`debugContext`, kept current by MultiplayerSystem); a Vite plugin
+(`kubbDebugRelay`, `apply: 'serve'` — never in the production build,
+verified by grepping `dist/`) appends NDJSON to
+`.iwsdk/runtime/logs/kubb-debug.ndjson` and echoes to the terminal.
+`npm run debug:tail` follows it. Two headsets → one interleaved
+timeline, which is exactly what multiplayer bugs need. Switched on by
+`?debug=1` or a persisted settings-tab button ("Debug: På/Av") so it can
+be enabled from inside the headset; a no-op in production either way.
+
+**Instrumentation** added where the bugs are likely: `DebugWatchSystem`
+logs once per episode when a stick's centre drops below its radius under
+the ground, with phase, Grabbed, role, and the host's last pieceSync
+position/age for that stick (recorded by `applyPieceSync` while debug is
+on) — so a sunken stick can be attributed to the host's data or to local
+physics. MultiplayerSystem also flags a host snapshot that is itself
+below ground (once per episode), logs hello/role resolution, every
+matchSync applied (or ignored), relayed throws, and one per-second
+counters line (pieceSync sent/applied, presence in/out, peers, king
+pending) instead of 20 lines a second. MatchRulesSystem logs sin-bin
+in/out and the restart countdown. `window.onerror`/`unhandledrejection`
+go to the `error` level so nothing fails silently.
+
+**Verified**: server side with a curl POST (204, line written); client
+side end-to-end with a throwaway Playwright page loading
+`https://localhost:8084/?debug=1` — 15 entries landed, correctly
+role-tagged, and incidentally captured a genuine hello → roles → guest
+reposition → matchSync-applied sequence against the emulator's own tab
+(two real clients on one machine). Not verified: the in-VR "Debug"
+button click — the emulator's B-button indices (4 and 5) did not open
+the menu via the MCP gamepad tool (the code reads
+`InputComponent.B_Button` through `getButtonDown`); the URL route is
+the proven one, and Erik will press the real button. Gates green: tsc,
+eslint, prettier, 259 tests, fresh build, smoke.
+
+**Live-session recipe** (for the USB-C session): `adb reverse tcp:<port>
+tcp:<port>`; `adb shell am start -a android.intent.action.VIEW -d
+"https://localhost:<port>/?debug=1"`; the second headset uses the Wi-Fi
+URL with the same query; `npm run debug:tail -- guest` to watch the
+guest only.

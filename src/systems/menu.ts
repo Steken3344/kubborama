@@ -201,6 +201,13 @@ export class MenuSystem extends createSystem({
         colorIndex: settingsState.current.avatarColorIndex,
       });
     });
+    this.wireButton('debug-button', () => {
+      // Debug mode (2026-09-05): ship logs to the dev server so a
+      // headset session can be followed live. Same switch as ?debug=1,
+      // but reachable from inside the headset.
+      this.settingsSystem.setDebugRelay(!settingsState.current.debugRelay);
+      this.refreshLabels();
+    });
 
     this.refreshLabels();
     this.setActiveTab('main');
@@ -316,6 +323,9 @@ export class MenuSystem extends createSystem({
           typeof t
         >[0],
       )}`,
+    });
+    this.menuPanel.requireElementById('debug-button-label').setProperties({
+      text: s.debugRelay ? t('debugOn') : t('debugOff'),
     });
     this.menuPanel.requireElementById('mic-button-label').setProperties({
       text: s.micMuted ? t('micOff') : t('micOn'),

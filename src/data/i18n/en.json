@@ -25,6 +25,8 @@
   "avatarColorPurple": "Purple",
   "avatarColorTeal": "Teal",
   "avatarColorWhite": "White",
+  "debugOn": "Debug: On",
+  "debugOff": "Debug: Off",
   "matchWon": "You won!",
   "matchLost": "You lost",
   "throwStyleUnderhand": "Underhand",

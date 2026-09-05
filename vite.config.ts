@@ -6,9 +6,66 @@
  */
 
 import { execSync } from 'node:child_process';
+import { appendFileSync, mkdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { iwsdkDev } from '@iwsdk/vite-plugin-dev';
 import { defineConfig } from 'vite';
+import type { Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+
+/**
+ * Debug-mode log relay (Erik, 2026-09-05). The app (src/debug/
+ * debugRelay.ts, `?debug=1`) POSTs batches of structured log entries
+ * here; they are appended as NDJSON to a gitignored file under .iwsdk/
+ * and echoed to the terminal, so a headset's logs can be followed live
+ * with `tail -f` even though its browser console is unreachable. Dev
+ * server only (`apply: 'serve'`) — the production build has no relay.
+ */
+function kubbDebugRelay(): Plugin {
+  const logPath = resolve('.iwsdk/runtime/logs/kubb-debug.ndjson');
+  return {
+    name: 'kubb-debug-relay',
+    apply: 'serve',
+    configureServer(server) {
+      mkdirSync(dirname(logPath), { recursive: true });
+      server.middlewares.use('/__kubb/log', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.end();
+          return;
+        }
+        let body = '';
+        req.on('data', (chunk: Buffer) => {
+          body += chunk.toString('utf8');
+        });
+        req.on('end', () => {
+          try {
+            const entries = JSON.parse(body) as Array<Record<string, unknown>>;
+            const receivedAt = Date.now();
+            const lines = entries
+              .map((e) => JSON.stringify({ ...e, receivedAt }))
+              .join('\n');
+            appendFileSync(logPath, lines + '\n');
+            for (const e of entries) {
+              const t = new Date(Number(e['timeMs']))
+                .toISOString()
+                .slice(11, 23);
+              const data =
+                e['data'] === undefined ? '' : JSON.stringify(e['data']);
+              console.log(
+                `[kubb ${t} ${String(e['role'])}/${String(e['client'])}] ${String(e['level'])} [${String(e['channel'])}] ${String(e['message'])} ${data}`,
+              );
+            }
+            res.statusCode = 204;
+          } catch {
+            res.statusCode = 400;
+          }
+          res.end();
+        });
+      });
+    },
+  };
+}
 
 // Shown in the settings menu (src/systems/menu.ts) so Erik knows which
 // build he's testing — a milestone tag plus commits-since/hash reads
@@ -28,6 +85,7 @@ function appVersion(): string {
 export default defineConfig({
   plugins: [
     iwsdkDev(),
+    kubbDebugRelay(),
     // M6 (docs/PLAN.md §12, pre-approved): installable from the
     // deployed GitHub Pages URL, launches fullscreen from the Quest
     // app library. `start_url`/`scope` are relative ('./') to match

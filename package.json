@@ -18,7 +18,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run --passWithNoTests",
     "smoke": "node scripts/smoke-test.mjs",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "debug:tail": "node scripts/debug-tail.mjs"
   },
   "dependencies": {
     "@iwsdk/core": "0.5.3",

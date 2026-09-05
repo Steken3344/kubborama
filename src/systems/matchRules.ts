@@ -112,6 +112,10 @@ export class MatchRulesSystem extends createSystem({
       if (!entity.hasComponent(OutOfPlay)) {
         entity.addComponent(OutOfPlay);
       }
+      log('info', 'match', 'kubb to sin-bin', {
+        kubbId: placement.kubbId,
+        position: placement.position,
+      });
     }
     for (const placement of this.applied) {
       if (nextIds.has(placement.kubbId)) {
@@ -121,12 +125,18 @@ export class MatchRulesSystem extends createSystem({
       if (entity?.hasComponent(OutOfPlay)) {
         entity.removeComponent(OutOfPlay);
       }
+      log('info', 'match', 'kubb back in play', { kubbId: placement.kubbId });
     }
     this.applied = next;
 
     if (isFinished(event.state)) {
       if (event.mySide === 'host' && this.restartInS === null) {
         this.restartInS = match.restartDelayS;
+        log('info', 'match', 'match finished — restart countdown started', {
+          winner: event.state.winner,
+          endReason: event.state.endReason,
+          restartInS: this.restartInS,
+        });
       }
     } else {
       this.restartInS = null;

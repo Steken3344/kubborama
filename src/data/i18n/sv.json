@@ -25,6 +25,8 @@
   "avatarColorPurple": "Lila",
   "avatarColorTeal": "Turkos",
   "avatarColorWhite": "Vit",
+  "debugOn": "Debug: På",
+  "debugOff": "Debug: Av",
   "matchWon": "Du vann!",
   "matchLost": "Du förlorade",
   "throwStyleUnderhand": "Underhand",

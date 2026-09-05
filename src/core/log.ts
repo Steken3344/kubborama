@@ -14,7 +14,10 @@ export type LogChannel =
   | 'audio'
   | 'net'
   | 'i18n'
-  | 'settings';
+  | 'settings'
+  | 'match'
+  | 'avatar'
+  | 'debug';
 
 export interface LogEntry {
   level: LogLevel;
@@ -27,6 +30,17 @@ export interface LogEntry {
 export const MAX_LOG_ENTRIES = 200;
 
 const ring: LogEntry[] = [];
+
+export type LogSink = (entry: LogEntry) => void;
+let sink: LogSink | null = null;
+
+/** Debug mode (2026-09-05, Erik: "lägg in ett debugläge"): a second
+ * consumer for every entry besides the console — src/debug/debugRelay.ts
+ * ships them to the dev server, since the Quest browser's console is
+ * unreachable from outside. Pure core stays ignorant of HOW they travel. */
+export function setLogSink(next: LogSink | null): void {
+  sink = next;
+}
 
 function consoleFn(level: LogLevel): (...args: unknown[]) => void {
   if (level === 'error') return console.error;
@@ -46,6 +60,7 @@ export function log(
     ring.shift();
   }
   consoleFn(level)(`[${channel}]`, message, data ?? '');
+  sink?.(entry);
 }
 
 export function getRecentLogs(count = 20): LogEntry[] {

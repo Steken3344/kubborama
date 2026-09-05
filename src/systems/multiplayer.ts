@@ -62,6 +62,7 @@ import {
 import type { ThrowRelayMessage } from '../core/throwRelay.js';
 import { STICKS_PER_ROUND } from '../core/scoring.js';
 import { log } from '../core/log.js';
+import { debugContext } from '../debug/debugContext.js';
 import { settingsState } from '../settingsState.js';
 import { activeFarBaselineZ } from './activeCourt.js';
 
@@ -265,6 +266,7 @@ export class MultiplayerSystem extends createSystem({}) {
       const entity = this.world.requireSceneEntity(id);
       this.networkedPieces.set(id, entity);
       this.entityIndexToPieceId.set(entity.index, id);
+      debugContext.pieceIdByEntityIndex.set(entity.index, id);
     }
     // Captured once, here, at init() — code review, 2026-09-02:
     // moveSticksToFarRack() used to read each stick's CURRENT pose and
@@ -292,6 +294,7 @@ export class MultiplayerSystem extends createSystem({}) {
       }
       // MP3b: avatars live in PeerAvatarSystem — hand the validated
       // message over on the bus rather than owning Object3Ds here.
+      this.dbgPresenceIn += 1;
       gameEvents.emit('PeerPresence', { peerId, message });
     };
     this.helloAction = this.room.makeAction<HelloMessage>('hello');
@@ -302,6 +305,14 @@ export class MultiplayerSystem extends createSystem({}) {
         return;
       }
       this.peerJoinedAtMs.set(peerId, message.joinedAtMs);
+      this.refreshDebugRole();
+      log('debug', 'net', 'hello received', {
+        peerId,
+        theirJoinedAtMs: message.joinedAtMs,
+        myJoinedAtMs: this.joinedAtMs,
+        rolesResolved: this.rolesResolved(),
+        iAmHost: this.isHostNow(),
+      });
       this.maybeRepositionAsGuest();
       this.announceMatchStartIfHost();
       this.applyPendingMatchSync();
@@ -421,6 +432,7 @@ export class MultiplayerSystem extends createSystem({}) {
     this.room.onPeerLeave = (peerId) => {
       log('info', 'net', 'peer left', { peerId });
       gameEvents.emit('PeerLeft', { peerId });
+      this.refreshDebugRole();
       this.removeRemoteAudio(peerId);
       this.peerJoinedAtMs.delete(peerId);
       // Only clear match state once EVERY peer is gone, not on a leave
@@ -473,6 +485,7 @@ export class MultiplayerSystem extends createSystem({}) {
   }
 
   update(delta: number, time: number): void {
+    this.tickDebugCounters(time);
     if (
       this.kingFelledAtS !== null &&
       time - this.kingFelledAtS >= match.kingDecisionGraceS
@@ -491,6 +504,53 @@ export class MultiplayerSystem extends createSystem({}) {
     if (this.isHostNow()) {
       this.sendPieceSync();
     }
+  }
+
+  /** Debug mode: every shipped log line says which headset it came from
+   * (src/debug/debugContext.ts). 'solo' until a peer's hello resolves. */
+  private refreshDebugRole(): void {
+    debugContext.role = !this.hasMultiplayerPeer()
+      ? 'solo'
+      : !this.rolesResolved()
+        ? 'solo'
+        : this.isHostNow()
+          ? 'host'
+          : 'guest';
+  }
+
+  /** Per-second network counters, only while debug mode is on — the
+   * 20 Hz presence/pieceSync streams would otherwise drown everything;
+   * one line a second says whether they are flowing at all. */
+  private dbgSent = 0;
+  private dbgApplied = 0;
+  private dbgPresenceIn = 0;
+  private dbgPresenceOut = 0;
+  private dbgWindowStartS = 0;
+  private readonly hostBelowGround = new Set<string>();
+
+  private tickDebugCounters(time: number): void {
+    if (!debugContext.enabled) {
+      return;
+    }
+    if (time - this.dbgWindowStartS < 1) {
+      return;
+    }
+    if (this.dbgWindowStartS !== 0) {
+      log('debug', 'net', 'per-second', {
+        role: debugContext.role,
+        peers: Object.keys(this.room?.getPeers() ?? {}).length,
+        pieceSyncSent: this.dbgSent,
+        pieceSyncApplied: this.dbgApplied,
+        presenceOut: this.dbgPresenceOut,
+        presenceIn: this.dbgPresenceIn,
+        kingPending: this.kingFelledAtS !== null,
+      });
+    }
+    this.dbgWindowStartS = time;
+    this.dbgSent = 0;
+    this.dbgApplied = 0;
+    this.dbgPresenceIn = 0;
+    this.dbgPresenceOut = 0;
   }
 
   /** True once every currently-connected peer's `hello` has arrived —
@@ -603,10 +663,12 @@ export class MultiplayerSystem extends createSystem({}) {
       }
       pieces.push({ id, ...this.localPoseOf(object3D) });
     }
+    this.dbgSent += 1;
     void this.pieceSyncAction.send(buildPieceSyncMessage(pieces));
   }
 
   private applyPieceSync(message: PieceSyncMessage): void {
+    this.dbgApplied += 1;
     for (const piece of message.pieces) {
       const entity = this.networkedPieces.get(piece.id);
       if (!entity || entity.hasComponent(Grabbed)) {
@@ -616,9 +678,46 @@ export class MultiplayerSystem extends createSystem({}) {
         // ever matters for sticks.
         continue;
       }
+      if (debugContext.enabled) {
+        this.traceIncomingPiece(piece);
+      }
       this.physicsSystem.setBodyTransform(entity, {
         position: piece.position,
         quaternion: piece.quaternion,
+      });
+    }
+  }
+
+  /** Debug mode (Erik: sticks sometimes end up under the ground on the
+   * GUEST): remember the host's last snapshot per stick so
+   * DebugWatchSystem can say whether a sunken stick was put there by the
+   * host's data or by local physics — and flag, once per episode, a host
+   * snapshot that is itself below ground. */
+  private traceIncomingPiece(piece: PieceTransform): void {
+    if (!piece.id.startsWith('stick-')) {
+      return;
+    }
+    const trace = debugContext.lastPieceSync.get(piece.id);
+    if (trace) {
+      trace.position = piece.position;
+      trace.atMs = Date.now();
+    } else {
+      debugContext.lastPieceSync.set(piece.id, {
+        position: piece.position,
+        atMs: Date.now(),
+      });
+    }
+    const below = piece.position[1] < -0.022;
+    if (below && !this.hostBelowGround.has(piece.id)) {
+      this.hostBelowGround.add(piece.id);
+      log('warn', 'debug', 'host snapshot puts stick below ground', {
+        id: piece.id,
+        position: piece.position,
+      });
+    } else if (!below && this.hostBelowGround.delete(piece.id)) {
+      log('info', 'debug', 'host snapshot stick back above ground', {
+        id: piece.id,
+        y: piece.position[1],
       });
     }
   }
@@ -639,6 +738,10 @@ export class MultiplayerSystem extends createSystem({}) {
     // Thrown fires synchronously from ThrowingSystem.onRelease(),
     // before physics steps again this frame — the stick's current
     // orientation IS its release orientation.
+    log('info', 'net', 'relayed local throw to host', {
+      stickId: pieceId,
+      releaseSpeedMps: event.releaseSpeedMps,
+    });
     void this.throwRelayAction.send(
       buildThrowRelayMessage({
         stickId: pieceId,
@@ -831,8 +934,18 @@ export class MultiplayerSystem extends createSystem({}) {
       return;
     }
     if (peerId !== this.resolvedHostPeerId()) {
+      log('debug', 'match', 'matchSync ignored — not from the host', {
+        peerId,
+      });
       return;
     }
+    log('debug', 'match', 'matchSync applied', {
+      from: peerId,
+      turn: message.state.currentTurn,
+      felledHostSide: message.state.felledKubbIds.host.length,
+      felledGuestSide: message.state.felledKubbIds.guest.length,
+      winner: message.state.winner,
+    });
     this.setMatchState(message.state);
   }
 
@@ -930,6 +1043,7 @@ export class MultiplayerSystem extends createSystem({}) {
     if (!this.presenceAction) {
       return;
     }
+    this.dbgPresenceOut += 1;
     this.writePose(this.player.head, this.headPose);
     this.writePose(this.player.gripSpaces.left, this.leftPose);
     this.writePose(this.player.gripSpaces.right, this.rightPose);
