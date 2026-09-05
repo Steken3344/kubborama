@@ -47,15 +47,27 @@ head.name = 'head';
 root.add(head);
 
 // A dark band across the -Z face of the head: the direction the other
-// player is looking, which the sphere alone never shows.
-// Narrow enough that its corners stay inside the sphere's curvature
-// instead of floating in front of it (code review, 2026-09-05).
+// player is looking, which the sphere alone never shows. A spherical
+// CAP, not a box — a flat box can't both sit on a sphere and stay
+// visible (the first attempt, moved inward, ended up 63 % hidden inside
+// the head; second review, 2026-09-05). three.js SphereGeometry puts
+// phi = π/2 at +Z, so the band is centred on phi = 3π/2 to face -Z, a
+// hair above the equator, and 3 mm proud of the head surface.
+const VISOR_WIDTH_RAD = 1.6;
+const VISOR_HEIGHT_RAD = 0.5;
 const visor = new Mesh(
-  new BoxGeometry(dims.headRadiusM * 1.2, dims.headRadiusM * 0.5, 0.02),
+  new SphereGeometry(
+    dims.headRadiusM + 0.003,
+    16,
+    6,
+    (3 * Math.PI) / 2 - VISOR_WIDTH_RAD / 2,
+    VISOR_WIDTH_RAD,
+    Math.PI / 2 - VISOR_HEIGHT_RAD * 0.6,
+    VISOR_HEIGHT_RAD,
+  ),
   visorMaterial,
 );
 visor.name = 'visor';
-visor.position.set(0, 0.01, -dims.headRadiusM + 0.02);
 head.add(visor);
 
 const torso = new Mesh(

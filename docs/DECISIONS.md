@@ -4807,7 +4807,7 @@ you cycle the color (the opponent's side already updated via presence);
 `try/finally` around `instantiate()` so a rejection can't leave a peer
 stuck in-flight; the arm segment now stops at the hand's surface
 (`handSizeM/2` inset) instead of the centre, `armRadiusM` 0.04 → 0.025,
-visor narrowed and moved into the sphere — all cosmetic and still
+visor rebuilt as a spherical-cap band on the head — the first attempt, a flat box moved inward, was 63 % hidden inside the sphere and caught by a follow-up review (a flat box cannot both sit on a sphere and stay visible) — all cosmetic and still
 "starting values" for the headset; `close()` test helper asserts length.
 Recorded deviation: the spec said arm _capsules_ and _rounded_ boxes;
 cylinders and plain boxes were used — a capsule's end caps would squash

@@ -541,8 +541,7 @@ docs/superpowers/plans/2026-09-05-avatars.md · Log: docs/DECISIONS.md
       hands; the visor shows where they look; torso turns smoothly with
       the head; the chosen color shows on the other headset and tints the
       score; changing color mid-session updates the other side AND your
-      own HUD digit. Check specifically: arm cylinders end at the mitten
-      (not through it); the visor sits on the head; a full look-up does
+      own HUD digit. Check specifically: arm cylinders end at the mitten (not through it, and no visible gap when the hand is turned edge-on); the visor sits on the head; a full look-up does
       not twitch the torso; the two-span score row lays out (never
       rendered in solo). Tune `avatar.json` dims if proportions look
       off. 🎧 Not self-approvable.

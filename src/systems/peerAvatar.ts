@@ -42,6 +42,10 @@ export class PeerAvatarSystem extends createSystem({}) {
   private inFlight = new Set<string>();
   /** Peers whose PeerLeft arrived while their instantiate() was pending. */
   private leftWhileInFlight = new Set<string>();
+  /** Peers whose instantiate() rejected — tried once, then ignored, so a
+   * broken manifest entry logs one error instead of retrying at 20 Hz
+   * (second review, 2026-09-05). */
+  private failed = new Set<string>();
 
   init(): void {
     this.cleanupFuncs.push(
@@ -63,7 +67,16 @@ export class PeerAvatarSystem extends createSystem({}) {
   private onPeerPresence(event: GameEvents['PeerPresence']): void {
     const instance = this.avatars.get(event.peerId);
     if (!instance) {
-      void this.createAvatar(event);
+      if (this.failed.has(event.peerId)) {
+        return;
+      }
+      this.createAvatar(event).catch((error: unknown) => {
+        this.failed.add(event.peerId);
+        log('error', 'net', 'peer avatar could not be created', {
+          peerId: event.peerId,
+          error: String(error),
+        });
+      });
       return;
     }
     this.applyPresence(instance, event.message);
@@ -87,6 +100,7 @@ export class PeerAvatarSystem extends createSystem({}) {
     instance.entity.dispose({ disposeResources: false });
     instance.material.dispose();
     this.avatars.delete(peerId);
+    this.failed.delete(peerId);
     log('info', 'net', 'peer avatar removed', { peerId });
   }
 
