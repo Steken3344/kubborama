@@ -487,6 +487,35 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       relevant, not a blocker.
 - Review gate → tag v0.7-m6 → POC COMPLETE 🎉
 
+## MP3a — Match rules `status: built + emulator-verified (solo paths); awaiting Erik's 2-headset gate`
+
+Spec: docs/superpowers/specs/2026-09-05-match-rules-design.md · Plan:
+docs/superpowers/plans/2026-09-05-match-rules.md · Log: docs/DECISIONS.md
+2026-09-05.
+
+- [x] Pure reducer v2 (`core/match.ts`): felled-kubb lists per side, king
+      decides (after all opponent kubbs = win, earlier = loss), own-side
+      ricochet ignored, `score()`; 17 tests.
+- [x] `core/matchSinBin.ts` (slot = list index, guest row mirrored),
+      `farBaselineZ`, `match.json`; matchSync v2 + `resetRelay`; 12 tests.
+- [x] `MatchRulesSystem` (sin-bin per side on both clients, king
+      unprotected, 10 s auto-restart, full reset on room-empty),
+      `ResetRequested` event, `matchActivity` flag, gates in
+      Topple/SimpleRules/Menu, game-mode button locked during a match,
+      guest "Ny runda" relayed to the host.
+- [x] HUD: score `A - B` (plain hyphen — the UIKit font has no en dash),
+      turn row, end-reason row.
+- [x] Emulator: solo Simple path unchanged (real topple → sin-bin +
+      `OutOfPlay`, king still protected), zero errors; 230 tests, build,
+      smoke green.
+- [ ] **GATE (Erik, 2 headsets)**: felled kubbs stay in the sin-bin across
+      rounds; score on both; king early = loss, king after all kubbs =
+      win; auto-restart after ~10 s with A starting; "Ny runda" from
+      either headset aborts; game-mode button shows "(låst under match)".
+      🎧 Not self-approvable.
+- Filed: gh#15 host/guest game-mode mismatch, gh#16 relayed-throw stats
+  pollution.
+
 ## M7 — MP1 co-presence (multiplayer) `status: MP1+MP2 confirmed live end-to-end with 2 real headsets (2026-09-02); post-review hardening done`
 
 - [x] Trystero installed (v0.25.4, default Nostr signaling strategy,

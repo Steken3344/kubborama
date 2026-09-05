@@ -4624,3 +4624,64 @@ into `docs/superpowers/specs/2026-09-05-match-rules-design.md`:
 Filed as issues rather than fixed: host/guest in different game modes; stats
 pollution from relayed guest throws (a `Settled` without a `Thrown` on the
 host — pre-existing).
+
+## 2026-09-05 — MP3a match rules implemented (autonomous, Erik AFK)
+
+Built per `docs/superpowers/specs/2026-09-05-match-rules-design.md` and
+`docs/superpowers/plans/2026-09-05-match-rules.md`, eight tasks, one
+commit each, TDD for everything in `src/core/`:
+
+- `core/match.ts` v2: per-side felled-kubb id lists, `withKingFelled`
+  (king after all opponent kubbs = win, earlier = loss), own-side
+  ricochet ignored, `score()`, `isFinished()`; 17 tests.
+- `core/matchSinBin.ts`: `sinBinPlacements(state)` — slot = list index
+  (never a counter), guest row = host row mirrored with the same
+  `mirrorPoseToFarBaseline` every far-end placement uses; `farBaselineZ`
+  moved into `core/court-layout.ts`; `src/data/match.json`
+  (`kingDecisionGraceS` 1.5, `restartDelayS` 10); 5 tests.
+- `core/matchSync.ts` v2 (+ `peekSchemaVersion` for the PWA-autoUpdate
+  mismatch log), new `core/resetRelay.ts`; 7 tests.
+- `ResetRequested` bus event; `src/matchActivityState.ts` shared flag;
+  `systems/activeCourt.ts` (`activeFarBaselineZ()` from the ACTIVE
+  preset — `FAR_Z` was hardcoded to the 6 m default); ToppleSystem
+  excludes `OutOfPlay`; SimpleRulesSystem stands down while a match is
+  active; MenuSystem gets `resettableInPlay` (round-end reset keeps
+  sin-binned kubbs), handles `ResetRequested`, locks the game-mode
+  button during a match (label suffix, not a styling guess).
+- MultiplayerSystem: `KingFelled` deferred by the grace in `update()`;
+  guest `Reset{manual}` relayed as `resetRequest`, host emits
+  `ResetRequested`; version-mismatch warn.
+- New `systems/matchRules.ts`: diff-driven sin-bin placement on both
+  clients, `KingProtected` stripped on activation, 10 s auto-restart on
+  the host, full reset on room-empty.
+- HUD: score `A - B`, separate turn row, end-reason row.
+
+**One real finding during verification**: the score's en dash ("2 – 3",
+Erik's chosen format) rendered as "Missing glyph info for character
+'–'" ×3 — the UIKit MSDF font's charset has no en dash (same limit as
+gh#5's å/ä/ö, which were added to the charset back then; an en dash was
+not). Switched to a plain hyphen rather than regenerating the charset
+for one character. Spec and README updated to match.
+
+**Emulator verification (solo, MCP)**: `MatchRulesSystem` registered
+(index 35, king query 1), `MenuSystem` shows both queries
+(`resettable` 17, `resettableInPlay` 17), `ToppleSystem` toppleable 10
+(king excluded by `KingProtected`). A REAL physical topple (horizontal
+stick sweep through Kubb 5) → `[state] kubb felled {31}` → Kubb 5 at
+(3.30, 0.075, −0.30) = sin-bin slot 0 with `OutOfPlay`, via the
+untouched solo `SimpleRulesSystem` path (flag inactive); the king stayed
+`KingProtected`; the stick settled normally; zero console errors; no
+glyph warnings after the hyphen fix. NOT verified in the emulator: the
+manual-reset restore (UI-driven through the B-button menu — the reset
+code path is unchanged for solo since the new query is only picked while
+the flag is true), and everything behind the flag — sin-bin across
+rounds, king decision, auto-restart, guest abort — which needs two real
+peers. Mechanical pass green: tsc/eslint/prettier, vitest 230 tests
+(+13), build (precache still 19 entries), smoke.
+
+**Headset gate for Erik (docs/MILESTONES.md, MP3a)**: felled kubbs stay
+in the sin-bin across rounds on both headsets; score `A - B`; king early
+= loss on both; king after all kubbs = win; ~10 s later a fresh match
+with A starting; "Ny runda" from EITHER headset aborts; game-mode button
+label shows "(låst under match)". Filed: gh#15 (host/guest in different
+game modes), gh#16 (relayed throws pollute host stats).

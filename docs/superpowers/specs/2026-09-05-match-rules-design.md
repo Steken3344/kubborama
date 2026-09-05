@@ -183,7 +183,9 @@ slot, harmless; noted so nobody "fixes" it.
 
 ## 3. HUD — `src/systems/hud.ts`, `public/ui/hud.uikitml`
 
-- `match-row`: the score `A – B` (`score(state)`, host left, en dash).
+- `match-row`: the score `A - B` (`score(state)`, host left). Plain hyphen,
+  not an en dash — the UIKit MSDF font has no glyph for `–` (found in the
+  emulator during implementation: "Missing glyph info for character").
 - New `turn-row`: the existing turn text ("Spelare A:s tur"); when finished,
   `matchWon`/`matchLost` (relative, as today).
 - New `end-reason-row`, shown only when finished: `matchEndKing` ("kungen

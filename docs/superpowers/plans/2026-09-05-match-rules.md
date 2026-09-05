@@ -32,7 +32,7 @@
 - Consumes: `KUBB_COUNT` from `src/core/court-layout.ts`.
 - Produces: `MatchSide`, `MatchEndReason`, `MatchState`, `initialMatchState()`, `otherSide()`, `kubbSide(index, kubbsPerSide?)`, `kubbIndexFromId(id): number | null`, `isFinished(state)`, `withKubbFelled(state, kubbId, kubbsPerSide?)`, `withKingFelled(state, kubbsPerSide?)`, `withTurnAdvanced(state)`, `score(state): { host: number; guest: number }`.
 
-- [ ] **Step 1: Replace the test file**
+- [x] **Step 1: Replace the test file**
 
 ```ts
 // src/core/match.test.ts
@@ -164,12 +164,12 @@ describe('withTurnAdvanced / score', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `npx vitest run src/core/match.test.ts`
 Expected: FAIL — `kubbIndexFromId`, `isFinished`, `score`, `withKingFelled` not exported; `initialMatchState()` shape mismatch.
 
-- [ ] **Step 3: Rewrite `src/core/match.ts`**
+- [x] **Step 3: Rewrite `src/core/match.ts`**
 
 ```ts
 import { KUBB_COUNT } from './court-layout.js';
@@ -301,12 +301,12 @@ export function score(state: MatchState): { host: number; guest: number } {
 }
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `npx vitest run src/core/match.test.ts`
 Expected: PASS (17 tests). `npx tsc --noEmit` will now FAIL in `matchSync.ts`/`multiplayer.ts`/`hud.ts` — expected: the new `MatchState` shape is consumed there and Tasks 3, 5 and 7 update those files. Committing with a red `tsc` is acceptable for Tasks 1-6 (there is no pre-commit hook), but do NOT push until Task 7's verify step reports `tsc` clean — CI runs `typecheck` and would go red.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/core/match.ts src/core/match.test.ts
@@ -330,7 +330,7 @@ git commit -m "feat(mp3): match reducer v2 — felled-kubb lists, king decides, 
 - Consumes: `sinBinSlotPosition(index, kubbHeightM, config)` from `core/sinBin.ts`; `mirrorPoseToFarBaseline(pose, farZ)` from `core/presence.ts`; `kubbIndexFromId`, `kubbSide`, `MatchState` from Task 1.
 - Produces: `farBaselineZ(preset: CourtPreset): number`; `SinBinPlacement { kubbId: string; position: Vec3; quaternion: [number, number, number, number] }`; `sinBinPlacements(state, opts: { sinBin: SinBinConfig; kubbHeightM: number; farZ: number; kubbsPerSide?: number }): SinBinPlacement[]`; `match.kingDecisionGraceS`, `match.restartDelayS` from `src/config.ts`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 // src/core/matchSinBin.test.ts
@@ -400,12 +400,12 @@ describe('sinBinPlacements', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `npx vitest run src/core/matchSinBin.test.ts`
 Expected: FAIL — cannot resolve `./matchSinBin.js`; `farBaselineZ` not exported.
 
-- [ ] **Step 3: Add `farBaselineZ` to `src/core/court-layout.ts`** (after `KUBB_COUNT`)
+- [x] **Step 3: Add `farBaselineZ` to `src/core/court-layout.ts`** (after `KUBB_COUNT`)
 
 ```ts
 /** The far baseline's z — the player origin is the near baseline at
@@ -418,7 +418,7 @@ export function farBaselineZ(preset: CourtPreset): number {
 }
 ```
 
-- [ ] **Step 4: Create `src/core/matchSinBin.ts`**
+- [x] **Step 4: Create `src/core/matchSinBin.ts`**
 
 ```ts
 import type { MatchState } from './match.js';
@@ -485,7 +485,7 @@ export function sinBinPlacements(
 
 Check `mirrorPoseToFarBaseline`'s parameter type in `src/core/presence.ts`: it takes a `Pose` (`{ position: Vec3; quaternion: [n,n,n,n] }`) — the `near` literal above matches it. If `Pose.position` is typed as a mutable tuple and `sinBinSlotPosition` returns `Vec3` from `core/vec3.ts`, they are the same alias; if `tsc` complains, spread into a fresh tuple.
 
-- [ ] **Step 5: Add the config**
+- [x] **Step 5: Add the config**
 
 ```json
 // src/data/match.json
@@ -500,12 +500,12 @@ In `src/config.ts`, after the `multiplayerData` import add
 and after `export const multiplayer = multiplayerData;` add
 `export const match = matchData;`.
 
-- [ ] **Step 6: Run to verify it passes**
+- [x] **Step 6: Run to verify it passes**
 
 Run: `npx vitest run src/core/matchSinBin.test.ts`
 Expected: PASS (5 tests). If the quaternion assertion fails on `-0` vs `0`, change the expectation to `toEqual([0, 1, expect.closeTo(0), expect.closeTo(0)])` — the sign of zero is not the point.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/core/court-layout.ts src/core/matchSinBin.ts src/core/matchSinBin.test.ts src/data/match.json src/config.ts
@@ -525,7 +525,7 @@ git commit -m "feat(mp3): pure sin-bin placements, farBaselineZ, match config"
 
 - Produces: `MATCH_SYNC_SCHEMA_VERSION = 2`; `buildMatchSyncMessage(state)`; `parseMatchSyncMessage(data)`; `peekSchemaVersion(data): number | null`; `RESET_RELAY_SCHEMA_VERSION = 1`; `ResetRequestMessage`; `buildResetRequest()`; `parseResetRequest(data)`.
 
-- [ ] **Step 1: Rewrite `src/core/matchSync.test.ts`**
+- [x] **Step 1: Rewrite `src/core/matchSync.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -588,7 +588,7 @@ describe('matchSync v2', () => {
 });
 ```
 
-- [ ] **Step 2: Write `src/core/resetRelay.test.ts`**
+- [x] **Step 2: Write `src/core/resetRelay.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -612,12 +612,12 @@ describe('resetRelay', () => {
 });
 ```
 
-- [ ] **Step 3: Run both to verify they fail**
+- [x] **Step 3: Run both to verify they fail**
 
 Run: `npx vitest run src/core/matchSync.test.ts src/core/resetRelay.test.ts`
 Expected: FAIL (version 1, missing exports, missing module).
 
-- [ ] **Step 4: Rewrite `src/core/matchSync.ts`**
+- [x] **Step 4: Rewrite `src/core/matchSync.ts`**
 
 ```ts
 import { z } from 'zod';
@@ -676,7 +676,7 @@ export function peekSchemaVersion(data: unknown): number | null {
 }
 ```
 
-- [ ] **Step 5: Create `src/core/resetRelay.ts`**
+- [x] **Step 5: Create `src/core/resetRelay.ts`**
 
 ```ts
 import { z } from 'zod';
@@ -706,12 +706,12 @@ export function parseResetRequest(data: unknown): ResetRequestMessage | null {
 }
 ```
 
-- [ ] **Step 6: Run to verify they pass**
+- [x] **Step 6: Run to verify they pass**
 
 Run: `npx vitest run src/core/`
 Expected: all core tests PASS. `npx tsc --noEmit` still fails in `multiplayer.ts`/`hud.ts` (old `hostKubbsRemaining` uses) — fixed in Tasks 5 and 7.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/core/matchSync.ts src/core/matchSync.test.ts src/core/resetRelay.ts src/core/resetRelay.test.ts
@@ -736,7 +736,7 @@ git commit -m "feat(mp3): matchSync v2 wire format, reset relay message, version
 
 - Produces: `GameEvents['ResetRequested']` (`Record<string, never>`); `matchActivity.current.active: boolean`; `activeFarBaselineZ(): number` (from `src/systems/activeCourt.ts`).
 
-- [ ] **Step 1: Add the event** — in `src/core/events.ts`, after the `MultiplayerPeerDisconnected` entry:
+- [x] **Step 1: Add the event** — in `src/core/events.ts`, after the `MultiplayerPeerDisconnected` entry:
 
 ```ts
 /** MP3a: "please perform a full manual reset" — emitted by
@@ -747,7 +747,7 @@ git commit -m "feat(mp3): matchSync v2 wire format, reset relay message, version
 ResetRequested: Record<string, never>;
 ```
 
-- [ ] **Step 2: Create `src/matchActivityState.ts`**
+- [x] **Step 2: Create `src/matchActivityState.ts`**
 
 ```ts
 /** Shared "a multiplayer match is in progress" flag — same module-state
@@ -762,7 +762,7 @@ export const matchActivity: { current: { active: boolean } } = {
 };
 ```
 
-- [ ] **Step 3: Create `src/systems/activeCourt.ts`**
+- [x] **Step 3: Create `src/systems/activeCourt.ts`**
 
 ```ts
 import { courtPresetForMode, getCourtPreset } from '../config.js';
@@ -780,7 +780,7 @@ export function activeFarBaselineZ(): number {
 }
 ```
 
-- [ ] **Step 4: ToppleSystem excludes `OutOfPlay`** — in `src/systems/topple.ts` add `import { OutOfPlay } from '../components/out-of-play.js';` and change the query to:
+- [x] **Step 4: ToppleSystem excludes `OutOfPlay`** — in `src/systems/topple.ts` add `import { OutOfPlay } from '../components/out-of-play.js';` and change the query to:
 
 ```ts
     // KingProtected: Simple mode's rule that the king can't be felled
@@ -794,7 +794,7 @@ export function activeFarBaselineZ(): number {
     excluded: [StickState, KingProtected, OutOfPlay],
 ```
 
-- [ ] **Step 5: Gate SimpleRulesSystem** — in `src/systems/simpleRules.ts` add `import { matchActivity } from '../matchActivityState.js';` and as the FIRST line of `onKubbFelled`, `onReset` and `applyKingProtection`:
+- [x] **Step 5: Gate SimpleRulesSystem** — in `src/systems/simpleRules.ts` add `import { matchActivity } from '../matchActivityState.js';` and as the FIRST line of `onKubbFelled`, `onReset` and `applyKingProtection`:
 
 ```ts
 if (matchActivity.current.active) {
@@ -804,7 +804,7 @@ if (matchActivity.current.active) {
 
 Also update the class doc comment's first paragraph with one sentence: "While a multiplayer match is active (matchActivityState.ts) this system stands down entirely — MatchRulesSystem owns the sin-bin and the king; the disconnect path ends with a manual Reset, which is when protection is re-derived for solo play."
 
-- [ ] **Step 6: MenuSystem** — in `src/systems/menu.ts`:
+- [x] **Step 6: MenuSystem** — in `src/systems/menu.ts`:
 
 Imports: add `import { OutOfPlay } from '../components/out-of-play.js';` and `import { matchActivity } from '../matchActivityState.js';`.
 
@@ -870,13 +870,13 @@ this.menuPanel.requireElementById('game-mode-button-label').setProperties({
   }
 ```
 
-- [ ] **Step 7: i18n** — add to both files (keep alphabetical-ish placement near the `match*` keys):
+- [x] **Step 7: i18n** — add to both files (keep alphabetical-ish placement near the `match*` keys):
 
 `sv.json`: `"lockedDuringMatch": " (låst under match)"` — `en.json`: `"lockedDuringMatch": " (locked during match)"`.
 
-- [ ] **Step 8: Verify** — `npx tsc --noEmit` (still red only in `multiplayer.ts`/`hud.ts`), `npx eslint src/systems/topple.ts src/systems/simpleRules.ts src/systems/menu.ts src/matchActivityState.ts src/systems/activeCourt.ts src/core/events.ts`, `npx vitest run`. Expected: eslint clean, vitest green.
+- [x] **Step 8: Verify** — `npx tsc --noEmit` (still red only in `multiplayer.ts`/`hud.ts`), `npx eslint src/systems/topple.ts src/systems/simpleRules.ts src/systems/menu.ts src/matchActivityState.ts src/systems/activeCourt.ts src/core/events.ts`, `npx vitest run`. Expected: eslint clean, vitest green.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src/core/events.ts src/matchActivityState.ts src/systems/activeCourt.ts src/systems/topple.ts src/systems/simpleRules.ts src/systems/menu.ts src/data/i18n/sv.json src/data/i18n/en.json
@@ -896,7 +896,7 @@ git commit -m "feat(mp3): ResetRequested event, match-activity flag, solo-rule g
 - Consumes: Task 1 (`withKubbFelled(state, pieceId)`, `withKingFelled`, `isFinished`), Task 3 (`peekSchemaVersion`, `buildResetRequest`, `parseResetRequest`, `ResetRequestMessage`), Task 4 (`activeFarBaselineZ`, `ResetRequested`), `match` from `src/config.ts`.
 - Produces: `resetRequest` Trystero action; emits `ResetRequested` on the host when a guest relays.
 
-- [ ] **Step 1: Imports** — replace
+- [x] **Step 1: Imports** — replace
       `import { defaultCourtPreset, getCourtPreset, multiplayer } from '../config.js';`
       with `import { match, multiplayer } from '../config.js';`, add
       `import { activeFarBaselineZ } from './activeCourt.js';`,
@@ -904,7 +904,7 @@ git commit -m "feat(mp3): ResetRequested event, match-activity flag, solo-rule g
       `import type { ResetRequestMessage } from '../core/resetRelay.js';`,
       change the match import to `import { initialMatchState, isFinished, withKingFelled, withKubbFelled, withTurnAdvanced } from '../core/match.js';` (drop `kubbSide`), and add `peekSchemaVersion` to the matchSync import. Delete the `FAR_Z` constant and its comment block (lines ~71-77) — replace the two uses (`maybeRepositionAsGuest`, `moveSticksToFarRack`) with `activeFarBaselineZ()`.
 
-- [ ] **Step 2: Fields** — add:
+- [x] **Step 2: Fields** — add:
 
 ```ts
   private resetRequestAction?: MessageAction<ResetRequestMessage>;
@@ -916,7 +916,7 @@ git commit -m "feat(mp3): ResetRequested event, match-activity flag, solo-rule g
   private nowS = 0;
 ```
 
-- [ ] **Step 3: `update`** — change the signature to `update(delta: number, time: number): void {` and add at the top:
+- [x] **Step 3: `update`** — change the signature to `update(delta: number, time: number): void {` and add at the top:
 
 ```ts
 this.nowS = time;
@@ -937,7 +937,7 @@ if (
 }
 ```
 
-- [ ] **Step 4: Subscriptions** — in the `cleanupFuncs.push(` block add after the `KubbFelled` handler:
+- [x] **Step 4: Subscriptions** — in the `cleanupFuncs.push(` block add after the `KubbFelled` handler:
 
 ```ts
       gameEvents.on('KingFelled', () => {
@@ -950,7 +950,7 @@ if (
       }),
 ```
 
-- [ ] **Step 5: `onKubbFelledForMatch`** — replace the body:
+- [x] **Step 5: `onKubbFelledForMatch`** — replace the body:
 
 ```ts
   private onKubbFelledForMatch(entityId: string): void {
@@ -972,7 +972,7 @@ if (
   }
 ```
 
-- [ ] **Step 6: Reset relay** — in `init()`, after the `matchSyncAction` wiring:
+- [x] **Step 6: Reset relay** — in `init()`, after the `matchSyncAction` wiring:
 
 ```ts
 this.resetRequestAction =
@@ -1010,7 +1010,7 @@ this.setMatchState(initialMatchState());
 this.broadcastMatchState();
 ```
 
-- [ ] **Step 7: Version-mismatch log** — in `matchSyncAction.onMessage`, replace the malformed-warn:
+- [x] **Step 7: Version-mismatch log** — in `matchSyncAction.onMessage`, replace the malformed-warn:
 
 ```ts
 if (!message) {
@@ -1032,13 +1032,13 @@ if (!message) {
 
 (add `MATCH_SYNC_SCHEMA_VERSION` to the matchSync import.)
 
-- [ ] **Step 8: Disconnect** — in the room-empty block of `onPeerLeave`, add `this.kingFelledAtS = null;` next to the pending-buffer clears.
+- [x] **Step 8: Disconnect** — in the room-empty block of `onPeerLeave`, add `this.kingFelledAtS = null;` next to the pending-buffer clears.
 
-- [ ] **Step 9: Doc comment** — replace the class doc's "MP2 phase 3" and "NOT enforced" paragraphs' win-condition sentences with: "MP3a (2026-09-05): a real match — see core/match.ts and systems/matchRules.ts. The king decides (after a grace, see kingFelledAtS); KingProtected is not used in a match." Keep the rest.
+- [x] **Step 9: Doc comment** — replace the class doc's "MP2 phase 3" and "NOT enforced" paragraphs' win-condition sentences with: "MP3a (2026-09-05): a real match — see core/match.ts and systems/matchRules.ts. The king decides (after a grace, see kingFelledAtS); KingProtected is not used in a match." Keep the rest.
 
-- [ ] **Step 10: Verify** — `npx tsc --noEmit` should now fail ONLY in `src/systems/hud.ts`. `npx eslint src/systems/multiplayer.ts` clean.
+- [x] **Step 10: Verify** — `npx tsc --noEmit` should now fail ONLY in `src/systems/hud.ts`. `npx eslint src/systems/multiplayer.ts` clean.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add src/systems/multiplayer.ts
@@ -1058,7 +1058,7 @@ git commit -m "feat(mp3): host applies king rule after a grace, relays guest res
 
 - Consumes: Task 2 (`sinBinPlacements`, `SinBinPlacement`), Task 4 (`matchActivity`, `activeFarBaselineZ`, `ResetRequested`), `match`/`pieces`/`sinBin` from config, `KingPiece`/`KingProtected`/`OutOfPlay` components, `KUBB_COUNT`.
 
-- [ ] **Step 1: Create the system**
+- [x] **Step 1: Create the system**
 
 ```ts
 import { createSystem, PhysicsSystem } from '@iwsdk/core';
@@ -1214,7 +1214,7 @@ export class MatchRulesSystem extends createSystem({
 }
 ```
 
-- [ ] **Step 2: Register** — in `src/index.ts` add the import next to the `MultiplayerSystem` import and, after `world.registerSystem(MultiplayerSystem);`:
+- [x] **Step 2: Register** — in `src/index.ts` add the import next to the `MultiplayerSystem` import and, after `world.registerSystem(MultiplayerSystem);`:
 
 ```ts
 // MP3a: physical side of a multiplayer match (sin-bin per side, king
@@ -1222,9 +1222,9 @@ export class MatchRulesSystem extends createSystem({
 world.registerSystem(MatchRulesSystem);
 ```
 
-- [ ] **Step 3: Verify** — `npx tsc --noEmit` (only `hud.ts` may still be red), `npx eslint src/systems/matchRules.ts src/index.ts`.
+- [x] **Step 3: Verify** — `npx tsc --noEmit` (only `hud.ts` may still be red), `npx eslint src/systems/matchRules.ts src/index.ts`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/systems/matchRules.ts src/index.ts
@@ -1245,7 +1245,7 @@ git commit -m "feat(mp3): MatchRulesSystem — sin-bin per side, king unprotecte
 
 - Consumes: `score`, `isFinished` from Task 1; `MatchStateChanged` payload `{ state, mySide }`.
 
-- [ ] **Step 1: Markup** — in `hud.uikitml` replace the `match-row` block with:
+- [x] **Step 1: Markup** — in `hud.uikitml` replace the `match-row` block with:
 
 ```html
 <div id="match-row" class="row" style="display: none">
@@ -1262,9 +1262,9 @@ git commit -m "feat(mp3): MatchRulesSystem — sin-bin per side, king unprotecte
 </div>
 ```
 
-- [ ] **Step 2: i18n** — add to `sv.json`: `"matchTurnLabel": "Tur"`, `"matchEndKing": "Kungen fälld"`, `"matchEndKingEarly": "Kungen fälld i förtid"`; to `en.json`: `"matchTurnLabel": "Turn"`, `"matchEndKing": "King felled"`, `"matchEndKingEarly": "King felled early"`.
+- [x] **Step 2: i18n** — add to `sv.json`: `"matchTurnLabel": "Tur"`, `"matchEndKing": "Kungen fälld"`, `"matchEndKingEarly": "Kungen fälld i förtid"`; to `en.json`: `"matchTurnLabel": "Turn"`, `"matchEndKing": "King felled"`, `"matchEndKingEarly": "King felled early"`.
 
-- [ ] **Step 3: `hud.ts`** — import `{ isFinished, score } from '../core/match.js'`. In `refreshLabels()` add:
+- [x] **Step 3: `hud.ts`** — import `{ isFinished, score } from '../core/match.js'`. In `refreshLabels()` add:
 
 ```ts
 this.hudPanel
@@ -1334,9 +1334,9 @@ And `hidePeerRows()`:
   }
 ```
 
-- [ ] **Step 4: Verify** — `npx tsc --noEmit` clean for the first time since Task 1; `npx eslint . && npx prettier --write . && npx prettier --check . && npx vitest run` all green; `npm run build && npm run smoke` green.
+- [x] **Step 4: Verify** — `npx tsc --noEmit` clean for the first time since Task 1; `npx eslint . && npx prettier --write . && npx prettier --check . && npx vitest run` all green; `npm run build && npm run smoke` green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add public/ui/hud.uikitml src/systems/hud.ts src/data/i18n/sv.json src/data/i18n/en.json
@@ -1351,16 +1351,16 @@ git commit -m "feat(mp3): HUD score A – B, turn row, end-reason row"
 
 - Modify: `docs/DECISIONS.md`, `docs/MILESTONES.md`, `README.md` (features line if it lists match rules)
 
-- [ ] **Step 1: Solo regression in the emulator** — `npx iwsdk dev up`, `xr_accept_session`, then via MCP: throw a stick at a kubb until `[state] kubb felled` (a horizontal sweep works best, see DECISIONS 2026-08-29); `ecs_query_entity` the felled kubb → has `OutOfPlay`, position on the near sin-bin row (x≈3.3); the king entity has `KingProtected`. Trigger a round end (or press "Ny runda") → kubb home, `OutOfPlay` gone, `KingProtected` re-derived. `browser_get_console_logs` with `count` only: zero errors.
+- [x] **Step 1: Solo regression in the emulator** — `npx iwsdk dev up`, `xr_accept_session`, then via MCP: throw a stick at a kubb until `[state] kubb felled` (a horizontal sweep works best, see DECISIONS 2026-08-29); `ecs_query_entity` the felled kubb → has `OutOfPlay`, position on the near sin-bin row (x≈3.3); the king entity has `KingProtected`. Trigger a round end (or press "Ny runda") → kubb home, `OutOfPlay` gone, `KingProtected` re-derived. `browser_get_console_logs` with `count` only: zero errors.
 
-- [ ] **Step 2: Match-path check without a peer** — the MCP surface has no JS eval and no test hook is to be added to production code, so verify by observation only: `ecs_list_systems` shows `MatchRulesSystem` registered and running; `browser_get_console_logs` with pattern `match rules` returns nothing in solo (the flag never flips without a peer); `ecs_find_entities` with `withComponents: ["KingProtected"]` returns the king (solo protection intact). Note in DECISIONS that the match path itself (sin-bin across rounds, king decision, auto-restart, guest abort) needs the 2-headset gate.
+- [x] **Step 2: Match-path check without a peer** — the MCP surface has no JS eval and no test hook is to be added to production code, so verify by observation only: `ecs_list_systems` shows `MatchRulesSystem` registered and running; `browser_get_console_logs` with pattern `match rules` returns nothing in solo (the flag never flips without a peer); `ecs_find_entities` with `withComponents: ["KingProtected"]` returns the king (solo protection intact). Note in DECISIONS that the match path itself (sin-bin across rounds, king decision, auto-restart, guest abort) needs the 2-headset gate.
 
-- [ ] **Step 3: Docs** — DECISIONS.md: a dated entry "MP3a implemented" listing what was built, the emulator checks, and what only the headset gate can prove. MILESTONES.md: new `## MP3a — Match rules` section with the checklist and the open GATE. README: one line under features if features are listed.
+- [x] **Step 3: Docs** — DECISIONS.md: a dated entry "MP3a implemented" listing what was built, the emulator checks, and what only the headset gate can prove. MILESTONES.md: new `## MP3a — Match rules` section with the checklist and the open GATE. README: one line under features if features are listed.
 
-- [ ] **Step 4: File the two issues** —
+- [x] **Step 4: File the two issues** —
       `gh issue create --title "[mp3] Host and guest can run different game modes (court lengths)" --label bug` and
       `gh issue create --title "[mp3] Relayed guest throws pollute host stats (Settled without Thrown)" --label tech-debt`, each with the spec's one-paragraph description.
 
-- [ ] **Step 5: Push and watch CI** — `git push && gh run watch $(gh run list --limit 1 --json databaseId -q '.[0].databaseId') --exit-status`.
+- [x] **Step 5: Push and watch CI** — `git push && gh run watch $(gh run list --limit 1 --json databaseId -q '.[0].databaseId') --exit-status`.
 
-- [ ] **Step 6: Request code review** — `superpowers:requesting-code-review` over the range from the spec commit to HEAD.
+- [x] **Step 6: Request code review** — `superpowers:requesting-code-review` over the range from the spec commit to HEAD.
