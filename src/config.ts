@@ -22,6 +22,7 @@ import multiplayerData from './data/multiplayer.json' with { type: 'json' };
 import matchData from './data/match.json' with { type: 'json' };
 import avatarData from './data/avatar.json' with { type: 'json' };
 import avatarPaletteData from './data/avatar-palette.json' with { type: 'json' };
+import roundData from './data/round.json' with { type: 'json' };
 
 export const courtPresets = courtPresetsData.presets;
 export type CourtPresetName = keyof typeof courtPresets;
@@ -63,6 +64,9 @@ export const multiplayer = multiplayerData;
 export const match = matchData;
 /** MP3b procedural peer-avatar body dimensions (core/avatarPose.ts). */
 export const avatar = avatarData;
+/** gh#17: how long the court must be quiet after the 6th stick settles
+ * before the round ends, and the cap that guarantees it ends anyway. */
+export const round = roundData;
 /** MP3b player-chosen avatar colors — no green, it vanishes against the
  * grass. Indexed by settings.avatarColorIndex / presence colorIndex. */
 export const avatarPalette = avatarPaletteData;

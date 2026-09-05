@@ -4832,3 +4832,36 @@ all in place the proof-of-concept as planned in docs/PLAN.md is
 complete; the multiplayer track (MP1-MP3, gates still open for MP3a/b)
 is the "next phase" the plan's M6 kickoff asked to decide on — Erik has
 already chosen it by building it.
+
+## 2026-09-05 — gh#17: the round waits for a quiet court before ending
+
+`RoundSystem` used to end the round the instant the 6th stick settled,
+and `MenuSystem`'s round-end reset then teleported every piece home — a
+kubb or the king toppled by that last stick but still needing up to
+`restDurationS` (0.5 s) to come to rest was stood back up before
+`ToppleSystem` could report it. Solo: a lost point; in a match: a lost
+point or a lost king decision (found by the MP3a code review, filed as
+gh#17). Erik: "ta gh#17 så länge".
+
+**Fix**: the 6th settle makes the round PENDING; `RoundSystem.update()`
+then reads every kubb/king body speed (`readBodySpeed` + the existing
+`isResting` thresholds, no allocation) and ends the round once all have
+rested for `round.quietCourtS` (0.6 s ≥ restDurationS, so a toppling
+piece always gets reported first) — or after `round.maxWaitS` (3 s)
+regardless, so a jittering piece can never block the round (same shape
+as ThrowingSystem's `maxFlightTimeS` cap; logged as a warn when the cap
+fires). Pure decision in `core/scoring.ts`
+(`shouldEndPendingRound`, 4 tests); config in `src/data/round.json`.
+Interaction with MP3a's king grace is benign: the delay only moves
+`RoundEnded` later, so late `KubbFelled`/`KingFelled` events land before
+the reset and the reducer sees them; `advanceTurnForMatch` still decides
+a pending king before flipping the turn.
+
+**Emulator**: six scripted throws → all six sticks read `RACKED` with an
+empty `lastThrowerHand` afterwards, which only `MenuSystem.resetOne()`
+writes — i.e. pending → quiet → `RoundEnded` → reset completed. Caveat:
+a genuine unknown peer was in the public lobby again (this client was
+the guest, HUD "Du är: Spelare B"), so stick POSITIONS were the host's
+via pieceSync and the console-log tool kept attaching to the editor
+tab; the ECS state is the evidence. 259 tests, tsc/eslint/prettier,
+fresh build, smoke green.

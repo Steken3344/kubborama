@@ -521,9 +521,7 @@ docs/superpowers/plans/2026-09-05-match-rules.md · Log: docs/DECISIONS.md
       kubbs on the guest — see docs/QUESTIONS.md); game-mode button shows
       "(låst under match)" when the menu is opened mid-match. Test the
       king decision specifically with the 6TH stick of a round (the case
-      the code review found and fixed). Known limitation, gh#17: a kubb
-      still falling when the 6th stick settles is stood back up and never
-      counted. 🎧 Not self-approvable.
+      the code review found and fixed). gh#17 fixed 2026-09-05: the round now waits for a quiet court (0.6 s, cap 3 s) before ending, so a late-toppling kubb or king is counted. 🎧 Not self-approvable.
 - Filed: gh#15 host/guest game-mode mismatch, gh#16 relayed-throw stats
   pollution.
 

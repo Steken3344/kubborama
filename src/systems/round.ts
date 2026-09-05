@@ -1,17 +1,22 @@
-import { createSystem } from '@iwsdk/core';
+import { createSystem, PhysicsBody } from '@iwsdk/core';
+import { Resettable } from '../components/resettable.js';
 import { StickPhase, StickState } from '../components/stick-state.js';
+import { pieces, round } from '../config.js';
 import { gameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
+import { isResting } from '../core/restState.js';
 import {
   finishRound,
   initialRoundState,
   isRoundComplete,
   nextRoundState,
   scoringReducer,
+  shouldEndPendingRound,
 } from '../core/scoring.js';
 import type { RoundState } from '../core/scoring.js';
 import { sub } from '../core/vec3.js';
 import type { Vec3 } from '../core/vec3.js';
+import { readBodySpeed } from './bodySpeed.js';
 
 interface PendingThrow {
   releasePosition: Vec3;
@@ -21,8 +26,15 @@ interface PendingThrow {
  * Drives core/scoring.ts's round reducer from the game events every
  * throw already produces — no new detection logic, only bookkeeping.
  * A round ends once all 6 sticks have settled (not "thrown", so the
- * reset never happens mid-flight); ending a round emits RoundEnded
- * (StatsSystem consumes it) and immediately starts the next one.
+ * reset never happens mid-flight) AND the court has been quiet for a
+ * moment (gh#17, 2026-09-05: a kubb or the king still toppling from
+ * that last stick used to be teleported home by the round-end reset
+ * before ToppleSystem could report it — a lost point, or in a match a
+ * lost king decision). The 6th settle makes the round PENDING; update()
+ * then watches every kubb/king body and ends the round once all have
+ * rested for `round.quietCourtS`, or after `round.maxWaitS` regardless.
+ * Ending a round emits RoundEnded (StatsSystem consumes it) and
+ * immediately starts the next one.
  *
  * "Longest felling throw" attribution: whichever stick(s) are
  * currently Flying when a KubbFelled/KingFelled event fires get
@@ -44,9 +56,19 @@ interface PendingThrow {
  */
 export class RoundSystem extends createSystem({
   sticks: { required: [StickState] },
+  /** Kubbs + king — the pieces whose rest the pending round waits for.
+   * Same shape as ToppleSystem's query minus its rule tags: an
+   * OutOfPlay kubb is at rest anyway, and a KingProtected king can't
+   * topple but can still wobble, which is exactly what we wait out. */
+  toppleable: { required: [Resettable, PhysicsBody], excluded: [StickState] },
 }) {
   private roundState: RoundState = initialRoundState();
   private roundStartTimeS: number | undefined;
+  /** Set on the 6th settle; null while no round end is pending. */
+  private pendingEndSinceS: number | null = null;
+  /** When the court was last seen fully at rest during a pending end. */
+  private quietSinceS: number | null = null;
+  private tmpSpeed: [number, number] = [0, 0];
   private pendingThrows = new Map<string, PendingThrow>();
   private causedFellingThisThrow = new Set<string>();
   private longestThrowThisRoundM = 0;
@@ -86,7 +108,19 @@ export class RoundSystem extends createSystem({
           this.pendingThrows.delete(e.stickId);
           this.causedFellingThisThrow.delete(e.stickId);
         }
-        this.maybeEndRound(e.timeS);
+        if (
+          isRoundComplete(this.roundState) &&
+          this.pendingEndSinceS === null
+        ) {
+          this.pendingEndSinceS = e.timeS;
+          this.quietSinceS = null;
+          log(
+            'debug',
+            'state',
+            'round pending — waiting for a quiet court',
+            {},
+          );
+        }
       }),
     );
     this.unsubs.push(
@@ -121,6 +155,37 @@ export class RoundSystem extends createSystem({
 
   update(_delta: number, timeS: number): void {
     this.roundStartTimeS ??= timeS;
+    if (this.pendingEndSinceS === null) {
+      return;
+    }
+    if (this.courtIsQuiet()) {
+      this.quietSinceS ??= timeS;
+    } else {
+      this.quietSinceS = null;
+    }
+    const quietForS =
+      this.quietSinceS === null ? null : timeS - this.quietSinceS;
+    if (
+      shouldEndPendingRound(quietForS, timeS - this.pendingEndSinceS, round)
+    ) {
+      if (quietForS === null) {
+        log('warn', 'state', 'round ended at the quiet-court cap', {
+          maxWaitS: round.maxWaitS,
+        });
+      }
+      this.endRound(timeS);
+    }
+  }
+
+  /** No allocation: readBodySpeed fills the persisted scratch tuple. */
+  private courtIsQuiet(): boolean {
+    for (const entity of this.queries.toppleable.entities) {
+      readBodySpeed(entity, this.tmpSpeed);
+      if (!isResting(this.tmpSpeed[0], this.tmpSpeed[1], pieces.throw)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private markFlyingSticksAsCausing(): void {
@@ -131,10 +196,9 @@ export class RoundSystem extends createSystem({
     }
   }
 
-  private maybeEndRound(timeS: number): void {
-    if (!isRoundComplete(this.roundState)) {
-      return;
-    }
+  /** Called from update() once the pending round's quiet-court (or cap)
+   * condition holds — never directly from a Settled event any more. */
+  private endRound(timeS: number): void {
     const result = finishRound(this.roundState);
     const sticksThrownThisRound = this.roundState.sticksThrownThisRound;
     const longestThrowM = this.longestThrowThisRoundM;
@@ -173,6 +237,8 @@ export class RoundSystem extends createSystem({
   private resetRoundScopedState(roundState: RoundState, timeS: number): void {
     this.roundState = roundState;
     this.roundStartTimeS = timeS;
+    this.pendingEndSinceS = null;
+    this.quietSinceS = null;
     this.longestThrowThisRoundM = 0;
     this.longestFellingThrowThisRoundM = null;
     this.pendingThrows.clear();

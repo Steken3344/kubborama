@@ -94,3 +94,37 @@ export function finishRound(state: RoundState): RoundResult {
 export function nextRoundState(state: RoundState): RoundState {
   return initialRoundState(state.roundNumber + 1);
 }
+
+export interface QuietCourtConfig {
+  /** Every kubb and the king must have been at rest this long. */
+  quietCourtS: number;
+  /** …but never wait longer than this after the 6th stick settled (a
+   * jittering piece must not block the round forever — same shape as
+   * ThrowingSystem's maxFlightTimeS fallback). */
+  maxWaitS: number;
+}
+
+/**
+ * gh#17: `isRoundComplete` (all six sticks settled) used to END the
+ * round on the spot, and the round-end reset then teleported every
+ * piece home — a kubb or the king toppled by that last stick but still
+ * needing up to restDurationS to come to rest was stood back up and
+ * never counted. In a match that is a lost point or a lost king
+ * decision. So the round becomes PENDING on the 6th settle and ends
+ * only once the court has been quiet for `quietCourtS`, or `maxWaitS`
+ * after it went pending, whichever comes first.
+ *
+ * @param quietForS  seconds every toppleable piece has been at rest,
+ *                   or null while something is still moving
+ * @param pendingForS seconds since the round became pending
+ */
+export function shouldEndPendingRound(
+  quietForS: number | null,
+  pendingForS: number,
+  cfg: QuietCourtConfig,
+): boolean {
+  if (pendingForS >= cfg.maxWaitS) {
+    return true;
+  }
+  return quietForS !== null && quietForS >= cfg.quietCourtS;
+}
