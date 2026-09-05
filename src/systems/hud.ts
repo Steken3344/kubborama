@@ -3,7 +3,9 @@ import type { GameEvents } from '../core/events.js';
 import type { ThrowStyle } from '../core/underhandClassifier.js';
 import { gameEvents } from '../core/events.js';
 import { isFinished, score } from '../core/match.js';
+import { avatarPaletteEntry } from '../config.js';
 import { i18nState } from '../i18nState.js';
+import { settingsState } from '../settingsState.js';
 import { StatsSystem } from './stats.js';
 
 /**
@@ -24,6 +26,10 @@ export class HudSystem extends createSystem({}) {
   private unsubscribeLanguageChanged?: () => void;
   private unsubscribeMatchStateChanged?: () => void;
   private unsubscribeMultiplayerPeerDisconnected?: () => void;
+  private unsubscribePeerPresence?: () => void;
+  /** MP3b: the opponent's chosen palette index, from its last presence
+   * message — colors their half of the score. null until one arrives. */
+  private opponentColorIndex: number | null = null;
 
   init(): void {
     const statsSystem = this.world.getSystem(StatsSystem);
@@ -67,9 +73,20 @@ export class HudSystem extends createSystem({}) {
       'MultiplayerPeerDisconnected',
       () => {
         this.lastMatchState = null;
+        this.opponentColorIndex = null;
         this.hidePeerRows();
       },
     );
+    // MP3b: only the color index is read here — the avatar itself is
+    // PeerAvatarSystem's. Re-tint the score if the opponent changes color
+    // mid-match; the 20 Hz stream is otherwise ignored.
+    this.unsubscribePeerPresence = gameEvents.on('PeerPresence', (e) => {
+      if (e.message.colorIndex === this.opponentColorIndex) {
+        return;
+      }
+      this.opponentColorIndex = e.message.colorIndex;
+      this.updateMatchRow();
+    });
   }
 
   destroy(): void {
@@ -78,6 +95,7 @@ export class HudSystem extends createSystem({}) {
     this.unsubscribeLanguageChanged?.();
     this.unsubscribeMatchStateChanged?.();
     this.unsubscribeMultiplayerPeerDisconnected?.();
+    this.unsubscribePeerPresence?.();
   }
 
   private refreshLabels(): void {
@@ -132,9 +150,24 @@ export class HudSystem extends createSystem({}) {
     // UIKit MSDF font has no glyph for an en dash ("Missing glyph info
     // for character '–'" in the emulator — same charset limit as gh#5).
     show('match-row');
+    // Each number in its player's avatar color (MP3b): mine from
+    // settings, the opponent's from its presence stream; white until the
+    // opponent's first message arrives.
+    const myColor = avatarPaletteEntry(
+      settingsState.current.avatarColorIndex,
+    ).hex;
+    const theirColor =
+      this.opponentColorIndex === null
+        ? '#ffffff'
+        : avatarPaletteEntry(this.opponentColorIndex).hex;
+    const hostColor = mySide === 'host' ? myColor : theirColor;
+    const guestColor = mySide === 'guest' ? myColor : theirColor;
     this.hudPanel
-      .requireElementById('match-value')
-      .setProperties({ text: `${s.host} - ${s.guest}` });
+      .requireElementById('match-score-a')
+      .setProperties({ text: String(s.host), color: hostColor });
+    this.hudPanel
+      .requireElementById('match-score-b')
+      .setProperties({ text: String(s.guest), color: guestColor });
     // Absolute "Spelare A/B" turn labels, not "din/motst. tur" (Erik,
     // 2026-09-02); once decided, the relative won/lost verdict.
     show('turn-row');

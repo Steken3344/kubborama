@@ -39,6 +39,13 @@
     padding-bottom: 4px;
   }
 
+  /* MP3b: the score's two numbers are separate spans so each can carry
+     its player's avatar color. */
+  .score {
+    flex-direction: row;
+    gap: 4px;
+  }
+
   .label {
     font-size: 14px;
     color: rgba(255, 255, 255, 0.75);
@@ -73,7 +80,11 @@
   </div>
   <div id="match-row" class="row" style="display: none">
     <span id="match-label" class="label">Match</span>
-    <span id="match-value" class="value">0 - 0</span>
+    <div class="score">
+      <span id="match-score-a" class="value">0</span>
+      <span class="value">-</span>
+      <span id="match-score-b" class="value">0</span>
+    </div>
   </div>
   <div id="turn-row" class="row" style="display: none">
     <span id="turn-label" class="label">Tur</span>
