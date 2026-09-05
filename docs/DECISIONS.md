@@ -4817,3 +4817,18 @@ straight up/down (forward ≈ ±Y) — the low-pass hides a brief twitch;
 switch to the head's projected right axis if it shows in play. Also
 noted: the two-span `.score` row has never been RENDERED (hidden in
 solo) — on the checklist.
+
+## 2026-09-05 — M5 gate PASSED, v0.6-m5 + v0.7-m6 tagged: POC COMPLETE
+
+Erik: "godkänn M5-gaten, tagga v0.6-m5 och v0.7-m6". M5's headset gate
+(perf + comfort + full experience) passes on his explicit approval after
+the real-device sessions of the last days — solo throwing (M2 gate,
+2026-09-03), two 2-headset matches (2026-09-02/05) — with nothing raised
+on comfort or smoothness, plus the measured 89-90 fps at the browser's
+90 Hz target (docs/perf/2026-09-03-quest2-vrapi.txt). M6 was already
+built and live; its install gate was deprioritized by Erik on
+2026-09-03. Both tagged on the same docs commit. With v0.1-m0 … v0.7-m6
+all in place the proof-of-concept as planned in docs/PLAN.md is
+complete; the multiplayer track (MP1-MP3, gates still open for MP3a/b)
+is the "next phase" the plan's M6 kickoff asked to decide on — Erik has
+already chosen it by building it.

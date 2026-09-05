@@ -240,7 +240,7 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
   writeup in docs/DECISIONS.md. Tagged `v0.5-m4` — no headset gate for
   this milestone.
 
-## M5 — Polish & performance `status: review gate GO (2026-08-30) — awaiting Erik's headset pass to tag v0.6-m5`
+## M5 — Polish & performance `status: DONE — headset gate PASSED 2026-09-05, tagged v0.6-m5`
 
 - [x] Formal milestone review gate (2026-08-30): mechanical pass →
       fresh-eyes subagent review → adversarial pass, per CLAUDE.md's
@@ -425,10 +425,15 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       dips sat in the enter/exit-XR transitions (`LCnt` 8-12 layers),
       not gameplay. Follow-up idea if longer sessions hitch: request
       72 Hz explicitly via `XRSession.updateTargetFrameRate(72)`.
-- **GATE (Erik, headset): perf + comfort + full experience pass** 🎧
-- Review gate → tag v0.6-m5 once the rest of M5 closes out
+- **GATE (Erik, headset): perf + comfort + full experience pass** 🎧 —
+  ✅ PASSED 2026-09-05 on Erik's explicit approval ("godkänn M5-gaten"),
+  after several real Quest 2 sessions (solo throwing 2026-09-03, two
+  2-headset matches) with nothing reported on comfort or smoothness, and
+  the measured 89-90 fps at a 90 Hz target on the device (see the frame-
+  rate item above).
+- Review gate → tagged v0.6-m5 (2026-09-05) ✅
 
-## M6 — PWA (optional) `status: built + emulator-verified; awaiting Erik's Quest confirmation`
+## M6 — PWA (optional) `status: DONE — tagged v0.7-m6 (install gate deprioritized by Erik)`
 
 - [x] vite-plugin-pwa (v1.3.0, per docs/PLAN.md §12) wired into
       vite.config.ts: web manifest (name/short_name "KubbOrama",
@@ -485,7 +490,8 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
       path on Quest's browser version, or the criteria may need a
       revisit) — leave as a low-priority follow-up if it ever becomes
       relevant, not a blocker.
-- Review gate → tag v0.7-m6 → POC COMPLETE 🎉
+- Review gate → tagged v0.7-m6 (2026-09-05) ✅ → **POC COMPLETE 🎉** — every
+  M0-M6 milestone is tagged; MP1-MP3 multiplayer continues on top of it.
 
 ## MP3a — Match rules `status: built + emulator-verified (solo paths); awaiting Erik's 2-headset gate`
 

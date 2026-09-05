@@ -1060,3 +1060,7 @@ build (gate now includes a fresh build + smoke).
 **Erik's next actions**: the MP3a and MP3b headset gates in
 docs/MILESTONES.md (both need two Quests), then the M5 perf/comfort
 gate word so v0.6-m5 / v0.7-m6 can be tagged. Open issues: gh#15-17.
+
+**2026-09-05, evening — POC COMPLETE.** Erik approved the M5 gate;
+v0.6-m5 and v0.7-m6 tagged. Remaining human gates: MP3a and MP3b (two
+headsets). Open issues gh#15-17.
