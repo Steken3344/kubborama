@@ -4573,3 +4573,54 @@ The "72 Hz verified" checklist item is checked on this basis — the
 target was exceeded, not merely met. The M5 GATE (Erik: perf + comfort
 
 - full experience pass) is his call, put to him with these numbers.
+
+## 2026-09-05 — MP3a match-rules spec: review findings decided autonomously
+
+Erik approved the match-rules design in brainstorming (win = all opponent
+kubbs then the king, king early = loss, sin-bin per side for the whole
+match, 10 s auto-restart with host starting, "Ny runda" aborts, `A – B`
+score, rules active whenever a peer is connected, new `MatchRulesSystem` +
+pure `core/match.ts`), then went AFK asking for a spec review and
+implementation. The independent spec review found 2 Critical + 8 Important
+gaps; all are design choices small enough to decide now (reversible, per
+CLAUDE.md's autonomy rule) rather than block on Erik. Decisions, all written
+into `docs/superpowers/specs/2026-09-05-match-rules-design.md`:
+
+- **C1 — king could never fall in Simple mode**: `KingProtected` is already
+  on the king from solo play and nothing in the original spec removed it, so
+  in the default mode no match could be won. `MatchRulesSystem` now removes
+  it on activation; disconnect triggers a full reset so `SimpleRulesSystem`
+  re-derives it.
+- **C2 — the guest's "Ny runda" did nothing**: `onResetForMatch` bails on a
+  non-host, so only the host could abort. Decided: the guest's `Reset{manual}`
+  is relayed to the host as a new zod-guarded `resetRequest` action; the host
+  emits `ResetRequested`. Erik's "Ny runda aborts the match" now holds on
+  both headsets. Game-mode button is disabled on both during a match (a
+  relayout mid-match is undefined; host/guest in different modes filed as an
+  issue).
+- **I1 — king and 5th kubb in the same throw**: ToppleSystem emits per piece
+  in rest order, so the outcome would depend on which piece stopped first.
+  Decided: the host defers `withKingFelled` by `match.kingDecisionGraceS`
+  (1.5 s, new `src/data/match.json`) so a same-stick kubb is counted first.
+- **I2 — own-side kubb (ricochet)**: ignored by the reducer; the round-end
+  reset stands it back up, as in real kubb.
+- **I3 — disconnect left kubbs in the sin-bin**: disconnect now emits
+  `ResetRequested`.
+- **I5 — `FAR_Z` hardcoded to the default 6 m court**: in Advanced (8 m) the
+  mirrored sin-bin row would land inside the court. Moved to a pure
+  `farBaselineZ(preset)` in `core/court-layout.ts`, computed from the active
+  preset by both systems.
+- **I6 — direct `menuSystem.resetAll()` call vs bus**: new `ResetRequested`
+  event handled by `MenuSystem`; three emitters (timer, disconnect, guest
+  relay) share it. Timer made idempotent.
+- **I7 — sin-bin slot counter**: derived from list index instead
+  (`core/matchSinBin.ts`, pure, tested) — a late-joining guest's first
+  snapshot can carry several ids at once.
+- **I8 — PWA autoUpdate can leave one headset on the old wire version**:
+  distinct "schema version mismatch" warn so it is diagnosable.
+- Minor: `phase` dropped (`isFinished` derives from `winner`);
+  `withKingFelled(state, kubbsPerSide)`; `ToppleSystem` excludes `OutOfPlay`.
+
+Filed as issues rather than fixed: host/guest in different game modes; stats
+pollution from relayed guest throws (a `Settled` without a `Thrown` on the
+host — pre-existing).
