@@ -1,0 +1,8 @@
+[
+  { "id": "red", "hex": "#d9534f" },
+  { "id": "blue", "hex": "#4a90d9" },
+  { "id": "orange", "hex": "#f0883e" },
+  { "id": "purple", "hex": "#9b59b6" },
+  { "id": "teal", "hex": "#1abc9c" },
+  { "id": "white", "hex": "#f2ead9" }
+]

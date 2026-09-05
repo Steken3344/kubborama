@@ -155,6 +155,9 @@
     <Button id="mic-button" class="button">
       <ButtonLabel id="mic-button-label">Mikrofon: Av</ButtonLabel>
     </Button>
+    <Button id="avatar-color-button" class="button">
+      <ButtonLabel id="avatar-color-label">Färg: Röd</ButtonLabel>
+    </Button>
     <Button id="profile-name-button" class="button">
       <ButtonLabel id="profile-name-label">Namn: Spelare</ButtonLabel>
     </Button>

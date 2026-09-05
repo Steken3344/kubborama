@@ -24,6 +24,10 @@ const settingsSchema = z.object({
    * key falls back to the default instead of failing the whole
    * schema and silently resetting every other saved setting too. */
   micMuted: z.boolean().default(true),
+  /** MP3b: index into src/data/avatar-palette.json — the color the
+   * OTHER player sees you as, synced via presence. `.default(0)` for
+   * the same migration reason as micMuted above. */
+  avatarColorIndex: z.number().int().min(0).default(0),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -39,6 +43,7 @@ export function defaultSettings(): Settings {
     courtLinesVisible: false,
     profileName: null,
     micMuted: true,
+    avatarColorIndex: 0,
   };
 }
 

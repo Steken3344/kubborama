@@ -10,6 +10,7 @@ describe('defaultSettings', () => {
     expect(settings.profileName).toBeNull();
     expect(settings.courtLinesVisible).toBe(false);
     expect(settings.micMuted).toBe(true);
+    expect(settings.avatarColorIndex).toBe(0);
   });
 });
 
@@ -32,5 +33,16 @@ describe('encode/decode', () => {
     const decoded = decodeSettings(JSON.stringify(preMicMuted));
     expect(decoded.profileName).toBe('Erik');
     expect(decoded.micMuted).toBe(true);
+  });
+
+  it('loads settings saved before avatarColorIndex existed and rejects a negative index', () => {
+    const preColor = { ...defaultSettings(), profileName: 'Erik' };
+    // @ts-expect-error simulating pre-avatarColorIndex persisted JSON
+    delete preColor.avatarColorIndex;
+    const decoded = decodeSettings(JSON.stringify(preColor));
+    expect(decoded.profileName).toBe('Erik');
+    expect(decoded.avatarColorIndex).toBe(0);
+    const negative = { ...defaultSettings(), avatarColorIndex: -1 };
+    expect(decodeSettings(JSON.stringify(negative))).toEqual(defaultSettings());
   });
 });

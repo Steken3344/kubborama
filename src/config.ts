@@ -21,6 +21,7 @@ import stickRackData from './data/stick-rack.json' with { type: 'json' };
 import multiplayerData from './data/multiplayer.json' with { type: 'json' };
 import matchData from './data/match.json' with { type: 'json' };
 import avatarData from './data/avatar.json' with { type: 'json' };
+import avatarPaletteData from './data/avatar-palette.json' with { type: 'json' };
 
 export const courtPresets = courtPresetsData.presets;
 export type CourtPresetName = keyof typeof courtPresets;
@@ -62,6 +63,24 @@ export const multiplayer = multiplayerData;
 export const match = matchData;
 /** MP3b procedural peer-avatar body dimensions (core/avatarPose.ts). */
 export const avatar = avatarData;
+/** MP3b player-chosen avatar colors — no green, it vanishes against the
+ * grass. Indexed by settings.avatarColorIndex / presence colorIndex. */
+export const avatarPalette = avatarPaletteData;
+
+/** Clamps a (possibly remote, possibly stale) index onto the palette. */
+export function avatarPaletteEntry(index: number) {
+  const clamped = Math.min(
+    Math.max(0, Math.trunc(index)),
+    avatarPalette.length - 1,
+  );
+  const entry = avatarPalette[clamped];
+  if (!entry) {
+    // Only reachable with an empty palette file — a config error worth
+    // failing loudly on rather than inventing a color here.
+    throw new Error('avatar-palette.json must contain at least one color');
+  }
+  return entry;
+}
 
 export function getCourtPreset(name: CourtPresetName = defaultCourtPreset) {
   return courtPresets[name];

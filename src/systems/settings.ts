@@ -110,4 +110,9 @@ export class SettingsSystem extends createSystem({}) {
     settingsState.current = { ...settingsState.current, micMuted };
     this.persist();
   }
+
+  setAvatarColorIndex(avatarColorIndex: number): void {
+    settingsState.current = { ...settingsState.current, avatarColorIndex };
+    this.persist();
+  }
 }
