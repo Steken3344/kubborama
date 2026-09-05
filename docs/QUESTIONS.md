@@ -63,3 +63,21 @@ practical substitute for real foot tracking in headset-only VR.
 
 Not investigated or prototyped yet — logged per Erik's request so it
 isn't lost, to be picked up in a later session.
+
+## MP3a: the guest's "Ny runda" flickers for one round trip
+
+Erik decided "Ny runda" aborts the match from either headset. On the
+GUEST the button still runs the local teleport-home first, then relays the
+request; until the host's reset lands (~1 network round trip) the host's
+`pieceSync` snaps the sin-binned kubbs back into the sin-bin, then
+everything goes home for real. Functionally correct, cosmetically a
+double jump. Three options, pick one when it bothers you in the headset:
+
+1. **Accept the flicker** (current) — zero extra state, it is ~50-100 ms.
+2. **Guest skips the local teleport** while a match is active and it is
+   not authoritative — needs a "who is host" bit in shared state
+   (`matchActivity`) so `MenuSystem` can tell; cleanest visually.
+3. **Host echoes the reset faster** — no real gain over 1, the round trip
+   is the floor.
+
+Suggested default: 1 until it is actually noticed in play.

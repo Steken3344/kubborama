@@ -356,6 +356,12 @@ export class MenuSystem extends createSystem({
     this.menuOpen = open;
     const root = this.menuPanel.requireElementById('menu-root');
     root.setProperties({ display: open ? 'flex' : 'none' });
+    if (open) {
+      // Labels can go stale while the menu is closed — the match lock
+      // suffix on the game-mode button in particular (code review,
+      // 2026-09-05: this system has no MatchStateChanged subscription).
+      this.refreshLabels();
+    }
   }
 
   /**

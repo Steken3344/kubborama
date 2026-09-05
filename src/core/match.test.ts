@@ -65,6 +65,17 @@ describe('withKubbFelled', () => {
     const s = withKubbFelled(initialMatchState(), 'kubb-7');
     expect(s).toEqual(initialMatchState());
   });
+  it('respects kubbsPerSide when deciding which side a kubb belongs to', () => {
+    // With 2 per side, kubb-2 is host-side — the host felling it is a
+    // ricochet and is ignored; the guest felling it counts.
+    expect(withKubbFelled(initialMatchState(), 'kubb-2', 2)).toEqual(
+      initialMatchState(),
+    );
+    const guestTurn = withTurnAdvanced(initialMatchState());
+    expect(withKubbFelled(guestTurn, 'kubb-2', 2).felledKubbIds.host).toEqual([
+      'kubb-2',
+    ]);
+  });
   it('ignores an id that is not a kubb', () => {
     expect(withKubbFelled(initialMatchState(), 'king')).toEqual(
       initialMatchState(),

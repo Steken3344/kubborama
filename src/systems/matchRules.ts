@@ -7,7 +7,7 @@ import { match, pieces, sinBin } from '../config.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { gameEvents } from '../core/events.js';
 import type { GameEvents } from '../core/events.js';
-import { isFinished } from '../core/match.js';
+import { isFinished, kubbId } from '../core/match.js';
 import { sinBinPlacements } from '../core/matchSinBin.js';
 import type { SinBinPlacement } from '../core/matchSinBin.js';
 import { log } from '../core/log.js';
@@ -58,7 +58,7 @@ export class MatchRulesSystem extends createSystem({
     }
     this.physicsSystem = physicsSystem;
     for (let i = 0; i < KUBB_COUNT * 2; i++) {
-      const id = `kubb-${i}`;
+      const id = kubbId(i);
       this.kubbEntities.set(id, this.world.requireSceneEntity(id));
     }
     this.cleanupFuncs.push(

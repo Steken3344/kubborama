@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { KUBB_COUNT } from './court-layout.js';
 import type { MatchState } from './match.js';
 
 /**
@@ -19,9 +20,11 @@ const matchSideSchema = z.enum(['host', 'guest']);
 
 const matchStateSchema = z.object({
   currentTurn: matchSideSchema,
+  // Bounded: a side has KUBB_COUNT kubbs, so a longer list is garbage —
+  // and would otherwise drive that many setBodyTransform calls.
   felledKubbIds: z.object({
-    host: z.array(z.string()),
-    guest: z.array(z.string()),
+    host: z.array(z.string()).max(KUBB_COUNT),
+    guest: z.array(z.string()).max(KUBB_COUNT),
   }),
   winner: matchSideSchema.nullable(),
   endReason: z.enum(['allKubbsAndKing', 'kingFelledEarly']).nullable(),

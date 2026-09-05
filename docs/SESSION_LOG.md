@@ -998,3 +998,45 @@ stopped registering (ray still correctly hovered the panel, clicks
 just silently didn't land) across several buttons and re-aimed angles
 — a full page reload fixed it instantly. Noted in docs/DECISIONS.md as
 a "try this first" for a future session that hits the same wall.
+
+## 2026-09-05 — Handover: MP3a match rules built, awaiting the 2-headset gate
+
+**Where things stand.** Erik confirmed MP1/MP2 multiplayer live on two
+Quest 2s (2026-09-02), then gave four pieces of feedback: real match vs
+round semantics, score = opponent kubbs felled, king early = loss, and
+better avatars. The first three became **MP3a — match rules**, designed
+in brainstorming (Erik's choices: real-kubb win = all opponent kubbs
+then the king; felled kubbs to a sin-bin per side for the whole match;
+10 s auto-restart with host starting; "Ny runda" aborts from either
+headset; `A - B` score; rules whenever a peer is connected; solo
+untouched), spec-reviewed (2 Critical + 8 Important, all resolved by
+autonomous decisions logged in DECISIONS), planned (8 tasks), built TDD,
+emulator-verified for the solo paths, code-reviewed (1 Critical fixed —
+the king-grace/turn-advance race), pushed, CI green. Avatars (**MP3b**)
+are the next spec — not started.
+
+**Erik's next action — the MP3a headset gate** (docs/MILESTONES.md,
+MP3a section): felled kubbs stay in the sin-bin across rounds on both
+headsets; score on both; king early = loss, king after all kubbs = win —
+test the king with the 6TH stick of a round; ~10 s later a fresh match
+with A starting; "Ny runda" from either headset aborts (expect a brief
+sin-bin double jump on the guest, docs/QUESTIONS.md); game-mode button
+shows "(låst under match)" when the menu is opened mid-match.
+
+**Also this session**: M2 headset gate passed on Erik's approval (tagged
+v0.3-m2); M6 PWA built and live (install gate deprioritized by Erik);
+frame rate measured on the real Quest 2 via VrApi (90 Hz session, 89-90
+fps, docs/perf/); USB/adb route working (udev rule for Meta vendor 2833
+required — CLAUDE.md corrected); three independent code-review rounds
+on the multiplayer stack with every Critical/Important fixed or filed.
+Open issues: gh#15 host/guest game-mode mismatch, gh#16 relayed throws
+pollute host stats, gh#17 last-stick topple lost at round end.
+Untagged milestones: v0.6-m5 (Erik's perf/comfort gate — the numbers
+are in, needs his yes), v0.7-m6 (POC COMPLETE once M5 is tagged).
+
+**Environment notes worth knowing** (all in DECISIONS): the Quest
+browser hides its content tab from remote devtools; IWSDK's MCP bridge
+only connects the managed browser; `adb logcat -d` must be filtered
+on-device with a tight `-t`; the UIKit MSDF font lacks an en dash;
+chrome-devtools-mcp has no Chrome binary on this machine; a genuine
+stranger has twice joined the public default lobby room.

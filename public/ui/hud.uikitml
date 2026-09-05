@@ -79,6 +79,8 @@
     <span id="turn-label" class="label">Tur</span>
     <span id="turn-value" class="value">-</span>
   </div>
+  <!-- Label deliberately empty: the value ("Kungen fälld") is the whole
+       message, right-aligned under the verdict like the other values. -->
   <div id="end-reason-row" class="row" style="display: none">
     <span id="end-reason-label" class="label"></span>
     <span id="end-reason-value" class="value">-</span>

@@ -52,6 +52,17 @@ describe('sinBinPlacements', () => {
     expect(p?.quaternion).toEqual([0, 0, 0, 1]);
   });
 
+  it('skips an id listed under the wrong side (defensive against a bad snapshot)', () => {
+    const s = {
+      ...initialMatchState(),
+      felledKubbIds: { host: [], guest: ['kubb-7', 'kubb-1'] },
+    };
+    const placements = sinBinPlacements(s, OPTS);
+    expect(placements.map((p) => p.kubbId)).toEqual(['kubb-1']);
+    // Still slot 1 — the slot is the list index, not a compacted count.
+    expect(placements[0]?.position[2]).toBeCloseTo(-6 - (-0.3 - 0.14));
+  });
+
   it('derives slots from list position, so a 3-id first snapshot yields slots 0,1,2', () => {
     const s = {
       ...initialMatchState(),

@@ -511,8 +511,13 @@ docs/superpowers/plans/2026-09-05-match-rules.md · Log: docs/DECISIONS.md
 - [ ] **GATE (Erik, 2 headsets)**: felled kubbs stay in the sin-bin across
       rounds; score on both; king early = loss, king after all kubbs =
       win; auto-restart after ~10 s with A starting; "Ny runda" from
-      either headset aborts; game-mode button shows "(låst under match)".
-      🎧 Not self-approvable.
+      either headset aborts (expect a brief double jump of the sin-bin
+      kubbs on the guest — see docs/QUESTIONS.md); game-mode button shows
+      "(låst under match)" when the menu is opened mid-match. Test the
+      king decision specifically with the 6TH stick of a round (the case
+      the code review found and fixed). Known limitation, gh#17: a kubb
+      still falling when the 6th stick settles is stood back up and never
+      counted. 🎧 Not self-approvable.
 - Filed: gh#15 host/guest game-mode mismatch, gh#16 relayed-throw stats
   pollution.
 

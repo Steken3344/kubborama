@@ -52,9 +52,15 @@ export function kubbSide(
   return kubbIndex < kubbsPerSide ? 'guest' : 'host';
 }
 
+/** The scene id of the Nth kubb — the one place the `kubb-N` naming
+ * lives, paired with kubbIndexFromId() below. */
+export function kubbId(index: number): string {
+  return `kubb-${index}`;
+}
+
 /** `kubb-7` → 7; anything that isn't a kubb scene id → null. */
-export function kubbIndexFromId(kubbId: string): number | null {
-  const match = /^kubb-(\d+)$/u.exec(kubbId);
+export function kubbIndexFromId(id: string): number | null {
+  const match = /^kubb-(\d+)$/u.exec(id);
   return match ? Number(match[1]) : null;
 }
 

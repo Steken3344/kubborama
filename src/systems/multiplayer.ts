@@ -18,6 +18,7 @@ import type { GameEvents } from '../core/events.js';
 import {
   initialMatchState,
   isFinished,
+  kubbId,
   withKingFelled,
   withKubbFelled,
   withTurnAdvanced,
@@ -70,7 +71,7 @@ import { activeFarBaselineZ } from './activeCourt.js';
 // just another periodically-synced piece like this.
 const NETWORKED_PIECE_IDS = [
   'king',
-  ...Array.from({ length: KUBB_COUNT * 2 }, (_, i) => `kubb-${i}`),
+  ...Array.from({ length: KUBB_COUNT * 2 }, (_, i) => kubbId(i)),
   ...Array.from({ length: STICKS_PER_ROUND }, (_, i) => `stick-${i}`),
 ];
 
@@ -244,7 +245,6 @@ export class MultiplayerSystem extends createSystem({}) {
    * toppled by the same stick must get counted first (spec review I1).
    * null = no decision pending. */
   private kingFelledAtS: number | null = null;
-  private nowS = 0;
 
   // Reused every send tick instead of allocated fresh — see
   // .claude/rules (never allocate in update()); the throttled ~20Hz
@@ -395,12 +395,14 @@ export class MultiplayerSystem extends createSystem({}) {
       gameEvents.on('KubbFelled', (event) => {
         this.onKubbFelledForMatch(event.entityId);
       }),
-      gameEvents.on('KingFelled', () => {
+      gameEvents.on('KingFelled', (event) => {
         if (!this.isHostNow() || !this.hasMultiplayerPeer()) {
           return;
         }
         if (this.kingFelledAtS === null && !isFinished(this.matchState)) {
-          this.kingFelledAtS = this.nowS;
+          // The event's own timestamp — same elics clock as update()'s
+          // `time`, and current rather than last frame's.
+          this.kingFelledAtS = event.timeS;
         }
       }),
       // No RoundEnded subscription on purpose — the turn advance rides
@@ -475,21 +477,11 @@ export class MultiplayerSystem extends createSystem({}) {
   }
 
   update(delta: number, time: number): void {
-    this.nowS = time;
     if (
       this.kingFelledAtS !== null &&
       time - this.kingFelledAtS >= match.kingDecisionGraceS
     ) {
-      this.kingFelledAtS = null;
-      const next = withKingFelled(this.matchState);
-      if (next !== this.matchState) {
-        log('info', 'state', 'match decided by the king', {
-          winner: next.winner,
-          endReason: next.endReason,
-        });
-        this.setMatchState(next);
-        this.broadcastMatchState();
-      }
+      this.applyPendingKingDecision();
     }
     if (this.micTrack) {
       this.micTrack.enabled = !settingsState.current.micMuted;
@@ -753,9 +745,35 @@ export class MultiplayerSystem extends createSystem({}) {
     this.broadcastMatchState();
   }
 
+  /** Applies a deferred king decision (see kingFelledAtS) for whoever
+   * holds the turn RIGHT NOW — so it must run before anything flips the
+   * turn. Same-reference return from the reducer means nothing to do. */
+  private applyPendingKingDecision(): void {
+    this.kingFelledAtS = null;
+    const next = withKingFelled(this.matchState);
+    if (next === this.matchState) {
+      return;
+    }
+    log('info', 'state', 'match decided by the king', {
+      winner: next.winner,
+      endReason: next.endReason,
+    });
+    this.setMatchState(next);
+    this.broadcastMatchState();
+  }
+
   private advanceTurnForMatch(): void {
     if (!this.isHostNow() || !this.hasMultiplayerPeer()) {
       return;
+    }
+    // Code review, 2026-09-05 (Critical): the 6th stick can fell the king
+    // and settle within the 1.5 s grace, ending the round — flipping the
+    // turn BEFORE the deferred decision would attribute the king to the
+    // wrong thrower and invert the result. Decide first; the reset that
+    // triggered this has already teleported any still-falling kubb home,
+    // so nothing the grace was waiting for can arrive anyway.
+    if (this.kingFelledAtS !== null) {
+      this.applyPendingKingDecision();
     }
     const nextState = withTurnAdvanced(this.matchState);
     this.setMatchState(nextState);

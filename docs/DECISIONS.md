@@ -4685,3 +4685,48 @@ in the sin-bin across rounds on both headsets; score `A - B`; king early
 with A starting; "Ny runda" from EITHER headset aborts; game-mode button
 label shows "(låst under match)". Filed: gh#15 (host/guest in different
 game modes), gh#16 (relayed throws pollute host stats).
+
+## 2026-09-05 — MP3a code review: king-grace/turn-advance race fixed
+
+A fresh reviewer (range: spec commit → HEAD) traced the MP3a
+implementation against spec and plan. Mechanical pass reproduced green;
+the reducer's same-reference contract, slot-from-index placement, the
+disconnect path and the restart timer were all confirmed correct. One
+Critical finding — in the grace logic I designed to fix spec review I1:
+
+**Critical — the king decision could be attributed to the wrong
+thrower.** `KingFelled` is deferred 1.5 s (`kingDecisionGraceS`) so a
+kubb felled by the same stick counts first. But if that stick is the
+SIXTH of the round it can settle within a fraction of a second, ending
+the round → `Reset{roundEnd}` → `advanceTurnForMatch` flips
+`currentTurn` — and 1.5 s later `withKingFelled` reads the flipped
+turn: "king early" would crown the player who actually LOST. The
+deciding throw of the match, one stick in six, physically common.
+**Fix**: `advanceTurnForMatch` applies any pending king decision
+(`applyPendingKingDecision()`, now shared with `update()`) BEFORE the
+flip — nothing is lost, because the reset that triggered the round end
+has already teleported any still-falling kubb home, so nothing the
+grace was waiting for can arrive. The headset checklist now says to
+test the king specifically with the 6th stick.
+
+Important, fixed: the game-mode button's "(låst under match)" label was
+only refreshed by other button presses — `setMenuOpen(true)` now
+refreshes labels, so opening the menu mid-match shows the lock; the
+grace timestamp now comes from the `KingFelled` event's own `timeS`
+(same elics clock, current frame) instead of a frame-stale `nowS`
+field. Important, filed as gh#17: a kubb (or the king) still falling
+when the 6th stick settles is teleported home by the round-end reset
+and never counted — pre-existing solo semantics, but in a match it can
+swallow the 5th kubb; belongs in `RoundSystem` (wait for a quiet
+court). Important, logged in docs/QUESTIONS.md: the guest's "Ny runda"
+double-jumps the sin-bin kubbs for one round trip (local teleport,
+pieceSync snap-back, then the host's real reset) — accepted for now
+with three options recorded. Minor, taken: `felledKubbIds` arrays
+bounded by `KUBB_COUNT` in the zod schema; `kubbId(i)` helper pairs
+with `kubbIndexFromId` (three `kubb-${i}` copies collapsed); tests for
+`withKubbFelled`'s `kubbsPerSide` and for a wrong-side id in a
+snapshot; empty end-reason label documented; spec's stale
+"`getSystem(MenuSystem)`" sentence corrected.
+
+Verdict was "ready with fixes"; all fixes landed the same pass. 232
+tests, tsc/eslint/prettier, build, smoke green.

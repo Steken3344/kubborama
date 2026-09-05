@@ -106,9 +106,9 @@ Only the HOST calls transitions; the guest receives whole states.
 
 ## 2. Physical adapter — `src/systems/matchRules.ts` (new)
 
-Event-driven; never touches the network. Registered after `MenuSystem` and
-`SimpleRulesSystem` (it needs `getSystem(MenuSystem)` — and, being the only
-writer of the shared flag, order otherwise does not matter).
+Event-driven; never touches the network. Registration order is irrelevant —
+it talks to `MenuSystem` only via the `ResetRequested` event and is the sole
+writer of the shared flag (implementation registers it last for readability).
 
 - `MatchStateChanged` → if `active` was false: set `active = true`, and
   **remove `KingProtected` from the `KingPiece` entity** (review C1: in the
