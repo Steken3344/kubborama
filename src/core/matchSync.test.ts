@@ -1,59 +1,58 @@
 import { describe, expect, it } from 'vitest';
+import { initialMatchState, withKingFelled, withKubbFelled } from './match.js';
 import {
   buildMatchSyncMessage,
   MATCH_SYNC_SCHEMA_VERSION,
   parseMatchSyncMessage,
+  peekSchemaVersion,
 } from './matchSync.js';
-import { initialMatchState, withKubbFelled } from './match.js';
 
-describe('buildMatchSyncMessage', () => {
-  it('stamps the current schema version', () => {
-    const message = buildMatchSyncMessage(initialMatchState(5));
-    expect(message.version).toBe(MATCH_SYNC_SCHEMA_VERSION);
-    expect(message.state.currentTurn).toBe('host');
-  });
-});
-
-describe('parseMatchSyncMessage (untrusted network boundary)', () => {
-  it('round-trips a message built by buildMatchSyncMessage', () => {
-    const state = withKubbFelled(initialMatchState(5), 'guest');
-    const message = buildMatchSyncMessage(state);
-    expect(parseMatchSyncMessage(message)).toEqual(message);
+describe('matchSync v2', () => {
+  it('stamps version 2', () => {
+    expect(MATCH_SYNC_SCHEMA_VERSION).toBe(2);
+    expect(buildMatchSyncMessage(initialMatchState()).version).toBe(2);
   });
 
-  it('rejects non-object garbage', () => {
-    expect(parseMatchSyncMessage('not an object')).toBeNull();
-    expect(parseMatchSyncMessage(null)).toBeNull();
+  it('round-trips a mid-match and a finished state', () => {
+    let s = withKubbFelled(initialMatchState(), 'kubb-0');
+    expect(parseMatchSyncMessage(buildMatchSyncMessage(s))).toEqual(
+      buildMatchSyncMessage(s),
+    );
+    s = withKingFelled(s);
+    expect(
+      parseMatchSyncMessage(buildMatchSyncMessage(s))?.state.endReason,
+    ).toBe('kingFelledEarly');
   });
 
-  it('rejects a mismatched schema version', () => {
-    const message = buildMatchSyncMessage(initialMatchState(5));
-    expect(parseMatchSyncMessage({ ...message, version: 999 })).toBeNull();
-  });
-
-  it('rejects an invalid side value', () => {
-    const malformed = {
-      version: MATCH_SYNC_SCHEMA_VERSION,
+  it('rejects a v1 message and garbage', () => {
+    const v1 = {
+      version: 1,
       state: {
-        currentTurn: 'referee',
+        currentTurn: 'host',
         hostKubbsRemaining: 5,
         guestKubbsRemaining: 5,
         winner: null,
       },
     };
-    expect(parseMatchSyncMessage(malformed)).toBeNull();
+    expect(parseMatchSyncMessage(v1)).toBeNull();
+    expect(parseMatchSyncMessage(null)).toBeNull();
+    expect(parseMatchSyncMessage({ version: 2, state: {} })).toBeNull();
   });
 
-  it('rejects a negative kubb count', () => {
-    const malformed = {
-      version: MATCH_SYNC_SCHEMA_VERSION,
-      state: {
-        currentTurn: 'host',
-        hostKubbsRemaining: -1,
-        guestKubbsRemaining: 5,
-        winner: null,
-      },
-    };
-    expect(parseMatchSyncMessage(malformed)).toBeNull();
+  it('rejects an unknown endReason', () => {
+    const bad = buildMatchSyncMessage(initialMatchState());
+    expect(
+      parseMatchSyncMessage({
+        ...bad,
+        state: { ...bad.state, endReason: 'x' },
+      }),
+    ).toBeNull();
+  });
+
+  it('peeks the version of anything object-shaped, else null', () => {
+    expect(peekSchemaVersion({ version: 1 })).toBe(1);
+    expect(peekSchemaVersion({ version: '1' })).toBeNull();
+    expect(peekSchemaVersion('nope')).toBeNull();
+    expect(peekSchemaVersion(null)).toBeNull();
   });
 });

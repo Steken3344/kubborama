@@ -2,22 +2,29 @@ import { z } from 'zod';
 import type { MatchState } from './match.js';
 
 /**
- * MP2 phase 3: the host is authoritative for match/turn state (same
+ * MP2 phase 3 / MP3a: the host is authoritative for match state (same
  * "först in äger spelet" model as core/pieceSync.ts), broadcast
- * event-driven (on a kubb felled / turn advanced) rather than at
- * ~20 Hz — match state changes rarely, unlike a physics transform.
- * Network messages are an untrusted boundary (CLAUDE.md): malformed
- * data is dropped, never trusted.
+ * event-driven rather than at ~20 Hz. Network messages are an untrusted
+ * boundary (CLAUDE.md): malformed data is dropped, never trusted.
+ *
+ * v2 (MP3a, 2026-09-05): per-side felled-kubb id lists replace the two
+ * remaining-counters, `endReason` added. v1 is rejected; with the PWA's
+ * autoUpdate one headset can briefly run the old build until it
+ * reloads, so the receiver logs a distinct version-mismatch warning
+ * (see peekSchemaVersion) instead of a generic "malformed".
  */
-export const MATCH_SYNC_SCHEMA_VERSION = 1;
+export const MATCH_SYNC_SCHEMA_VERSION = 2;
 
 const matchSideSchema = z.enum(['host', 'guest']);
 
 const matchStateSchema = z.object({
   currentTurn: matchSideSchema,
-  hostKubbsRemaining: z.number().int().min(0),
-  guestKubbsRemaining: z.number().int().min(0),
+  felledKubbIds: z.object({
+    host: z.array(z.string()),
+    guest: z.array(z.string()),
+  }),
   winner: matchSideSchema.nullable(),
+  endReason: z.enum(['allKubbsAndKing', 'kingFelledEarly']).nullable(),
 });
 
 const matchSyncMessageSchema = z.object({
@@ -35,4 +42,13 @@ export function buildMatchSyncMessage(state: MatchState): MatchSyncMessage {
 export function parseMatchSyncMessage(data: unknown): MatchSyncMessage | null {
   const result = matchSyncMessageSchema.safeParse(data);
   return result.success ? result.data : null;
+}
+
+const versionOnlySchema = z.object({ version: z.number() });
+
+/** The `version` of an otherwise-unvalidated message, for a targeted
+ * "schema mismatch" log — null when there is no numeric version. */
+export function peekSchemaVersion(data: unknown): number | null {
+  const result = versionOnlySchema.safeParse(data);
+  return result.success ? result.data.version : null;
 }
