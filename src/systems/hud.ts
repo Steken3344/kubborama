@@ -2,6 +2,7 @@ import { createSystem, UIKitMLAsset } from '@iwsdk/core';
 import type { GameEvents } from '../core/events.js';
 import type { ThrowStyle } from '../core/underhandClassifier.js';
 import { gameEvents } from '../core/events.js';
+import { isFinished, score } from '../core/match.js';
 import { i18nState } from '../i18nState.js';
 import { StatsSystem } from './stats.js';
 
@@ -99,6 +100,9 @@ export class HudSystem extends createSystem({}) {
     this.hudPanel
       .requireElementById('role-label')
       .setProperties({ text: t('roleLabel') });
+    this.hudPanel
+      .requireElementById('turn-label')
+      .setProperties({ text: t('matchTurnLabel') });
     this.updateThrowStyle();
     this.updateMatchRow();
   }
@@ -112,40 +116,55 @@ export class HudSystem extends createSystem({}) {
     }
     const t = i18nState.t;
     const { state, mySide } = this.lastMatchState;
-    // Absolute "Spelare A/B" labels, not "din/motst. tur" (Erik,
-    // 2026-09-02: with 2 headsets side by side, "your turn" read as
-    // ambiguous mid-match) — host is always Player A, guest Player B,
-    // matching "först in äger spelet" (core/multiplayerAuthority.ts).
-    const text = state.winner
+    const s = score(state);
+    const show = (id: string) =>
+      this.hudPanel.requireElementById(id).setProperties({ display: 'flex' });
+
+    // "Du är: Spelare A/B" — each player's own fixed identity for the
+    // whole match (Erik, 2026-09-02: with only a turn label there was
+    // no way to tell WHICH player you were).
+    show('role-row');
+    this.hudPanel.requireElementById('role-value').setProperties({
+      text: mySide === 'host' ? t('rolePlayerA') : t('rolePlayerB'),
+    });
+    // Score `A – B`, Player A (host) always left so it lines up with the
+    // role row (Erik, 2026-09-05, MP3a).
+    show('match-row');
+    this.hudPanel
+      .requireElementById('match-value')
+      .setProperties({ text: `${s.host} – ${s.guest}` });
+    // Absolute "Spelare A/B" turn labels, not "din/motst. tur" (Erik,
+    // 2026-09-02); once decided, the relative won/lost verdict.
+    show('turn-row');
+    const turnText = isFinished(state)
       ? state.winner === mySide
         ? t('matchWon')
         : t('matchLost')
       : state.currentTurn === 'host'
         ? t('matchPlayerATurn')
         : t('matchPlayerBTurn');
-    this.hudPanel.requireElementById('match-row').setProperties({
-      display: 'flex',
-    });
-    this.hudPanel.requireElementById('match-value').setProperties({ text });
-    // "Du är: Spelare A/B" — each player's own fixed identity for the
-    // whole match, distinct from the turn indicator above (Erik,
-    // 2026-09-02: with only a turn label there was no way to tell WHICH
-    // player you were, so both players read themselves as "B").
-    this.hudPanel.requireElementById('role-row').setProperties({
-      display: 'flex',
-    });
-    this.hudPanel.requireElementById('role-value').setProperties({
-      text: mySide === 'host' ? t('rolePlayerA') : t('rolePlayerB'),
-    });
+    this.hudPanel
+      .requireElementById('turn-value')
+      .setProperties({ text: turnText });
+    if (isFinished(state)) {
+      show('end-reason-row');
+      this.hudPanel.requireElementById('end-reason-value').setProperties({
+        text:
+          state.endReason === 'allKubbsAndKing'
+            ? t('matchEndKing')
+            : t('matchEndKingEarly'),
+      });
+    } else {
+      this.hudPanel
+        .requireElementById('end-reason-row')
+        .setProperties({ display: 'none' });
+    }
   }
 
   private hidePeerRows(): void {
-    this.hudPanel.requireElementById('match-row').setProperties({
-      display: 'none',
-    });
-    this.hudPanel.requireElementById('role-row').setProperties({
-      display: 'none',
-    });
+    for (const id of ['role-row', 'match-row', 'turn-row', 'end-reason-row']) {
+      this.hudPanel.requireElementById(id).setProperties({ display: 'none' });
+    }
   }
 
   private updateBestFelled(): void {

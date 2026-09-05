@@ -73,6 +73,14 @@
   </div>
   <div id="match-row" class="row" style="display: none">
     <span id="match-label" class="label">Match</span>
-    <span id="match-value" class="value">-</span>
+    <span id="match-value" class="value">0 – 0</span>
+  </div>
+  <div id="turn-row" class="row" style="display: none">
+    <span id="turn-label" class="label">Tur</span>
+    <span id="turn-value" class="value">-</span>
+  </div>
+  <div id="end-reason-row" class="row" style="display: none">
+    <span id="end-reason-label" class="label"></span>
+    <span id="end-reason-value" class="value">-</span>
   </div>
 </Panel>
