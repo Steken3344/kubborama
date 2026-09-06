@@ -4961,3 +4961,18 @@ scope. Reviewer's note kept: on a GUEST, the local RoundSystem reads body
 speeds of pieces that pieceSync teleports, so its round can end up to
 3 s after the host's — benign, the host's reset + matchSync are
 authoritative.
+
+## 2026-09-06 — Rules gap review (desk, no headset)
+
+Erik could not test, so the session was spent comparing the game against
+the Kubb-VM / US National rules: docs/RULES_REVIEW.md. Verdict: piece
+dimensions, the 5 × 8 tournament court, 6-baton turns, king-early = loss
+and kubbs-then-king = win are faithful. The one structural gap is the
+**field-kubb loop** (inkast → raise → field-before-baseline → advantage
+line), which MP3a deliberately replaced with a sin-bin; §2 of the review
+sketches how it maps onto the existing reducer + diff-driven
+MatchRulesSystem. Five `[rules]` feature issues filed; recommendation is
+field kubbs as the next milestone, with "leaning = felled" and "raise an
+own-side rebound kubb immediately" folded in. Rule details I could not
+verify from memory are marked _(verify)_ in the review — check the
+current official PDF before building on them.
