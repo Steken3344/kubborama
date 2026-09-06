@@ -1,6 +1,13 @@
+import { pieces } from '../config.js';
 import type { Vec3 } from '../core/vec3.js';
 
 export type DebugRole = 'solo' | 'host' | 'guest';
+
+/** A stick's centre rests at +radius above the ground plane (y = 0);
+ * below −radius it is fully under the ground. One definition, shared by
+ * DebugWatchSystem (local physics) and MultiplayerSystem (host
+ * snapshots) so they can never disagree. */
+export const STICK_BELOW_GROUND_Y = -pieces.stick.radiusM;
 
 export interface PieceSyncTrace {
   position: Vec3;
@@ -29,7 +36,7 @@ export const debugContext: {
   pieceIdByEntityIndex: Map<number, string>;
 } = {
   enabled: false,
-  clientId: Math.random().toString(36).slice(2, 8),
+  clientId: crypto.randomUUID().slice(0, 6),
   role: 'solo',
   lastPieceSync: new Map(),
   pieceIdByEntityIndex: new Map(),

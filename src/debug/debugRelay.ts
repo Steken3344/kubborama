@@ -5,7 +5,11 @@ import { debugContext } from './debugContext.js';
 /** Where the dev server's kubbDebugRelay plugin (vite.config.ts) listens. */
 export const DEBUG_RELAY_PATH = '/__kubb/log';
 const FLUSH_INTERVAL_MS = 250;
-const MAX_BATCH = 200;
+/** Small enough that a full batch stays well under the 64 KiB cap
+ * Chrome puts on `keepalive` request bodies (code review, 2026-09-06 —
+ * a 200-entry batch during an error storm would have been rejected and
+ * swallowed by the catch below). */
+const MAX_BATCH = 50;
 
 interface ShippedEntry extends LogEntry {
   client: string;
@@ -53,13 +57,15 @@ export function enableDebugRelay(): void {
       role: debugContext.role,
     });
     if (batch.length >= MAX_BATCH) {
-      flush();
+      flush(false);
     }
   });
-  flushTimer = window.setInterval(flush, FLUSH_INTERVAL_MS);
+  flushTimer = window.setInterval(() => flush(false), FLUSH_INTERVAL_MS);
   if (!listenersInstalled) {
     listenersInstalled = true;
-    window.addEventListener('pagehide', flush);
+    // keepalive only here: it is what lets the last batch survive the
+    // page going away, and it is the request type with the body cap.
+    window.addEventListener('pagehide', () => flush(true));
     // Nothing may fail silently while we are hunting bugs.
     window.addEventListener('error', (event) => {
       log('error', 'debug', 'uncaught error', {
@@ -85,7 +91,7 @@ export function disableDebugRelay(): void {
     return;
   }
   log('info', 'debug', 'debug relay stopping', {});
-  flush();
+  flush(false);
   setLogSink(null);
   if (flushTimer !== null) {
     window.clearInterval(flushTimer);
@@ -94,7 +100,7 @@ export function disableDebugRelay(): void {
   debugContext.enabled = false;
 }
 
-function flush(): void {
+function flush(keepalive: boolean): void {
   if (batch.length === 0) {
     return;
   }
@@ -104,6 +110,6 @@ function flush(): void {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: payload,
-    keepalive: true,
+    keepalive,
   }).catch(() => undefined);
 }

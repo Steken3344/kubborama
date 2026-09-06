@@ -5,7 +5,7 @@
 // See src/debug/debugRelay.ts and the kubbDebugRelay plugin in
 // vite.config.ts. The file lives under .iwsdk/ (gitignored).
 import { Buffer } from 'node:buffer';
-import { existsSync, openSync, readSync, statSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readSync, statSync } from 'node:fs';
 import { setInterval } from 'node:timers';
 
 const LOG_PATH = '.iwsdk/runtime/logs/kubb-debug.ndjson';
@@ -38,13 +38,21 @@ console.log(
 setInterval(() => {
   if (!existsSync(LOG_PATH)) return;
   const size = statSync(LOG_PATH).size;
-  if (size < offset) offset = 0; // truncated
+  if (size < offset) {
+    offset = 0; // truncated — start over, drop any half line
+    partial = '';
+  }
   if (size === offset) return;
-  const fd = openSync(LOG_PATH, 'r');
   const buf = Buffer.alloc(size - offset);
-  readSync(fd, buf, 0, buf.length, offset);
-  offset = size;
-  const text = partial + buf.toString('utf8');
+  const fd = openSync(LOG_PATH, 'r');
+  let bytesRead;
+  try {
+    bytesRead = readSync(fd, buf, 0, buf.length, offset);
+  } finally {
+    closeSync(fd); // one fd per poll, released every time (no EMFILE)
+  }
+  offset += bytesRead;
+  const text = partial + buf.subarray(0, bytesRead).toString('utf8');
   const lines = text.split('\n');
   partial = lines.pop() ?? '';
   for (const line of lines) {

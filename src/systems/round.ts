@@ -4,7 +4,7 @@ import { StickPhase, StickState } from '../components/stick-state.js';
 import { pieces, round } from '../config.js';
 import { gameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
-import { isResting } from '../core/restState.js';
+import { accumulateHeldDuration, isResting } from '../core/restState.js';
 import {
   finishRound,
   initialRoundState,
@@ -66,8 +66,13 @@ export class RoundSystem extends createSystem({
   private roundStartTimeS: number | undefined;
   /** Set on the 6th settle; null while no round end is pending. */
   private pendingEndSinceS: number | null = null;
-  /** When the court was last seen fully at rest during a pending end. */
-  private quietSinceS: number | null = null;
+  /** Seconds the court has been continuously at rest during a pending
+   * end — accumulated with the same frame-clamped helper ToppleSystem
+   * uses for its own rest timers (code review, 2026-09-06): measured on
+   * the wall clock, a single ≥0.2 s frame hitch inside the 0.6 s window
+   * would end the round BEFORE ToppleSystem (which clamps) had reported
+   * the toppled piece — the exact bug gh#17 fixed. */
+  private quietForS = 0;
   private tmpSpeed: [number, number] = [0, 0];
   private pendingThrows = new Map<string, PendingThrow>();
   private causedFellingThisThrow = new Set<string>();
@@ -113,7 +118,7 @@ export class RoundSystem extends createSystem({
           this.pendingEndSinceS === null
         ) {
           this.pendingEndSinceS = e.timeS;
-          this.quietSinceS = null;
+          this.quietForS = 0;
           log(
             'debug',
             'state',
@@ -153,24 +158,24 @@ export class RoundSystem extends createSystem({
     }
   }
 
-  update(_delta: number, timeS: number): void {
+  update(delta: number, timeS: number): void {
     this.roundStartTimeS ??= timeS;
     if (this.pendingEndSinceS === null) {
       return;
     }
-    if (this.courtIsQuiet()) {
-      this.quietSinceS ??= timeS;
-    } else {
-      this.quietSinceS = null;
-    }
-    const quietForS =
-      this.quietSinceS === null ? null : timeS - this.quietSinceS;
+    this.quietForS = this.courtIsQuiet()
+      ? accumulateHeldDuration(this.quietForS, delta)
+      : 0;
+    const quietForS = this.quietForS > 0 ? this.quietForS : null;
+    // The cap stays wall-clock: it is a guarantee of termination, not a
+    // physics measurement.
     if (
       shouldEndPendingRound(quietForS, timeS - this.pendingEndSinceS, round)
     ) {
-      if (quietForS === null) {
+      if (quietForS === null || quietForS < round.quietCourtS) {
         log('warn', 'state', 'round ended at the quiet-court cap', {
           maxWaitS: round.maxWaitS,
+          quietForS,
         });
       }
       this.endRound(timeS);
@@ -238,7 +243,7 @@ export class RoundSystem extends createSystem({
     this.roundState = roundState;
     this.roundStartTimeS = timeS;
     this.pendingEndSinceS = null;
-    this.quietSinceS = null;
+    this.quietForS = 0;
     this.longestThrowThisRoundM = 0;
     this.longestFellingThrowThisRoundM = null;
     this.pendingThrows.clear();

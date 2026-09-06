@@ -28,6 +28,8 @@ function kubbDebugRelay(): Plugin {
     apply: 'serve',
     configureServer(server) {
       mkdirSync(dirname(logPath), { recursive: true });
+      // Prefix match, unbounded body, no auth — deliberately minimal for
+      // a dev-server-only tool on a trusted LAN (never in a build).
       server.middlewares.use('/__kubb/log', (req, res) => {
         if (req.method !== 'POST') {
           res.statusCode = 405;

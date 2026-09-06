@@ -4921,3 +4921,43 @@ tcp:<port>`; `adb shell am start -a android.intent.action.VIEW -d
 "https://localhost:<port>/?debug=1"`; the second headset uses the Wi-Fi
 URL with the same query; `npm run debug:tail -- guest` to watch the
 guest only.
+
+## 2026-09-06 — Review of the quiet-court round end + debug mode
+
+Fresh reviewer over `7f39b38..511ec31`; all gates reproduced green and
+the relay confirmed absent from `dist/` (the `import.meta.env.DEV` guard
+eliminates `enableDebugRelay` entirely). No Critical. Four Important,
+all fixed:
+
+1. **gh#17's quiet-court timer was on the wall clock** while ToppleSystem
+   clamps its rest timers to 0.1 s per frame (`accumulateHeldDuration`).
+   Margin was only 0.1 s (0.6 − 0.5), so a single ≥0.2 s frame hitch in
+   the quiet window — GC, the Guardian overlay, both documented on Quest
+   — would end the round before the toppled piece was reported: the very
+   bug gh#17 fixed, back under stall. `RoundSystem` now accumulates
+   `quietForS` with the same clamped helper (the cap stays wall-clock —
+   it is a termination guarantee, not a measurement), and the cap
+   warning fires whenever the quiet requirement was NOT met, not only
+   when the court was never quiet.
+2. `scripts/debug-tail.mjs` opened a file descriptor per poll and never
+   closed it — ~1000 fds in 15-20 min of per-second counters → EMFILE,
+   i.e. the tail would die mid-session. `closeSync` in `finally`, uses
+   the real `bytesRead`, resets the partial line on truncation.
+3. The below-ground threshold was duplicated (`-0.022` literal in
+   MultiplayerSystem vs `-pieces.stick.radiusM` in DebugWatchSystem) —
+   `STICK_BELOW_GROUND_Y` now lives once in `debug/debugContext.ts`.
+4. `fetch(..., { keepalive: true })` on every batch: Chrome caps
+   keepalive bodies at 64 KiB, so a full 200-entry batch during an
+   error storm — exactly when the relay matters — would be rejected and
+   swallowed. Batch is 50 and `keepalive` is used only for the pagehide
+   flush.
+
+Minor, taken: boundary tests for the cap (`(null, 2.99)`, `(0.59, 3.0)`);
+`crypto.randomUUID()` for the debug client id (CLAUDE.md's
+no-Math.random rule, even in debug code); the Debug button is hidden in
+the production build (it would toggle a label with no effect); the vite
+middleware comment states its deliberate prefix-match/unbounded-body
+scope. Reviewer's note kept: on a GUEST, the local RoundSystem reads body
+speeds of pieces that pieceSync teleports, so its round can end up to
+3 s after the host's — benign, the host's reset + matchSync are
+authoritative.

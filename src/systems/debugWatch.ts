@@ -1,12 +1,7 @@
 import { createSystem, Grabbed } from '@iwsdk/core';
 import { StickState } from '../components/stick-state.js';
-import { pieces } from '../config.js';
 import { log } from '../core/log.js';
-import { debugContext } from '../debug/debugContext.js';
-
-/** A stick's centre can't legitimately be below its own radius above
- * the ground plane (y = 0); allow a little penetration slack. */
-const BELOW_GROUND_Y = -pieces.stick.radiusM;
+import { debugContext, STICK_BELOW_GROUND_Y } from '../debug/debugContext.js';
 
 /**
  * Debug mode only (src/debug/debugContext.ts `enabled`): watches every
@@ -35,7 +30,7 @@ export class DebugWatchSystem extends createSystem({
       }
       const y = object3D.position.y;
       const was = this.belowGround.has(entity.index);
-      if (y < BELOW_GROUND_Y && !was) {
+      if (y < STICK_BELOW_GROUND_Y && !was) {
         this.belowGround.add(entity.index);
         const id =
           debugContext.pieceIdByEntityIndex.get(entity.index) ??
@@ -53,7 +48,7 @@ export class DebugWatchSystem extends createSystem({
           lastPieceSyncAgeMs: trace ? Date.now() - trace.atMs : null,
           timeS,
         });
-      } else if (y >= BELOW_GROUND_Y && was) {
+      } else if (y >= STICK_BELOW_GROUND_Y && was) {
         this.belowGround.delete(entity.index);
         log('info', 'debug', 'stick back above ground', {
           entityIndex: entity.index,

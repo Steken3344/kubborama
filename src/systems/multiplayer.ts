@@ -62,7 +62,7 @@ import {
 import type { ThrowRelayMessage } from '../core/throwRelay.js';
 import { STICKS_PER_ROUND } from '../core/scoring.js';
 import { log } from '../core/log.js';
-import { debugContext } from '../debug/debugContext.js';
+import { debugContext, STICK_BELOW_GROUND_Y } from '../debug/debugContext.js';
 import { settingsState } from '../settingsState.js';
 import { activeFarBaselineZ } from './activeCourt.js';
 
@@ -707,7 +707,7 @@ export class MultiplayerSystem extends createSystem({}) {
         atMs: Date.now(),
       });
     }
-    const below = piece.position[1] < -0.022;
+    const below = piece.position[1] < STICK_BELOW_GROUND_Y;
     if (below && !this.hostBelowGround.has(piece.id)) {
       this.hostBelowGround.add(piece.id);
       log('warn', 'debug', 'host snapshot puts stick below ground', {

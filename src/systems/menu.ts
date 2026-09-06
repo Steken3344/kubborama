@@ -208,6 +208,13 @@ export class MenuSystem extends createSystem({
       this.settingsSystem.setDebugRelay(!settingsState.current.debugRelay);
       this.refreshLabels();
     });
+    if (!import.meta.env.DEV) {
+      // The relay only exists on the dev server — in the deployed build
+      // the button would toggle a label with no effect, so hide it.
+      this.menuPanel
+        .requireElementById('debug-button')
+        .setProperties({ display: 'none' });
+    }
 
     this.refreshLabels();
     this.setActiveTab('main');
