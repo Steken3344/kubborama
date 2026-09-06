@@ -1,17 +1,41 @@
-import { BoxGeometry, createSystem, PhysicsSystem } from '@iwsdk/core';
-import type { Mesh } from '@iwsdk/core';
+import {
+  BoxGeometry,
+  createSystem,
+  PhysicsBody,
+  PhysicsSystem,
+} from '@iwsdk/core';
+import type { Entity, Mesh } from '@iwsdk/core';
 import type { CourtPreset } from '../core/court-layout.js';
 import {
   courtLayout,
   courtPresetForMode,
+  defaultCourtPreset,
   getCourtPreset,
   pieces,
 } from '../config.js';
+import { settingsState } from '../settingsState.js';
+import { farBaselineZ } from '../core/court-layout.js';
 import { gameEvents } from '../core/events.js';
+import { log } from '../core/log.js';
+import { mirrorPoseToFarBaseline } from '../core/presence.js';
 import type { Settings } from '../core/settings.js';
 import type { Vec3 } from '../core/vec3.js';
 import type { HomePose } from './menu.js';
 import { MenuSystem } from './menu.js';
+import { localPoseOf } from './objectPose.js';
+
+/** The guest's stick rack is the near rack mirrored around the far
+ * baseline (same transform as the guest's own body and the sticks'
+ * far-rack poses in MultiplayerSystem). The scene authors it at the
+ * DEFAULT court's mirror; every other preset moves the far baseline,
+ * so the rack must follow or the sticks get teleported onto bare ground
+ * behind player B (Erik, 2026-09-06: "pinnarna spawnar inte på dess
+ * bord … de försvann från marken" — Advanced mode, 8 m court, rack still
+ * at the 6 m mirror z = −7.09, sticks placed at z = −9.09). */
+const FAR_RACK_NODE_IDS: ReadonlyArray<readonly [near: string, far: string]> = [
+  ['stick-rack', 'stick-rack-2'],
+  ['stick-rack-collider', 'stick-rack-2-collider'],
+];
 
 const STAKE_NODE_IDS = [
   'corner-stake-near-left',
@@ -71,6 +95,16 @@ export class CourtLayoutSystem extends createSystem({}) {
   private physicsSystem!: PhysicsSystem;
   private unsubscribeGameModeChanged?: () => void;
   private resizedLineIds = new Set<string>();
+  /** A persisted non-default mode must be laid out at startup too, not
+   * only on the next button press (2026-09-06, found while chasing
+   * Erik's "sticks vanish behind player B": with Advanced persisted the
+   * court stayed the scene's authored 6 m while activeFarBaselineZ(),
+   * the guest teleport and the far-rack stick poses all said 8 m).
+   * Deferred to update(): PhysicsSystem creates Havok bodies lazily on
+   * its first ticks, and setBodyTransform silently no-ops on an entity
+   * without an engine body — at init() nothing would move. */
+  private pendingStartupMode: Settings['gameMode'] | null = null;
+  private startupProbeEntities: Entity[] = [];
 
   init(): void {
     const menuSystem = this.world.getSystem(MenuSystem);
@@ -88,12 +122,41 @@ export class CourtLayoutSystem extends createSystem({}) {
     }
     this.physicsSystem = physicsSystem;
     this.unsubscribeGameModeChanged = gameEvents.on('GameModeChanged', (e) => {
+      this.pendingStartupMode = null;
       this.applyGameMode(e.gameMode);
     });
+    const startupMode = settingsState.current.gameMode;
+    if (courtPresetForMode(startupMode) !== defaultCourtPreset) {
+      // The scene JSON is authored for the default preset; anything
+      // else needs the same relayout a button press would trigger.
+      this.pendingStartupMode = startupMode;
+      this.startupProbeEntities = [
+        this.world.requireSceneEntity('king'),
+        ...FAR_RACK_NODE_IDS.map(([, farId]) =>
+          this.world.requireSceneEntity(farId),
+        ),
+        ...STAKE_NODE_IDS.map((id) => this.world.requireSceneEntity(id)),
+      ].filter((entity) => entity.hasComponent(PhysicsBody));
+    }
   }
 
   destroy(): void {
     this.unsubscribeGameModeChanged?.();
+  }
+
+  update(): void {
+    if (this.pendingStartupMode === null) {
+      return;
+    }
+    for (const entity of this.startupProbeEntities) {
+      if (!entity.getValue(PhysicsBody, '_engineBody')) {
+        return; // Havok body not created yet — try again next frame
+      }
+    }
+    const mode = this.pendingStartupMode;
+    this.pendingStartupMode = null;
+    this.startupProbeEntities = [];
+    this.applyGameMode(mode);
   }
 
   private applyGameMode(gameMode: Settings['gameMode']): void {
@@ -145,7 +208,38 @@ export class CourtLayoutSystem extends createSystem({}) {
     });
 
     this.resizeCourtLines(preset, lineMeshes);
+    this.placeFarRack(farBaselineZ(preset));
     this.menuSystem.applyCourtLayout(homePoses);
+    log('info', 'state', 'court laid out', {
+      gameMode,
+      preset: presetName,
+      farBaselineZ: farBaselineZ(preset),
+      farRackZ: this.world.requireSceneEntity('stick-rack-2-collider').object3D
+        ?.position.z,
+    });
+  }
+
+  /** Visual rack node + its static collider, both mirrored from the
+   * near rack's authored pose. setBodyTransform works for STATIC bodies
+   * (the corner stakes above are moved the same way). */
+  private placeFarRack(farZ: number): void {
+    for (const [nearId, farId] of FAR_RACK_NODE_IDS) {
+      const near = this.world.requireSceneEntity(nearId).object3D;
+      const far = this.world.requireSceneEntity(farId);
+      if (!near || !far.object3D) {
+        continue;
+      }
+      const pose = mirrorPoseToFarBaseline(localPoseOf(near), farZ);
+      if (far.hasComponent(PhysicsBody)) {
+        this.physicsSystem.setBodyTransform(far, {
+          position: pose.position,
+          quaternion: pose.quaternion,
+        });
+      } else {
+        far.object3D.position.set(...pose.position);
+        far.object3D.quaternion.set(...pose.quaternion);
+      }
+    }
   }
 
   private resizeCourtLines(preset: CourtPreset, lineMeshes: Mesh[]): void {

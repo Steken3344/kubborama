@@ -65,6 +65,7 @@ import { log } from '../core/log.js';
 import { debugContext, STICK_BELOW_GROUND_Y } from '../debug/debugContext.js';
 import { settingsState } from '../settingsState.js';
 import { activeFarBaselineZ } from './activeCourt.js';
+import { localPoseOf } from './objectPose.js';
 
 // King, both kubb baselines, and every stick — MP2's shared court
 // state (see class doc). A stick's initial throw is relayed
@@ -193,8 +194,11 @@ const NETWORKED_PIECE_IDS = [
  *    both peers now send already-world-correct positions.
  * 2. A second physical rack (`stick-rack-2`/`-collider`, scene JSON —
  *    the exact mirror of the near rack's own authored pose, computed
- *    with the same function, not hand-derived) exists at the far
- *    baseline. Sticks move there when it becomes the guest's turn:
+ *    with the same function, not hand-derived; CourtLayoutSystem
+ *    re-mirrors it around the ACTIVE far baseline on every relayout,
+ *    since 2026-09-06 — on the 8 m court it used to stay at the 6 m
+ *    mirror while the sticks went 2 m past it onto bare ground) exists
+ *    at the far baseline. Sticks move there when it becomes the guest's turn:
  *    the turn advance rides on `MenuSystem`'s `Reset{cause:'roundEnd'}`
  *    (emitted only after its own teleport of every stick back to the
  *    near rack), and `moveSticksToFarRack()` mirrors a home pose
@@ -280,7 +284,7 @@ export class MultiplayerSystem extends createSystem({}) {
       if (!object3D) {
         continue;
       }
-      this.stickNearRackHomePoses.set(`stick-${i}`, this.localPoseOf(object3D));
+      this.stickNearRackHomePoses.set(`stick-${i}`, localPoseOf(object3D));
     }
 
     const roomId = this.roomIdFromUrl();
@@ -661,7 +665,7 @@ export class MultiplayerSystem extends createSystem({}) {
       if (!object3D) {
         continue;
       }
-      pieces.push({ id, ...this.localPoseOf(object3D) });
+      pieces.push({ id, ...localPoseOf(object3D) });
     }
     this.dbgSent += 1;
     void this.pieceSyncAction.send(buildPieceSyncMessage(pieces));
@@ -746,7 +750,7 @@ export class MultiplayerSystem extends createSystem({}) {
       buildThrowRelayMessage({
         stickId: pieceId,
         position: event.releasePosition,
-        quaternion: this.localPoseOf(object3D).quaternion,
+        quaternion: localPoseOf(object3D).quaternion,
         linearVelocity: event.releaseVelocity,
         angularVelocity: event.angularVelocity,
         hand: event.handId,
@@ -1063,18 +1067,6 @@ export class MultiplayerSystem extends createSystem({}) {
    * builds a fresh message — never per frame. Extracted on the third
    * copy of the same eleven-line array literal (second review,
    * 2026-09-03; CLAUDE.md's extract-on-second-occurrence rule). */
-  private localPoseOf(object3D: Object3D): Pose {
-    return {
-      position: [object3D.position.x, object3D.position.y, object3D.position.z],
-      quaternion: [
-        object3D.quaternion.x,
-        object3D.quaternion.y,
-        object3D.quaternion.z,
-        object3D.quaternion.w,
-      ],
-    };
-  }
-
   private writePose(object3D: Object3D, target: Pose): void {
     object3D.getWorldPosition(this.tmpPos);
     object3D.getWorldQuaternion(this.tmpQuat);

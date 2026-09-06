@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { mirrorPoseToFarBaseline } from './presence.js';
 import {
   computeCourtLayout,
   computeStickRackPositions,
+  farBaselineZ,
 } from './court-layout.js';
 import type {
   CourtPreset,
@@ -100,6 +102,33 @@ describe('computeCourtLayout', () => {
       expect(z).toBeGreaterThan(-1);
       expect(z).toBeLessThan(0);
     }
+  });
+});
+
+describe('far stick rack follows the court preset', () => {
+  // The near rack's authored scene pose (public/scenes/main.iwsdk.scene.json
+  // `stick-rack`). The far rack is its mirror around the ACTIVE far
+  // baseline — CourtLayoutSystem must re-place it on every relayout.
+  const nearRack = {
+    position: [0.0157, 0, 1.0896] as [number, number, number],
+    quaternion: [0, 0, 0, 1] as [number, number, number, number],
+  };
+
+  it('matches the scene-authored stick-rack-2 pose for the default 6 m court', () => {
+    const far = mirrorPoseToFarBaseline(
+      nearRack,
+      farBaselineZ({ widthM: 3, lengthM: 6 }),
+    );
+    expect(far.position[2]).toBeCloseTo(-7.0896, 4);
+    expect(far.position[0]).toBeCloseTo(-0.0157, 4);
+  });
+
+  it('lands 2 m further away on the 8 m tournament court (Erik, 2026-09-06: sticks vanished behind player B)', () => {
+    const far = mirrorPoseToFarBaseline(
+      nearRack,
+      farBaselineZ({ widthM: 5, lengthM: 8 }),
+    );
+    expect(far.position[2]).toBeCloseTo(-9.0896, 4);
   });
 });
 

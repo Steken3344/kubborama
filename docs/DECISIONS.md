@@ -4976,3 +4976,47 @@ field kubbs as the next milestone, with "leaning = felled" and "raise an
 own-side rebound kubb immediately" folded in. Rule details I could not
 verify from memory are marked _(verify)_ in the review — check the
 current official PDF before building on them.
+
+## 2026-09-06 — Sticks vanished behind player B: far rack never followed the court preset
+
+Erik, mid-brainstorm on field kubbs: "när det är spelare B:s tur så
+spawnar inte pinnarna in på dess bord … de försvann från marken." He
+could not say which game mode was active. Systematic-debugging trail:
+
+- `advanceTurnForMatch()` runs on the host only; the guest's sticks are
+  placed purely by the host's `pieceSync`, which sends EVERY piece every
+  tick (ruled out "resting pieces not re-sent").
+- The far rack (`stick-rack-2` + `-collider`) is authored in the scene at
+  z = −7.0896 — exactly `mirrorPoseToFarBaseline(nearRack, −6)`, the
+  6 m backyard court. `CourtLayoutSystem` moved king, kubbs, stakes and
+  lines on a mode change but **not the far rack**. On the 8 m tournament
+  court `moveSticksToFarRack()` mirrors around −8 → sticks teleported to
+  z = −9.09 onto bare ground, 1 m behind the guest and out of view. The
+  30 × 30 m ground collider rules out falling through.
+- Second finding on the same trail: **no code ever applied a persisted
+  game mode at startup** (M4 wired the relayout to `GameModeChanged`
+  only). A headset with Advanced saved started with the 6 m court while
+  `activeFarBaselineZ()`, the guest teleport and the stick mirror all
+  said 8 m — so the bug needed no button press at all.
+
+Fix (`src/systems/courtLayout.ts`): `placeFarRack()` re-mirrors both
+far-rack nodes from the near rack's authored pose on every relayout
+(static collider via `setBodyTransform`, proven on the stakes; visual
+node via its Object3D); and a pending startup relayout, applied from
+`update()` once the probed physics bodies have their Havok `_engineBody`
+(they are created lazily on the first ticks, and `setBodyTransform`
+silently no-ops before that — the reason a naive init()-time apply would
+have looked fine and done nothing). `localPoseOf()` moved out of
+MultiplayerSystem into `systems/objectPose.ts` so both systems share it.
+A "court laid out" state log line (mode, preset, far baseline, far rack
+z) makes this visible in debug mode.
+
+Verified: 261 tests incl. a regression test pinning the scene's authored
+rack pose to the 6 m mirror and the 8 m mirror to −9.0896; headless
+Chromium against the dev server with `gameMode: advanced` in
+localStorage and `?debug=1` relayed
+`court laid out {gameMode: advanced, preset: tournament, farBaselineZ: -8, farRackZ: -9.0896}`
+at startup with no errors. Open for Erik's headsets: the guest actually
+sees the sticks on the far table in Advanced (docs/MILESTONES.md MP3a
+gate). gh#15 (host/guest on different modes) remains: two different
+court lengths still mean two different far racks.
