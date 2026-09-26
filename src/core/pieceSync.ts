@@ -1,5 +1,8 @@
 import { z } from 'zod';
+import { KUBB_COUNT } from './court-layout.js';
+import { kubbId } from './match.js';
 import { quaternionSchema, vec3Schema } from './networkSchemas.js';
+import { STICKS_PER_ROUND } from './scoring.js';
 
 /**
  * MP2 (docs/PLAN.md §10, Erik's 2026-09-01 decisions): the host
@@ -38,3 +41,12 @@ export function parsePieceSyncMessage(data: unknown): PieceSyncMessage | null {
   const result = pieceSyncMessageSchema.safeParse(data);
   return result.success ? result.data : null;
 }
+
+/** Every piece whose transform is shared between players — king, all
+ * kubbs, all sticks. One list for the Trystero host (MultiplayerSystem)
+ * and the game server (MP5). */
+export const NETWORKED_PIECE_IDS: readonly string[] = [
+  'king',
+  ...Array.from({ length: KUBB_COUNT * 2 }, (_, i) => kubbId(i)),
+  ...Array.from({ length: STICKS_PER_ROUND }, (_, i) => `stick-${i}`),
+];

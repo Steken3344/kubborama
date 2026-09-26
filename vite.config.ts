@@ -69,6 +69,40 @@ function kubbDebugRelay(): Plugin {
   };
 }
 
+/**
+ * MP5 authoritative game server (docs/superpowers/specs/
+ * 2026-09-26-authoritative-server-design.md): started with the dev
+ * server and attached to its HTTPS server, so headsets reach it at
+ * wss://<LAN-IP>:<port>/__kubb/game with the existing certificate.
+ * Loaded through ssrLoadModule so server/ and src/core/ resolve exactly
+ * as in the app. Dev only (`apply: 'serve'`); a standalone entry for the
+ * cloud comes with MP8.
+ */
+function kubbGameServer(): Plugin {
+  return {
+    name: 'kubb-game-server',
+    apply: 'serve',
+    configureServer(server) {
+      const httpServer = server.httpServer;
+      if (!httpServer) {
+        return; // middleware mode — no socket to attach to
+      }
+      httpServer.once('listening', () => {
+        void server
+          .ssrLoadModule('/server/devEntry.ts')
+          .then((mod) => {
+            (mod as typeof import('./server/devEntry.js')).startDevGameServer(
+              httpServer,
+            );
+          })
+          .catch((error: unknown) => {
+            console.error('[kubb-server] failed to start', error);
+          });
+      });
+    },
+  };
+}
+
 // Shown in the settings menu (src/systems/menu.ts) so Erik knows which
 // build he's testing — a milestone tag plus commits-since/hash reads
 // far better than package.json's rarely-bumped "0.1.0". Falls back to
@@ -88,6 +122,7 @@ export default defineConfig({
   plugins: [
     iwsdkDev(),
     kubbDebugRelay(),
+    kubbGameServer(),
     // M6 (docs/PLAN.md §12, pre-approved): installable from the
     // deployed GitHub Pages URL, launches fullscreen from the Quest
     // app library. `start_url`/`scope` are relative ('./') to match

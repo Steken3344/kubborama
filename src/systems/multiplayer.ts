@@ -12,13 +12,11 @@ import { joinRoom, selfId } from 'trystero';
 import type { MessageAction, Room } from 'trystero';
 import { StickPhase, StickState } from '../components/stick-state.js';
 import { inkast, match, multiplayer } from '../config.js';
-import { KUBB_COUNT } from '../core/court-layout.js';
 import { gameEvents } from '../core/events.js';
 import type { GameEvents } from '../core/events.js';
 import {
   initialMatchState,
   isFinished,
-  kubbId,
   advantageLineZ,
   kubbIndexFromId,
   withInkastLanded,
@@ -55,6 +53,7 @@ import type {
   PeerJoinInfo,
 } from '../core/multiplayerAuthority.js';
 import {
+  NETWORKED_PIECE_IDS,
   buildPieceSyncMessage,
   parsePieceSyncMessage,
 } from '../core/pieceSync.js';
@@ -85,11 +84,6 @@ import { gateLog } from '../debug/gateLog.js';
 // state (see class doc). A stick's initial throw is relayed
 // separately (core/throwRelay.ts, needs velocity); once flying it's
 // just another periodically-synced piece like this.
-const NETWORKED_PIECE_IDS = [
-  'king',
-  ...Array.from({ length: KUBB_COUNT * 2 }, (_, i) => kubbId(i)),
-  ...Array.from({ length: STICKS_PER_ROUND }, (_, i) => `stick-${i}`),
-];
 
 /**
  * MP1 co-presence (docs/PLAN.md §10, Erik's 2 Quests, 2026-08-31):

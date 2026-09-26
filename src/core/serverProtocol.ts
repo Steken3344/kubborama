@@ -10,6 +10,8 @@ import { gameModeSchema } from './settings.js';
  * One JSON object per WebSocket message, discriminated by `type`.
  */
 export const SERVER_PROTOCOL_VERSION = 1;
+/** The WebSocket path on the dev server (and later the cloud server). */
+export const SERVER_PATH = '/__kubb/game';
 
 const finite = z.number().finite();
 const vec3 = z.tuple([finite, finite, finite]);
