@@ -19,7 +19,9 @@
     "test": "vitest run --passWithNoTests",
     "smoke": "node scripts/smoke-test.mjs",
     "postinstall": "patch-package",
-    "debug:tail": "node scripts/debug-tail.mjs"
+    "debug:tail": "node scripts/debug-tail.mjs",
+    "gate:report": "node scripts/gate-report.mjs",
+    "gate:new": "node scripts/gate-new.mjs"
   },
   "dependencies": {
     "@iwsdk/core": "0.5.3",
