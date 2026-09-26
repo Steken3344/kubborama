@@ -113,3 +113,11 @@ export function quaternionAligningY(dir: Vec3): Quat {
   const n = Math.hypot(cx, cz, w);
   return [cx / n, 0, cz / n, w / n];
 }
+
+/** Pitch of the view direction (-Z rotated by q), + = looking up. The
+ * y of the rotated forward vector is 2(wx − yz); asin gives the angle
+ * above the horizon (clamped against float drift past ±1). */
+export function pitchFromQuaternion(q: Quat): number {
+  const [x, y, z, w] = q;
+  return Math.asin(Math.max(-1, Math.min(1, 2 * (w * x - y * z))));
+}

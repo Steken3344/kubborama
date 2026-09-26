@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   angularVelocityBetween,
   fromAxisAngle,
+  pitchFromQuaternion,
   quaternionAligningY,
   quaternionFromYaw,
   rotateVectorByQuaternion,
@@ -115,5 +116,17 @@ describe('yawFromQuaternion (MP3b)', () => {
   it('is 0 for facing -Z and ignores pitch', () => {
     const pitch: Quat = [Math.sin(0.15), 0, 0, Math.cos(0.15)];
     expect(yawFromQuaternion(pitch)).toBeCloseTo(0, 6);
+  });
+});
+
+describe('pitchFromQuaternion', () => {
+  it('is 0 looking straight ahead', () => {
+    expect(pitchFromQuaternion([0, 0, 0, 1])).toBeCloseTo(0);
+  });
+  it('is +θ after rotating +θ about X (looking up)', () => {
+    expect(pitchFromQuaternion(fromAxisAngle([1, 0, 0], 1.2))).toBeCloseTo(1.2);
+  });
+  it('ignores yaw', () => {
+    expect(pitchFromQuaternion(fromAxisAngle([0, 1, 0], 2))).toBeCloseTo(0);
   });
 });
