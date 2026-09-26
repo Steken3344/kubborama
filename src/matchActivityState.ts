@@ -8,3 +8,10 @@
 export const matchActivity: { current: { active: boolean } } = {
   current: { active: false },
 };
+
+/** MP4: true while the current turn is in its inkast — sticks stay in
+ * the rack until every kubb has been tossed. Written ONLY by
+ * InkastSystem; read by StickPullSystem (no ray pull of a stick). */
+export const inkastLock: { current: { active: boolean } } = {
+  current: { active: false },
+};

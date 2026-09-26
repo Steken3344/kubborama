@@ -2,6 +2,7 @@ import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 import { installDebugRelay } from './debug/debugRelay.js';
 import { DebugWatchSystem } from './systems/debugWatch.js';
+import { AdvantageLineSystem } from './systems/advantageLine.js';
 import { CourtLayoutSystem } from './systems/courtLayout.js';
 import { CourtLinesSystem } from './systems/courtLines.js';
 import { GateProbeSystem } from './systems/gateProbe.js';
@@ -9,6 +10,7 @@ import { GrabHighlightSystem } from './systems/grabHighlight.js';
 import { HandoffSystem } from './systems/handoff.js';
 import { HudSystem } from './systems/hud.js';
 import { ImpactSystem } from './systems/impact.js';
+import { InkastSystem } from './systems/inkast.js';
 import { MenuSystem } from './systems/menu.js';
 import { MatchRulesSystem } from './systems/matchRules.js';
 import { PeerAvatarSystem } from './systems/peerAvatar.js';
@@ -113,6 +115,11 @@ World.create(
   // MP3a: physical side of a multiplayer match (sin-bin per side, king
   // unprotected, auto-restart). Event-driven only — order irrelevant.
   world.registerSystem(MatchRulesSystem);
+  // MP4: the physical inkast (kubb toss) — needs GrabSystem and
+  // MultiplayerSystem (relay); event-driven plus a per-frame hand sample.
+  world.registerSystem(InkastSystem);
+  // MP4: the advantage line (shown, not enforced).
+  world.registerSystem(AdvantageLineSystem);
   // MP3b: remote players' avatars, fed by PeerPresence/PeerLeft events
   // from MultiplayerSystem — event-driven only, order irrelevant.
   world.registerSystem(PeerAvatarSystem);

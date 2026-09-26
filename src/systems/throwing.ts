@@ -21,9 +21,9 @@ import type { Hand } from './hapticPlayer.js';
 import { pulseHaptic } from './hapticPlayer.js';
 import { playSfxVariant } from './playSfx.js';
 import { computeThrowRelease } from '../core/throwRelease.js';
-import type { PoseSample } from '../core/throwRelease.js';
 import { activePreset, percentToReal, tuningParams } from '../core/tuning.js';
 import { classifyThrow } from '../core/underhandClassifier.js';
+import { PoseSampler, releaseWindowFrames } from './poseSampler.js';
 import type { Vec3 } from '../core/vec3.js';
 import { presetBank } from '../tuningState.js';
 
@@ -49,7 +49,7 @@ export class ThrowingSystem extends createSystem({
   },
 }) {
   private grabSystem!: GrabSystem;
-  private poseBuffers = new Map<number, PoseSample[]>();
+  private poseSampler = new PoseSampler();
   private lastKnownHand = new Map<number, Hand>();
   private restTimerStartS = new Map<number, number>();
   private flyingStartS = new Map<number, number>();
@@ -115,16 +115,6 @@ export class ThrowingSystem extends createSystem({
       : this.player.gripSpaces.right;
   }
 
-  private poseWindowSize(): number {
-    const preset = activePreset(presetBank);
-    return Math.round(
-      percentToReal(
-        tuningParams.releaseSmoothingWindowFrames,
-        preset.releaseSmoothingWindowFrames,
-      ),
-    );
-  }
-
   private samplePose(entity: Entity, timeS: number): void {
     const hand = this.grabSystem.getHolderHand(entity);
     if (hand === null) {
@@ -135,35 +125,17 @@ export class ThrowingSystem extends createSystem({
     gripSpace.getWorldPosition(this.tmpPos);
     gripSpace.getWorldQuaternion(this.tmpQuat);
 
-    const buffer = this.poseBuffers.get(entity.index) ?? [];
-    const windowSize = this.poseWindowSize();
-    // Reuse the sample about to be evicted (mutate in place) instead of
-    // allocating a fresh object + two arrays every frame — this runs
-    // for as long as a stick is held, i.e. the whole aiming window, not
-    // a one-shot event (see docs/DECISIONS.md, M5 GC pass). Only the
-    // first `windowSize` frames of a fresh grab (buffer still growing)
-    // allocate — a bounded, per-throw cost, not a per-frame one.
-    let sample = buffer.length >= windowSize ? buffer.shift() : undefined;
-    if (sample === undefined) {
-      sample = { timeS, position: [0, 0, 0], orientation: [0, 0, 0, 1] };
-    }
-    sample.timeS = timeS;
-    sample.position[0] = this.tmpPos.x;
-    sample.position[1] = this.tmpPos.y;
-    sample.position[2] = this.tmpPos.z;
-    sample.orientation[0] = this.tmpQuat.x;
-    sample.orientation[1] = this.tmpQuat.y;
-    sample.orientation[2] = this.tmpQuat.z;
-    sample.orientation[3] = this.tmpQuat.w;
-    buffer.push(sample);
-    while (buffer.length > windowSize) {
-      buffer.shift();
-    }
-    this.poseBuffers.set(entity.index, buffer);
+    this.poseSampler.sample(
+      entity.index,
+      timeS,
+      this.tmpPos,
+      this.tmpQuat,
+      releaseWindowFrames(),
+    );
   }
 
   private onGrabStart(entity: Entity): void {
-    this.poseBuffers.set(entity.index, []);
+    this.poseSampler.start(entity.index);
     entity.setValue(StickState, 'phase', StickPhase.Held);
     const hand = this.grabSystem.getHolderHand(entity);
     if (hand !== null) {
@@ -174,7 +146,7 @@ export class ThrowingSystem extends createSystem({
   }
 
   private onRelease(entity: Entity): void {
-    const buffer = this.poseBuffers.get(entity.index) ?? [];
+    const buffer = this.poseSampler.take(entity.index);
 
     let releasePosition: Vec3 = [0, 0, 0];
     const object3D = entity.object3D;
@@ -240,7 +212,6 @@ export class ThrowingSystem extends createSystem({
       flipQualityScore: classification.flipQualityScore,
     });
 
-    this.poseBuffers.delete(entity.index);
     // restTimerStartS/flyingStartS are owned by the flyingSticks
     // qualify/disqualify subscriptions in init() — not cleared here.
   }

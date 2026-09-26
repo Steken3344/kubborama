@@ -12,6 +12,7 @@ import {
 } from '@iwsdk/core';
 import { StickPhase, StickState } from '../components/stick-state.js';
 import type { Vec3 } from '../core/vec3.js';
+import { inkastLock } from '../matchActivityState.js';
 
 const PULL_TRIGGER_THRESHOLD = 0.5;
 const PULL_SPEED_MPS = 2.5;
@@ -87,6 +88,9 @@ export class StickPullSystem extends createSystem({
   private stillPulling = new Set<number>();
 
   update(): void {
+    if (inkastLock.current.active) {
+      return; // MP4: sticks wait in the rack during the inkast
+    }
     this.stillPulling.clear();
     for (const entity of this.queries.sticks.entities) {
       if (!entity.hasComponent(Hovered)) {
