@@ -5020,3 +5020,41 @@ at startup with no errors. Open for Erik's headsets: the guest actually
 sees the sticks on the far table in Advanced (docs/MILESTONES.md MP3a
 gate). gh#15 (host/guest on different modes) remains: two different
 court lengths still mean two different far racks.
+
+## 2026-09-26 — gh#15 host's game mode is authoritative; gh#16 opponent turns out of stats
+
+**gh#15.** The `hello` handshake carries the sender's `gameMode`
+(optional on receive, so a peer on the previous build still resolves
+roles). The guest adopts the host's mode before repositioning to the
+far baseline. Erik chose (2026-09-26) a TEMPORARY override:
+`SettingsSystem.adoptMatchGameMode` applies it live without persisting
+(persist() always writes the player's own mode) and
+`releaseMatchGameMode` restores it when the room empties. The
+adoption's relayout reset is not relayed to the host as "Ny runda", and
+the game-mode button is locked while a borrowed mode is active (review
+finding: matchActivity only turns on a round trip later, and a press in
+that window persisted the borrowed mode).
+
+Verified live on two headsets (debug relay, 2026-09-26): host Quest 3 on
+Advanced, guest Quest 2 on Simple → `adopting the host's game mode` →
+`court laid out {preset: tournament, farBaselineZ: -8}` → repositioned to
+the far baseline → first matchSync, in that order, no errors.
+
+**gh#16.** The host emits `ThrowRelayed` (not `Thrown` — audio, haptics,
+telemetry and the HUD throw style stay the local player's) for a guest's
+relayed throw. RoundSystem counts it, so the opponent's turn still ends
+and drives the turn advance, and flags `RoundEnded.byOpponent`;
+StatsSystem skips those rounds. Mirror case on the guest: kubbs toppled
+during the host's turn fire KubbFelled locally, so RoundSystem starts a
+clean round when the turn passes TO the local side (`core/match.ts`
+`turnPassedTo`) — unless throws are already recorded, which is kept and
+logged instead. Verified by unit tests + code review only; the headset
+check is in the MP3a gate.
+
+**Headset ergonomics (unresolved).** The Quest 3 exposed only
+MTP/Link USB interfaces, no adb, despite developer mode being on — so
+`prox_close` (keep awake with the headset off) and `am start` (open the
+test URL) were unavailable. Erik stopped the headset session: testing
+alone with sleeping headsets and typing long URLs is too costly. The
+Quest keyboard also turned `erik-test` into `erik—test` (em dash) —
+use room names without punctuation.

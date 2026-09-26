@@ -522,6 +522,11 @@ docs/superpowers/plans/2026-09-05-match-rules.md · Log: docs/DECISIONS.md
       "(låst under match)" when the menu is opened mid-match. Test the
       king decision specifically with the 6TH stick of a round (the case
       the code review found and fixed). gh#17 fixed 2026-09-05: the round now waits for a quiet court (0.6 s, cap 3 s) before ending, so a late-toppling kubb or king is counted. 🎧 Not self-approvable.
+- [x] gh#15 fixed 2026-09-26 (guest adopts the host's mode, temporarily;
+      verified live on two headsets) and gh#16 fixed 2026-09-26
+      (opponent's relayed turn skipped in stats). Add to the GATE: after
+      the guest's turn the HOST's stats tab is unchanged; the guest's
+      own mode returns when the room empties.
 - Filed: gh#15 host/guest game-mode mismatch, gh#16 relayed-throw stats
   pollution.
 
