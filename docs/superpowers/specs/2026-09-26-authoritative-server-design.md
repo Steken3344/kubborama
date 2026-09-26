@@ -60,3 +60,31 @@ computer first**, cloud later.
 
 Matchmaking beyond a room code, spectators, persistence of stats on the
 server, anti-cheat beyond schema validation.
+
+## MP5 — server skeleton (detailed, 2026-09-26)
+
+Decided autonomously on Erik's "kör på" (reversible; logged in
+docs/DECISIONS.md):
+
+- **Code layout**: `server/` (TypeScript, strict, type-checked with the
+  app) — `physicsWorld.ts` (Havok world from the scene JSON + the active
+  court preset via `computeCourtLayout`), `gameServer.ts` (one room, two
+  player slots, fixed 60 Hz simulation, 20 Hz snapshots), `wsServer.ts`
+  (WebSocket on the dev server's own HTTPS server, path `/__kubb/game`,
+  so `wss` works on the LAN with the existing certificate).
+- **Startup**: a Vite plugin (`apply: 'serve'`) loads the server with
+  `ssrLoadModule`, so `npm run dev` starts it and `src/core/*` imports
+  resolve exactly as in the app. A standalone entry comes with MP8.
+- **Protocol** (`src/core/serverProtocol.ts`, zod, shared): client →
+  server `join { protocol, gameMode }`, `throw` (the throwRelay v2
+  shape); server → client `welcome { protocol, side }`, `snapshot
+  { tick, pieces }` (the pieceSync piece shape), `peers { count }`.
+- **Client**: `ServerLinkSystem`, on when the URL has `?server=1`
+  (remembered like `?room`); it applies snapshots to every networked
+  piece not held locally and sends the local player's throws. While it
+  is on, MultiplayerSystem keeps voice + avatars but skips its own piece
+  sync and throw relay. Match rules move to the server in MP6.
+- **Acceptance**: vitest builds the server's Havok world and a thrown
+  stick lands in the expected range; two headless clients with
+  `?server=1` get sides A and B, and after a throw from A both report
+  the same stick position for the same server tick.

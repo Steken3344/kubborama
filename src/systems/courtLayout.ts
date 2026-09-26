@@ -14,7 +14,11 @@ import {
   pieces,
 } from '../config.js';
 import { settingsState } from '../settingsState.js';
-import { farBaselineZ } from '../core/court-layout.js';
+import {
+  FAR_RACK_NODE_IDS,
+  STAKE_NODE_IDS,
+  farBaselineZ,
+} from '../core/court-layout.js';
 import { gameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
 import { mirrorPoseToFarBaseline } from '../core/presence.js';
@@ -32,17 +36,6 @@ import { localPoseOf } from './objectPose.js';
  * behind player B (Erik, 2026-09-06: "pinnarna spawnar inte på dess
  * bord … de försvann från marken" — Advanced mode, 8 m court, rack still
  * at the 6 m mirror z = −7.09, sticks placed at z = −9.09). */
-const FAR_RACK_NODE_IDS: ReadonlyArray<readonly [near: string, far: string]> = [
-  ['stick-rack', 'stick-rack-2'],
-  ['stick-rack-collider', 'stick-rack-2-collider'],
-];
-
-const STAKE_NODE_IDS = [
-  'corner-stake-near-left',
-  'corner-stake-near-right',
-  'corner-stake-far-left',
-  'corner-stake-far-right',
-] as const;
 
 const COURT_LINE_IDS = [
   'court-line-left',

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   angularVelocityBetween,
   fromAxisAngle,
+  fromEulerDegXYZ,
   pitchFromQuaternion,
   quaternionAligningY,
   quaternionFromYaw,
@@ -128,5 +129,21 @@ describe('pitchFromQuaternion', () => {
   });
   it('ignores yaw', () => {
     expect(pitchFromQuaternion(fromAxisAngle([0, 1, 0], 2))).toBeCloseTo(0);
+  });
+});
+
+describe('fromEulerDegXYZ', () => {
+  it('matches single-axis rotations', () => {
+    const q = fromEulerDegXYZ([0, 90, 0]);
+    const ref = fromAxisAngle([0, 1, 0], Math.PI / 2);
+    q.forEach((v, i) => expect(v).toBeCloseTo(ref[i] ?? 0));
+  });
+  it('uses three.js XYZ order (matrix Rx·Ry·Rz — Z acts on a vector first)', () => {
+    const q = fromEulerDegXYZ([90, 0, 90]);
+    // Rz(90°) takes +Y to −X; Rx(90°) leaves −X alone.
+    const v = rotateVectorByQuaternion([0, 1, 0], q);
+    expect(v[0]).toBeCloseTo(-1);
+    expect(v[1]).toBeCloseTo(0);
+    expect(v[2]).toBeCloseTo(0);
   });
 });

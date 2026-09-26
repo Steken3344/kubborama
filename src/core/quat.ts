@@ -121,3 +121,21 @@ export function pitchFromQuaternion(q: Quat): number {
   const [x, y, z, w] = q;
   return Math.asin(Math.max(-1, Math.min(1, 2 * (w * x - y * z))));
 }
+
+/** Scene JSON `rotationDeg` → quaternion, three.js 'XYZ' Euler order
+ * (the game server builds bodies from the scene without three.js). */
+export function fromEulerDegXYZ([xDeg, yDeg, zDeg]: Vec3): Quat {
+  const toHalfRad = Math.PI / 360;
+  const c1 = Math.cos(xDeg * toHalfRad);
+  const c2 = Math.cos(yDeg * toHalfRad);
+  const c3 = Math.cos(zDeg * toHalfRad);
+  const s1 = Math.sin(xDeg * toHalfRad);
+  const s2 = Math.sin(yDeg * toHalfRad);
+  const s3 = Math.sin(zDeg * toHalfRad);
+  return [
+    s1 * c2 * c3 + c1 * s2 * s3,
+    c1 * s2 * c3 - s1 * c2 * s3,
+    c1 * c2 * s3 + s1 * s2 * c3,
+    c1 * c2 * c3 - s1 * s2 * s3,
+  ];
+}

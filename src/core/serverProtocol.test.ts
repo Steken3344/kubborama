@@ -1,0 +1,67 @@
+import { describe, expect, it } from 'vitest';
+import {
+  buildServerMessage,
+  parseClientMessage,
+  parseServerMessage,
+  SERVER_PROTOCOL_VERSION,
+} from './serverProtocol.js';
+
+const pose = {
+  pieceId: 'stick-0',
+  position: [0, 1, 0] as [number, number, number],
+  quaternion: [0, 0, 0, 1] as [number, number, number, number],
+  linearVelocity: [0, 3, -7] as [number, number, number],
+  angularVelocity: [-20, 0, 0] as [number, number, number],
+};
+
+describe('serverProtocol', () => {
+  it('accepts a join and a throw from a client', () => {
+    expect(
+      parseClientMessage({
+        type: 'join',
+        protocol: SERVER_PROTOCOL_VERSION,
+        gameMode: 'advanced',
+      }),
+    ).toEqual({
+      type: 'join',
+      protocol: SERVER_PROTOCOL_VERSION,
+      gameMode: 'advanced',
+    });
+    expect(parseClientMessage({ type: 'throw', ...pose })?.type).toBe('throw');
+  });
+  it('rejects garbage, unknown types and non-finite numbers', () => {
+    expect(parseClientMessage(null)).toBeNull();
+    expect(parseClientMessage({ type: 'teleport' })).toBeNull();
+    expect(
+      parseClientMessage({
+        type: 'throw',
+        ...pose,
+        linearVelocity: [0, Infinity, 0],
+      }),
+    ).toBeNull();
+    expect(
+      parseClientMessage({ type: 'throw', ...pose, pieceId: 'x'.repeat(40) }),
+    ).toBeNull();
+  });
+  it('round-trips server messages', () => {
+    const welcome = buildServerMessage({
+      type: 'welcome',
+      protocol: SERVER_PROTOCOL_VERSION,
+      side: 'guest',
+    });
+    expect(parseServerMessage(JSON.parse(JSON.stringify(welcome)))).toEqual(
+      welcome,
+    );
+    const snapshot = buildServerMessage({
+      type: 'snapshot',
+      tick: 120,
+      pieces: [
+        { id: 'king', position: [0, 0.15, -3], quaternion: [0, 0, 0, 1] },
+      ],
+    });
+    expect(parseServerMessage(snapshot)).toEqual(snapshot);
+    expect(
+      parseServerMessage({ type: 'snapshot', tick: -1, pieces: [] }),
+    ).toBeNull();
+  });
+});

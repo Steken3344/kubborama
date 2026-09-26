@@ -135,3 +135,21 @@ export function computeStickRackPositions(
     };
   });
 }
+
+/** Scene ids of the near rack nodes and their far-baseline mirrors —
+ * shared by CourtLayoutSystem and the game server (MP5), which lay the
+ * far rack out the same way. */
+export const FAR_RACK_NODE_IDS: ReadonlyArray<
+  readonly [near: string, far: string]
+> = [
+  ['stick-rack', 'stick-rack-2'],
+  ['stick-rack-collider', 'stick-rack-2-collider'],
+];
+
+/** Corner stakes, in `computeCourtLayout().stakePositions` order. */
+export const STAKE_NODE_IDS = [
+  'corner-stake-near-left',
+  'corner-stake-near-right',
+  'corner-stake-far-left',
+  'corner-stake-far-right',
+] as const;
