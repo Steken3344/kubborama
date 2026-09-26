@@ -1103,3 +1103,17 @@ Critical (king judged by the phase at decision time, not when it fell)
 and two Important — all fixed. Follow-ups gh#25, gh#26. gh#18 stays open
 until Erik's 2-headset gate: a full match via `gate:report`, and
 calibrating the toss feel in `src/data/inkast.json`.
+
+**2026-09-26, evening — headset attempt, server decision, spike GO.**
+The MP4 headset test stalled twice: the host headset slept when taken
+off (match froze, the guest's inkast landing never reported), and on the
+8 m court the far stick rack and inkast rack stood inside tree-18.
+Erik refused the tape workaround and asked for a server that owns the
+state → chose a **full authoritative server**, local first, cloud later
+(spec docs/superpowers/specs/2026-09-26-authoritative-server-design.md,
+MP5–MP8). Spike: Havok in Node matches the browser's flight; rest points
+differ only by chaos (0.4 % timestep change moves them as much) → GO.
+Scenery moved out of the 8 m court + racks, with a regression test.
+
+**Next session: MP5 — server skeleton** (spec → plan → build). The MP4
+headset gate waits for the server (no headset needs to stay awake then).
