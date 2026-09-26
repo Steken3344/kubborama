@@ -187,3 +187,46 @@ describe('syncPairs', () => {
     expect(incidents[0].field).toBe('pieces');
   });
 });
+
+describe('review fixes', () => {
+  it('gh15-adopt is NOT SEEN (not PASS) when both already had the same mode', () => {
+    const e = [snap('host'), snap('guest'), snap('host'), snap('guest')];
+    expect(status(e, 'gh15-adopt')).toBe('NOT SEEN');
+  });
+  it("gh15-release FAILs when the restored mode is not the guest's own", () => {
+    const adopted = g('guest', 'mode adopted', {
+      hostMode: 'simple',
+      ownMode: 'advanced',
+    });
+    const good = g('solo', 'mode released', { restoredMode: 'advanced' });
+    const bad = g('solo', 'mode released', { restoredMode: 'simple' });
+    expect(status([adopted, good], 'gh15-release')).toBe('PASS');
+    expect(status([adopted, bad], 'gh15-release')).toBe('FAIL');
+  });
+  it('mp3a-sinbin still compares across a reload (new client id, same role)', () => {
+    const a = g(
+      'host',
+      'sin-bin after round',
+      { kubbs: { 'kubb-1': [2, 0.15, 1] } },
+      100,
+      'aaa',
+    );
+    const gone = g('host', 'sin-bin after round', { kubbs: {} }, 100, 'bbb');
+    expect(status([a, gone], 'mp3a-sinbin')).toBe('FAIL');
+  });
+  it('same-room FAILs when clients joined different rooms', () => {
+    const j = (client, roomId) => ({
+      level: 'info',
+      channel: 'net',
+      message: 'joined multiplayer room',
+      data: { roomId },
+      role: 'solo',
+      client,
+      timeMs: 1,
+      receivedAt: 1,
+    });
+    expect(status([j('a', 'x'), j('b', 'x')], 'same-room')).toBe('PASS');
+    expect(status([j('a', 'x'), j('b', 'y')], 'same-room')).toBe('FAIL');
+    expect(status([j('a', 'x')], 'same-room')).toBe('NOT SEEN');
+  });
+});

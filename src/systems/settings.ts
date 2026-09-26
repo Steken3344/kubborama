@@ -1,6 +1,5 @@
 import { createSystem } from '@iwsdk/core';
 import { gameEvents } from '../core/events.js';
-import { log } from '../core/log.js';
 import type { Language } from '../core/i18n.js';
 import {
   decodeSettings,
@@ -12,6 +11,7 @@ import type { Settings } from '../core/settings.js';
 import { disableDebugRelay, enableDebugRelay } from '../debug/debugRelay.js';
 import { refreshTranslator } from '../i18nState.js';
 import { settingsState } from '../settingsState.js';
+import { gateLog } from '../debug/gateLog.js';
 
 const SETTINGS_STORAGE_KEY = 'kubborama.settings.v1';
 
@@ -67,7 +67,14 @@ export class SettingsSystem extends createSystem({}) {
   }
 
   setDebugRelay(debugRelay: boolean): void {
-    settingsState.current = { ...settingsState.current, debugRelay };
+    // Turning debug off also forgets a remembered `?room=` — the one
+    // in-app way back to the public lobby (gate-report review: a stale
+    // private room would otherwise strand a bookmarked headset).
+    settingsState.current = {
+      ...settingsState.current,
+      debugRelay,
+      ...(debugRelay ? {} : { roomId: null }),
+    };
     this.persist();
     if (debugRelay) {
       enableDebugRelay();
@@ -124,7 +131,7 @@ export class SettingsSystem extends createSystem({}) {
       return;
     }
     this.preferredGameMode = null;
-    log('info', 'gate', 'mode released', { restoredMode: preferred });
+    gateLog('mode released', { restoredMode: preferred });
     this.applyUnpersistedGameMode(preferred);
   }
 

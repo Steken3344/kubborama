@@ -73,16 +73,19 @@ const freshState = (e) =>
 function sinBinCheck(entries) {
   const id = 'mp3a-sinbin';
   const label = 'felled kubbs stay in the sin-bin across rounds';
-  const prevByClient = new Map();
+  // Keyed by ROLE, not client id: a headset that reloads mid-match gets a
+  // new client id but keeps its side, and must still be compared.
+  const prevByRole = new Map();
   let compared = 0;
   for (const e of entries) {
     if (freshState(e)) {
-      prevByClient.delete(e.client);
+      prevByRole.delete(e.role);
       continue;
     }
     if (e.channel !== 'gate' || e.message !== 'sin-bin after round') continue;
-    const prev = prevByClient.get(e.client);
-    prevByClient.set(e.client, e.data.kubbs);
+    if (e.role === 'solo') continue;
+    const prev = prevByRole.get(e.role);
+    prevByRole.set(e.role, e.data.kubbs);
     if (!prev || Object.keys(prev).length === 0) continue;
     compared += 1;
     for (const [kubb, p] of Object.entries(prev)) {
@@ -226,6 +229,27 @@ export function syncPairs(entries) {
   return { pairs: pairs.length, incidents };
 }
 
+function sameRoomCheck(entries) {
+  const id = 'same-room';
+  const label = 'every headset joined the same room';
+  const rooms = new Map();
+  for (const e of entries) {
+    if (e.channel === 'net' && e.message === 'joined multiplayer room') {
+      rooms.set(e.client, e.data.roomId);
+    }
+  }
+  if (rooms.size < 2) return verdict(id, label, 'NOT SEEN');
+  const distinct = new Set(rooms.values());
+  return distinct.size === 1
+    ? verdict(id, label, 'PASS', [...distinct][0])
+    : verdict(
+        id,
+        label,
+        'FAIL',
+        [...rooms].map(([client, room]) => `${client}: ${room}`).join(', '),
+      );
+}
+
 export function runChecks(entries) {
   const summaries = gate(entries, 'round summary');
   const kings = gate(entries, 'king decision').filter((e) => e.role === 'host');
@@ -255,14 +279,17 @@ export function runChecks(entries) {
           : verdict(
               'gh15-adopt',
               "guest plays on the host's court",
-              'PASS',
-              'same mode on both (nothing to adopt)',
+              'NOT SEEN',
+              'both started in the same mode — start them in different modes to exercise the adoption',
             ),
     anyOf(
       'gh15-release',
       "guest's own mode returns when the room empties",
       gate(entries, 'mode released'),
-      () => true,
+      (e) => {
+        const adopted = modeAdopted.filter((a) => at(a) <= at(e)).at(-1);
+        return !adopted || e.data.restoredMode === adopted.data.ownMode;
+      },
     ),
     allOf(
       'gh15-lock',
@@ -386,6 +413,7 @@ export function runChecks(entries) {
             'PASS',
             `${sync.pairs} pairs, 0 incidents`,
           ),
+    sameRoomCheck(entries),
     verdict('eyes-proportions', 'avatar proportions look right', 'EYES'),
     verdict('eyes-visor', 'the visor sits on the head', 'EYES'),
     verdict('eyes-score-row', 'the two-colored score row lays out', 'EYES'),

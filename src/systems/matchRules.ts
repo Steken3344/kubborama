@@ -13,6 +13,7 @@ import type { SinBinPlacement } from '../core/matchSinBin.js';
 import { log } from '../core/log.js';
 import { matchActivity } from '../matchActivityState.js';
 import { activeFarBaselineZ } from './activeCourt.js';
+import { gateLog } from '../debug/gateLog.js';
 
 /**
  * MP3a (Erik, 2026-09-05 — docs/superpowers/specs/2026-09-05-match-
@@ -79,7 +80,7 @@ export class MatchRulesSystem extends createSystem({
     if (this.restartInS > 0) {
       return;
     }
-    log('info', 'gate', 'match restart', {
+    gateLog('match restart', {
       // restartInS has just crossed 0, so this is ≥ the configured delay.
       secondsSinceFinished: match.restartDelayS - this.restartInS,
     });

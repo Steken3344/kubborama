@@ -68,6 +68,7 @@ import { settingsState } from '../settingsState.js';
 import { activeFarBaselineZ } from './activeCourt.js';
 import { localPoseOf } from './objectPose.js';
 import { SettingsSystem } from './settings.js';
+import { gateLog } from '../debug/gateLog.js';
 
 // King, both kubb baselines, and every stick — MP2's shared court
 // state (see class doc). A stick's initial throw is relayed
@@ -672,7 +673,7 @@ export class MultiplayerSystem extends createSystem({}) {
     if (hostMode === settingsState.current.gameMode) {
       return;
     }
-    log('info', 'gate', 'mode adopted', {
+    gateLog('mode adopted', {
       hostMode,
       ownMode: settingsState.current.gameMode,
     });

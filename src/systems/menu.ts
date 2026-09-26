@@ -25,6 +25,7 @@ import { pulseHaptic } from './hapticPlayer.js';
 import { playSfxVariant } from './playSfx.js';
 import { SettingsSystem } from './settings.js';
 import { StatsSystem } from './stats.js';
+import { gateLog } from '../debug/gateLog.js';
 
 export interface HomePose {
   position: Vec3;
@@ -130,7 +131,7 @@ export class MenuSystem extends createSystem({
     this.wireButton('tab-stats-button', () => this.setActiveTab('stats'));
 
     this.wireButton('reset-button', () => {
-      log('info', 'gate', 'reset pressed', {});
+      gateLog('reset pressed', {});
       this.resetAll('manual');
       this.setMenuOpen(false);
     });
@@ -138,7 +139,7 @@ export class MenuSystem extends createSystem({
       this.settingsSystem.toggleLanguage();
     });
     this.wireButton('game-mode-button', () => {
-      log('info', 'gate', 'mode button pressed', {
+      gateLog('mode button pressed', {
         locked: this.isGameModeLocked(),
         gameMode: settingsState.current.gameMode,
       });
@@ -199,7 +200,7 @@ export class MenuSystem extends createSystem({
       this.settingsSystem.setAvatarColorIndex(
         (settingsState.current.avatarColorIndex + 1) % avatarPalette.length,
       );
-      log('info', 'gate', 'avatar color', {
+      gateLog('avatar color', {
         event: 'sent',
         colorIndex: settingsState.current.avatarColorIndex,
       });
@@ -341,7 +342,11 @@ export class MenuSystem extends createSystem({
       )}`,
     });
     this.menuPanel.requireElementById('debug-button-label').setProperties({
-      text: s.debugRelay ? t('debugOn') : t('debugOff'),
+      // A remembered private room is shown here so a headset in the
+      // "wrong" room is visible; Debug off returns it to the lobby.
+      text:
+        (s.debugRelay ? t('debugOn') : t('debugOff')) +
+        (s.roomId === null ? '' : ` (${s.roomId})`),
     });
     this.menuPanel.requireElementById('mic-button-label').setProperties({
       text: s.micMuted ? t('micOff') : t('micOn'),

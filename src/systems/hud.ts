@@ -2,13 +2,13 @@ import { createSystem, UIKitMLAsset } from '@iwsdk/core';
 import type { GameEvents } from '../core/events.js';
 import type { ThrowStyle } from '../core/underhandClassifier.js';
 import { gameEvents } from '../core/events.js';
-import { log } from '../core/log.js';
 import { isFinished, score } from '../core/match.js';
 import { avatarPaletteEntry } from '../config.js';
 import { debugContext } from '../debug/debugContext.js';
 import { i18nState } from '../i18nState.js';
 import { settingsState } from '../settingsState.js';
 import { StatsSystem } from './stats.js';
+import { gateLog } from '../debug/gateLog.js';
 
 /**
  * Updates the always-visible scoreboard panel. Purely event-driven —
@@ -248,7 +248,7 @@ export class HudSystem extends createSystem({}) {
     const mine = settingsState.current.avatarColorIndex;
     if (mine !== this.loggedMyColor) {
       this.loggedMyColor = mine;
-      log('info', 'gate', 'avatar color', {
+      gateLog('avatar color', {
         event: 'tinted',
         who: 'mine',
         colorIndex: mine,
@@ -257,7 +257,7 @@ export class HudSystem extends createSystem({}) {
     if (this.opponentColorIndex !== this.loggedTheirColor) {
       this.loggedTheirColor = this.opponentColorIndex;
       if (this.opponentColorIndex !== null) {
-        log('info', 'gate', 'avatar color', {
+        gateLog('avatar color', {
           event: 'tinted',
           who: 'opponent',
           colorIndex: this.opponentColorIndex,

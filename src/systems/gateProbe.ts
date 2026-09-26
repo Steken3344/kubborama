@@ -3,12 +3,12 @@ import { OutOfPlay } from '../components/out-of-play.js';
 import { Resettable } from '../components/resettable.js';
 import { StickState } from '../components/stick-state.js';
 import { gameEvents } from '../core/events.js';
-import { log } from '../core/log.js';
 import { score } from '../core/match.js';
 import type { MatchSide, MatchState } from '../core/match.js';
 import { debugContext } from '../debug/debugContext.js';
 import { settingsState } from '../settingsState.js';
 import { StatsSystem } from './stats.js';
+import { gateLog } from '../debug/gateLog.js';
 
 const SNAPSHOT_INTERVAL_S = 1;
 
@@ -57,7 +57,7 @@ export class GateProbeSystem extends createSystem({
         // StatsSystem (registered earlier) has already folded this round.
         const after = this.statsSystem.stats.lifetimeTotals.roundsPlayed;
         if (debugContext.enabled) {
-          log('info', 'gate', 'round summary', {
+          gateLog('round summary', {
             mySide: this.mySide ?? 'solo',
             matchTurn: this.lastState?.currentTurn ?? null,
             byOpponent: e.byOpponent,
@@ -85,7 +85,7 @@ export class GateProbeSystem extends createSystem({
           return;
         }
         const { host, guest } = e.state.felledKubbIds;
-        log('info', 'gate', 'match state', {
+        gateLog('match state', {
           mySide: e.mySide,
           turn: e.state.currentTurn,
           winner: e.state.winner,
@@ -96,7 +96,7 @@ export class GateProbeSystem extends createSystem({
             host.length === 0 && guest.length === 0 && e.state.winner === null,
         });
         if ((prev?.winner ?? null) === null && e.state.winner !== null) {
-          log('info', 'gate', 'king decision', {
+          gateLog('king decision', {
             mySide: e.mySide,
             thrower: e.state.currentTurn,
             winner: e.state.winner,
@@ -123,7 +123,7 @@ export class GateProbeSystem extends createSystem({
     this.snapshotTimerS = 0;
     // One payload per second, debug only — the relay keeps the object
     // until it flushes, so it cannot be a reused buffer.
-    log('info', 'gate', 'sync snapshot', {
+    gateLog('sync snapshot', {
       turn: this.lastState.currentTurn,
       winner: this.lastState.winner,
       score: score(this.lastState),
@@ -137,7 +137,7 @@ export class GateProbeSystem extends createSystem({
     if (!debugContext.enabled) {
       return;
     }
-    log('info', 'gate', 'sin-bin after round', {
+    gateLog('sin-bin after round', {
       kubbs: this.roundedPositions(this.queries.outOfPlay.entities),
     });
   }

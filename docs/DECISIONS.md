@@ -5086,3 +5086,10 @@ the Swedish words in the first spec draft.
   the first second after an avatar appears (smoothing converging from
   yaw 0 to the peer's real heading). The torso check only applies to
   full look-ups (pitch ≥ 1.0 rad), so it does not count.
+- Review fixes (same day): every probe goes through `debug/gateLog.ts`
+  (no gate line, console print or allocation with debug off); turning
+  Debug off also forgets a remembered room (the in-app way back to the
+  lobby) and the Debug button shows the room; `gh15-adopt` is NOT SEEN,
+  not PASS, when both headsets already had the same mode; the sin-bin
+  rule keys on role so a mid-match reload is still compared;
+  `gh15-release` checks the restored mode; new `same-room` check.

@@ -17,6 +17,7 @@ import { log } from '../core/log.js';
 import type { Pose } from '../core/presence.js';
 import { pitchFromQuaternion, yawFromQuaternion } from '../core/quat.js';
 import { debugContext } from '../debug/debugContext.js';
+import { gateLog } from '../debug/gateLog.js';
 
 interface AvatarInstance {
   entity: Entity;
@@ -184,7 +185,7 @@ export class PeerAvatarSystem extends createSystem({}) {
     if (message.colorIndex !== instance.colorIndex) {
       instance.colorIndex = message.colorIndex;
       instance.material.color.set(avatarPaletteEntry(message.colorIndex).hex);
-      log('info', 'gate', 'avatar color', {
+      gateLog('avatar color', {
         event: 'received',
         colorIndex: message.colorIndex,
       });
@@ -247,7 +248,7 @@ export class PeerAvatarSystem extends createSystem({}) {
     if (w.startMs === null || nowMs - w.startMs < FIT_WINDOW_MS) {
       return;
     }
-    log('info', 'gate', 'avatar fit', {
+    gateLog('avatar fit', {
       leftArmEndToHandM: w.maxLeftArmEndToHandM,
       rightArmEndToHandM: w.maxRightArmEndToHandM,
       handSizeM: avatar.handSizeM,
