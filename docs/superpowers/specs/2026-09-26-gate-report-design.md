@@ -36,7 +36,8 @@ a one-line log call.
 | `sin-bin after round` | GateProbeSystem on Reset{roundEnd}, after MatchRules ran | felledKubbIds per side (the client's own MatchState copy) |
 | `king decision` | GateProbeSystem on MatchStateChanged when winner goes null→set | winner, endReason, mySide, stickNumberInRound (1–6, counted from Thrown + ThrowRelayed since the last Reset) |
 | `match restart` | matchRules.ts auto-restart (exists as `[state] match auto-restart`; add data) | secondsSinceFinished, nextTurn |
-| `reset` | GateProbeSystem on Reset{manual} + existing `[net] guest requested a reset` | cause, requestedBy (host/guest/solo) |
+| `reset pressed` | menu.ts "Ny runda" button (the line's role says which headset) | — |
+| `match state` | GateProbeSystem on every MatchStateChanged | mySide, turn, winner, endReason, felled counts, fresh |
 | `avatar color` | settings change (sent) + peerAvatar.ts (received) + hud.ts (digit tinted) | colorIndex/color, side |
 | `avatar fit` | peerAvatar.ts, at most 1 Hz per peer | per arm: armEndToHandM; handSizeM; maxTorsoYawRateRadS and maxHeadPitchRad over the last second |
 
@@ -49,8 +50,8 @@ dims, so no numbers are invented in the adapter.
 GateProbeSystem logs `[gate] sync snapshot` once per second on every
 client in a match: matchTurn, winner, score {host, guest}, felledKubbIds,
 gameMode, and the kubb + king positions rounded to 0.05 m (11 pieces,
-read from the Resettable query with no per-frame allocation — buffers
-allocated in init()). No snapshot in solo play.
+read from the Resettable query; one payload per second, debug only —
+the relay keeps the object until it flushes, so it cannot be reused). No snapshot in solo play.
 
 ### 3. `npm run gate:report` (scripts/gate-report.mjs)
 
@@ -60,8 +61,9 @@ Reads the NDJSON file and prints the checklist. Options:
 archives the current file to `kubb-debug.<timestamp>.ndjson` so a test
 session starts empty.
 
-Each item is **PASS**, **FAIL** (with the offending line) or **EJ
-SETT** (never exercised), plus **ÖGON** items printed last as questions:
+Each item is **PASS**, **FAIL** (with the offending line) or **NOT
+SEEN** (never exercised), plus **EYES** items printed last as questions
+(English output, per the project's language rule):
 
 | Id | Check | Rule |
 |---|---|---|
@@ -82,7 +84,7 @@ SETT** (never exercised), plus **ÖGON** items printed last as questions:
 | mp3b-torso | no torso twitch on look-up | in `avatar fit` lines with maxHeadPitchRad ≥ 1.0, maxTorsoYawRateRadS ≤ 3.0 |
 | mp3b-color | color change reaches the other side + HUD | a `avatar color` sent on one client followed within 3 s by received + digit tinted on the other, and the sender's own digit tinted |
 | sync | host and guest agree | see below |
-| ÖGON | proportions look right; visor sits on the head; two-span score row lays out | asked, not checked |
+| EYES | proportions look right; visor sits on the head; two-span score row lays out | asked, not checked |
 
 **Sync check.** Snapshots are paired host↔guest by nearest `receivedAt`
 (within 1.5 s). A field disagreeing in 3 or more consecutive pairs is
@@ -119,5 +121,5 @@ Recording or replaying sessions. Anything in the production build.
   decodes with every other value kept.
 - Emulator: with `?debug=1`, solo play produces `round summary` lines
   and no sync snapshots; `gate:report` on that file prints the solo
-  items as EJ SETT without crashing; zero console errors. tsc, lint,
+  items as NOT SEEN without crashing; zero console errors. tsc, lint,
   full tests, build + smoke.
