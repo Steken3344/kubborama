@@ -1,6 +1,5 @@
 import {
   createSystem,
-  Grabbed,
   Object3D,
   PhysicsManipulation,
   PhysicsSystem,
@@ -77,6 +76,7 @@ import type { Settings } from '../core/settings.js';
 import { settingsState } from '../settingsState.js';
 import { activeCourtHalves, activeFarBaselineZ } from './activeCourt.js';
 import { localPoseOf } from './objectPose.js';
+import { applyPieceTransforms } from './pieceApply.js';
 import { SettingsSystem } from './settings.js';
 import { gateLog } from '../debug/gateLog.js';
 
@@ -237,6 +237,8 @@ export class MultiplayerSystem extends createSystem({}) {
   private matchState: MatchState = initialMatchState();
   private physicsSystem!: PhysicsSystem;
   private settingsSystem!: SettingsSystem;
+  /** MP5: the game server owns the pieces (read once at init). */
+  private viaServer = false;
   /** gh#15: each peer's game mode from its hello (absent from a peer on
    * the previous build). */
   private readonly peerGameModes = new Map<string, Settings['gameMode']>();
@@ -290,6 +292,7 @@ export class MultiplayerSystem extends createSystem({}) {
       );
     }
     this.settingsSystem = settingsSystem;
+    this.viaServer = settingsState.current.serverMode;
     for (const id of NETWORKED_PIECE_IDS) {
       const entity = this.world.requireSceneEntity(id);
       this.networkedPieces.set(id, entity);
@@ -345,9 +348,11 @@ export class MultiplayerSystem extends createSystem({}) {
         iAmHost: this.isHostNow(),
       });
       // Before the reposition: the far baseline depends on the mode.
-      this.adoptHostGameModeIfGuest();
-      this.maybeRepositionAsGuest();
-      this.announceMatchStartIfHost();
+      if (!this.viaServer) {
+        this.adoptHostGameModeIfGuest();
+        this.maybeRepositionAsGuest();
+        this.announceMatchStartIfHost();
+      }
       this.applyPendingMatchSync();
       this.applyPendingThrowRelay();
     };
@@ -357,7 +362,7 @@ export class MultiplayerSystem extends createSystem({}) {
       // as host — code review, 2026-09-02: previously accepted from
       // ANY sender, so a second/rogue peer broadcasting on this same
       // action could teleport the shared court on every client.
-      if (peerId !== this.resolvedHostPeerId()) {
+      if (this.viaServer || peerId !== this.resolvedHostPeerId()) {
         return;
       }
       const message = parsePieceSyncMessage(data);
@@ -608,7 +613,9 @@ export class MultiplayerSystem extends createSystem({}) {
    * session (no peers) trivially counts as host (harmless — no one's
    * listening). */
   private isHostNow(): boolean {
-    if (!this.rolesResolved()) {
+    // MP5: with the game server on, no headset is the authority — the
+    // server owns pieces (ServerLinkSystem) and, from MP6, the match.
+    if (this.viaServer || !this.rolesResolved()) {
       return false;
     }
     const peerIds = Object.keys(this.room?.getPeers() ?? {});
@@ -743,23 +750,14 @@ export class MultiplayerSystem extends createSystem({}) {
 
   private applyPieceSync(message: PieceSyncMessage): void {
     this.dbgApplied += 1;
-    for (const piece of message.pieces) {
-      const entity = this.networkedPieces.get(piece.id);
-      if (!entity || entity.hasComponent(Grabbed)) {
-        // Skip a piece the LOCAL player is actively holding — a stale
-        // host snapshot would otherwise fight their own hand-tracking
-        // while aiming. Kubbs/king are never grabbable, so this only
-        // ever matters for sticks.
-        continue;
-      }
-      if (debugContext.enabled) {
-        this.traceIncomingPiece(piece);
-      }
-      this.physicsSystem.setBodyTransform(entity, {
-        position: piece.position,
-        quaternion: piece.quaternion,
-      });
-    }
+    applyPieceTransforms(
+      this.physicsSystem,
+      this.networkedPieces,
+      message.pieces,
+      debugContext.enabled
+        ? (piece) => this.traceIncomingPiece(piece)
+        : undefined,
+    );
   }
 
   /** Debug mode (Erik: sticks sometimes end up under the ground on the
@@ -800,7 +798,7 @@ export class MultiplayerSystem extends createSystem({}) {
    * authoritative and get shared for free via the regular pieces
    * broadcast above. */
   private relayLocalThrowIfGuest(event: GameEvents['Thrown']): void {
-    if (this.isHostNow() || !this.throwRelayAction) {
+    if (this.viaServer || this.isHostNow() || !this.throwRelayAction) {
       return;
     }
     const pieceId = this.entityIndexToPieceId.get(Number(event.stickId));
@@ -992,6 +990,9 @@ export class MultiplayerSystem extends createSystem({}) {
     }
     if (!this.hasMultiplayerPeer()) {
       return;
+    }
+    if (this.viaServer) {
+      return; // MP6: "Ny runda" goes to the game server
     }
     if (!this.isHostNow()) {
       if (this.adoptingHostGameMode) {

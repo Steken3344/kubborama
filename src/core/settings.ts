@@ -42,6 +42,9 @@ const settingsSchema = z.object({
    * after one visit the bare LAN URL rejoins it. null = the public
    * lobby (config). `.default(null)` for migration. */
   roomId: roomIdSchema.nullable().default(null),
+  /** MP5: play through the authoritative game server (`?server=1`,
+   * `?server=0` to leave). `.default(false)` for migration. */
+  serverMode: z.boolean().default(false),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -60,6 +63,7 @@ export function defaultSettings(): Settings {
     avatarColorIndex: 0,
     debugRelay: false,
     roomId: null,
+    serverMode: false,
   };
 }
 
@@ -85,11 +89,14 @@ export function decodeSettings(json: string): Settings {
 export function urlSettingOverrides(search: string): {
   roomId?: string;
   debugRelay?: true;
+  serverMode?: boolean;
 } {
   const params = new URLSearchParams(search);
   const room = roomIdSchema.safeParse(params.get('room') ?? '');
   return {
     ...(room.success ? { roomId: room.data } : {}),
     ...(params.get('debug') === '1' ? { debugRelay: true as const } : {}),
+    ...(params.get('server') === '1' ? { serverMode: true } : {}),
+    ...(params.get('server') === '0' ? { serverMode: false } : {}),
   };
 }

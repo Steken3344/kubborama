@@ -53,6 +53,7 @@ export class GameServer {
   private world: PhysicsWorld | null = null;
   private worldPromise: Promise<PhysicsWorld> | null = null;
   private tickCount = 0;
+  private gameMode: Settings['gameMode'] = 'simple';
   private timer: ReturnType<typeof setInterval> | null = null;
 
   connect(connection: ClientConnection): ClientHandle {
@@ -146,12 +147,16 @@ export class GameServer {
       type: 'welcome',
       protocol: SERVER_PROTOCOL_VERSION,
       side,
+      gameMode: this.gameMode,
     });
     this.broadcast({ type: 'peers', count: this.players.size });
   }
 
   private async ensureWorld(gameMode: Settings['gameMode']): Promise<void> {
-    this.worldPromise ??= createPhysicsWorld(courtPresetForMode(gameMode));
+    if (!this.worldPromise) {
+      this.gameMode = gameMode;
+      this.worldPromise = createPhysicsWorld(courtPresetForMode(gameMode));
+    }
     this.world = await this.worldPromise;
   }
 

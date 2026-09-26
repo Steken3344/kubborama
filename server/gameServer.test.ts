@@ -38,17 +38,19 @@ describe('GameServer (MP5)', () => {
     const hb = server.connect(b.connection);
     const hc = server.connect(c.connection);
     await ha.receive(join());
-    await hb.receive(join());
+    await hb.receive(join('advanced')); // the room keeps A's court
     await hc.receive(join());
     expect(a.received).toContainEqual({
       type: 'welcome',
       protocol: SERVER_PROTOCOL_VERSION,
       side: 'host',
+      gameMode: 'simple',
     });
     expect(b.received).toContainEqual({
       type: 'welcome',
       protocol: SERVER_PROTOCOL_VERSION,
       side: 'guest',
+      gameMode: 'simple',
     });
     expect(c.received).toContainEqual({ type: 'rejected', reason: 'full' });
     expect(c.closed).toBe(true);
@@ -68,6 +70,7 @@ describe('GameServer (MP5)', () => {
       type: 'welcome',
       protocol: SERVER_PROTOCOL_VERSION,
       side: 'host',
+      gameMode: 'simple',
     });
   });
 

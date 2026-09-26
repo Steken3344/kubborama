@@ -48,6 +48,7 @@ describe('serverProtocol', () => {
       type: 'welcome',
       protocol: SERVER_PROTOCOL_VERSION,
       side: 'guest',
+      gameMode: 'advanced',
     });
     expect(parseServerMessage(JSON.parse(JSON.stringify(welcome)))).toEqual(
       welcome,

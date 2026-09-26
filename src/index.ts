@@ -17,6 +17,7 @@ import { PeerAvatarSystem } from './systems/peerAvatar.js';
 import { MultiplayerSystem } from './systems/multiplayer.js';
 import { OneShotAudioSystem } from './systems/oneShotAudio.js';
 import { RoundSystem } from './systems/round.js';
+import { ServerLinkSystem } from './systems/serverLink.js';
 import { SettingsSystem } from './systems/settings.js';
 import { SfxSystem } from './systems/sfx.js';
 import { SimpleRulesSystem } from './systems/simpleRules.js';
@@ -112,6 +113,8 @@ World.create(
   // registration order (see MultiplayerSystem.onResetForMatch()).
   // Registered last only for readability.
   world.registerSystem(MultiplayerSystem);
+  // MP5: link to the authoritative game server (only with ?server=1).
+  world.registerSystem(ServerLinkSystem);
   // MP3a: physical side of a multiplayer match (sin-bin per side, king
   // unprotected, auto-restart). Event-driven only — order irrelevant.
   world.registerSystem(MatchRulesSystem);

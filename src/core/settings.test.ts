@@ -78,3 +78,11 @@ describe('urlSettingOverrides', () => {
     expect(urlSettingOverrides(`?room=${'x'.repeat(65)}`)).toEqual({});
   });
 });
+
+describe('serverMode override', () => {
+  it('?server=1 turns it on, ?server=0 off, absent leaves it', () => {
+    expect(urlSettingOverrides('?server=1')).toEqual({ serverMode: true });
+    expect(urlSettingOverrides('?server=0')).toEqual({ serverMode: false });
+    expect(urlSettingOverrides('?room=x')).toEqual({ roomId: 'x' });
+  });
+});

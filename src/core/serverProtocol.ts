@@ -52,6 +52,8 @@ const serverMessageSchema = z.discriminatedUnion('type', [
     /** Player A = 'host', player B = 'guest' — the side, not the authority
      * (the server is always the authority). */
     side,
+    /** The room's court — a later joiner plays on it (like gh#15). */
+    gameMode: gameModeSchema,
   }),
   z.object({
     type: z.literal('snapshot'),
