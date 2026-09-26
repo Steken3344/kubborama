@@ -28,6 +28,7 @@ function round5cm(value: number): number {
  */
 export class GateProbeSystem extends createSystem({
   pieces: { required: [Resettable], excluded: [StickState] },
+  sticks: { required: [StickState] },
 }) {
   private statsSystem!: StatsSystem;
   private mySide: MatchSide | null = null;
@@ -138,6 +139,9 @@ export class GateProbeSystem extends createSystem({
       },
       gameMode: settingsState.current.gameMode,
       pieces: this.roundedPositions(this.queries.pieces.entities),
+      // Not compared by the sync check (a guest predicts its own throws);
+      // evidence for where sticks actually are on each headset.
+      sticks: this.roundedPositions(this.queries.sticks.entities),
     });
   }
 
