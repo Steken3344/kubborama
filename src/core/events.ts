@@ -94,7 +94,20 @@ export interface GameEvents {
     position: Vec3;
     timeS: number;
   };
+  /** gh#16: the host applied a guest's relayed throw to its own copy of
+   * that stick (systems/multiplayer.ts). Deliberately NOT a Thrown —
+   * audio, haptics, telemetry and the HUD's throw style belong to the
+   * local player's own throws; RoundSystem still counts it so the
+   * opponent's turn ends (and advances the match) as before. */
+  ThrowRelayed: {
+    stickId: string;
+    releasePosition: Vec3;
+  };
   RoundEnded: {
+    /** gh#16: the round was the opponent's turn (it contained a relayed
+     * throw) — StatsSystem skips it so it never lands in the local
+     * player's totals or personal bests. */
+    byOpponent: boolean;
     result: RoundResult;
     sticksThrownThisRound: number;
     longestThrowM: number;

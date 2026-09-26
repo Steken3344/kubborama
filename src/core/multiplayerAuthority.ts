@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { gameModeSchema } from './settings.js';
+import type { Settings } from './settings.js';
 
 export interface PeerJoinInfo {
   id: string;
@@ -23,14 +25,32 @@ export interface PeerJoinInfo {
  * can at worst grief a session, not corrupt anything persistent. A
  * private room code (docs/DECISIONS.md, 2026-09-02 room-privacy entry)
  * is the real mitigation if that ever matters.
+ *
+ * `gameMode` (gh#15, 2026-09-26): the sender's game mode, so the guest
+ * can adopt the host's court instead of playing a different length.
+ * Optional so a peer still on the previous build (PWA autoUpdate lag)
+ * keeps resolving roles — it just won't sync the mode.
  */
 const helloMessageSchema = z.object({
   joinedAtMs: z.number().int().positive(),
+  gameMode: gameModeSchema.optional(),
 });
+/** What a peer RECEIVES — `gameMode` may be missing (older build). */
 export type HelloMessage = z.infer<typeof helloMessageSchema>;
+/** What this build SENDS (always with a mode) — also the trystero
+ * action type, which needs a JSON shape without optional fields (a
+ * `type`, not an `interface`: only aliases get the implicit index
+ * signature trystero's DataPayload requires). */
+export type OutgoingHelloMessage = {
+  joinedAtMs: number;
+  gameMode: Settings['gameMode'];
+};
 
-export function buildHelloMessage(joinedAtMs: number): HelloMessage {
-  return { joinedAtMs };
+export function buildHelloMessage(
+  joinedAtMs: number,
+  gameMode: Settings['gameMode'],
+): OutgoingHelloMessage {
+  return { joinedAtMs, gameMode };
 }
 
 /** Never throws — see core/presence.ts's parsePresenceMessage for the

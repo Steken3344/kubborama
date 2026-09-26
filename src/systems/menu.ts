@@ -137,7 +137,7 @@ export class MenuSystem extends createSystem({
       this.settingsSystem.toggleLanguage();
     });
     this.wireButton('game-mode-button', () => {
-      if (matchActivity.current.active) {
+      if (this.isGameModeLocked()) {
         return; // MP3a: a court relayout mid-match is undefined; locked
       }
       this.settingsSystem.toggleGameMode();
@@ -299,7 +299,7 @@ export class MenuSystem extends createSystem({
         // MP3a: the button is a no-op during a match (see wireButton) —
         // say so on the label rather than styling a "disabled" look
         // UIKitML may not honour.
-        (matchActivity.current.active ? t('lockedDuringMatch') : ''),
+        (this.isGameModeLocked() ? t('lockedDuringMatch') : ''),
     });
     this.menuPanel.requireElementById('haptics-button-label').setProperties({
       text: s.hapticsEnabled ? t('hapticsOn') : t('hapticsOff'),
@@ -403,6 +403,14 @@ export class MenuSystem extends createSystem({
       // 2026-09-05: this system has no MatchStateChanged subscription).
       this.refreshLabels();
     }
+  }
+
+  /** During a match, and while a guest plays on the host's borrowed
+   * mode (gh#15) — the latter starts before matchActivity does. */
+  private isGameModeLocked(): boolean {
+    return (
+      matchActivity.current.active || this.settingsSystem.isGameModeBorrowed()
+    );
   }
 
   /**

@@ -4,6 +4,8 @@ import { StickPhase, StickState } from '../components/stick-state.js';
 import { pieces, round } from '../config.js';
 import { gameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
+import { turnPassedTo } from '../core/match.js';
+import type { MatchSide } from '../core/match.js';
 import { accumulateHeldDuration, isResting } from '../core/restState.js';
 import {
   finishRound,
@@ -78,6 +80,12 @@ export class RoundSystem extends createSystem({
   private causedFellingThisThrow = new Set<string>();
   private longestThrowThisRoundM = 0;
   private longestFellingThrowThisRoundM: number | null = null;
+  /** gh#16: set by a ThrowRelayed — this round is the opponent's turn. */
+  private opponentThrewThisRound = false;
+  /** Last match turn seen (null outside a match) — see turnPassedTo. */
+  private lastMatchTurn: MatchSide | null = null;
+  /** Last update() time — null until the first frame. */
+  private nowS: number | null = null;
   private unsubs: Array<() => void> = [];
 
   init(): void {
@@ -89,6 +97,17 @@ export class RoundSystem extends createSystem({
         this.pendingThrows.set(e.stickId, {
           releasePosition: e.releasePosition,
         });
+      }),
+    );
+    this.unsubs.push(
+      gameEvents.on('ThrowRelayed', (e) => {
+        this.roundState = scoringReducer(this.roundState, {
+          type: 'StickThrown',
+        });
+        this.pendingThrows.set(e.stickId, {
+          releasePosition: e.releasePosition,
+        });
+        this.opponentThrewThisRound = true;
       }),
     );
     this.unsubs.push(
@@ -150,6 +169,26 @@ export class RoundSystem extends createSystem({
         this.abandonRound(e.timeS);
       }),
     );
+    // gh#16, guest side: the opponent's sticks never settle here, but
+    // the kubbs they topple still fire KubbFelled locally — so start
+    // our own turn from a clean round instead of inheriting those.
+    this.unsubs.push(
+      gameEvents.on('MatchStateChanged', (e) => {
+        const turn = e.state.currentTurn;
+        if (
+          turnPassedTo(this.lastMatchTurn, turn, e.mySide) &&
+          this.nowS !== null
+        ) {
+          this.startOwnTurnClean(this.nowS);
+        }
+        this.lastMatchTurn = turn;
+      }),
+    );
+    this.unsubs.push(
+      gameEvents.on('MultiplayerPeerDisconnected', () => {
+        this.lastMatchTurn = null;
+      }),
+    );
   }
 
   destroy(): void {
@@ -159,6 +198,7 @@ export class RoundSystem extends createSystem({
   }
 
   update(delta: number, timeS: number): void {
+    this.nowS = timeS;
     this.roundStartTimeS ??= timeS;
     if (this.pendingEndSinceS === null) {
       return;
@@ -209,6 +249,7 @@ export class RoundSystem extends createSystem({
     const longestThrowM = this.longestThrowThisRoundM;
     const longestFellingThrowM = this.longestFellingThrowThisRoundM;
     const roundDurationS = timeS - (this.roundStartTimeS ?? timeS);
+    const byOpponent = this.opponentThrewThisRound;
 
     // Advance to the next round BEFORE emitting: MenuSystem's
     // RoundEnded handler auto-resets synchronously, which re-fires
@@ -221,6 +262,7 @@ export class RoundSystem extends createSystem({
 
     log('info', 'state', 'round ended', result);
     gameEvents.emit('RoundEnded', {
+      byOpponent,
       result,
       sticksThrownThisRound,
       longestThrowM,
@@ -228,6 +270,20 @@ export class RoundSystem extends createSystem({
       roundDurationS,
       timeS,
     });
+  }
+
+  /** The turn just passed to us. Our sticks only reach our rack in the
+   * same host tick, so no throw of ours can exist yet; if one somehow
+   * does (a reordered/delayed matchSync), keep it rather than wipe a
+   * real throw — and say so, so a real occurrence is diagnosable. */
+  private startOwnTurnClean(timeS: number): void {
+    if (this.roundState.sticksThrownThisRound > 0) {
+      log('warn', 'state', 'turn passed to us mid-round — round kept', {
+        sticksThrown: this.roundState.sticksThrownThisRound,
+      });
+      return;
+    }
+    this.abandonRound(timeS);
   }
 
   /** A manual reset restarts the same round number from scratch — see
@@ -246,6 +302,7 @@ export class RoundSystem extends createSystem({
     this.quietForS = 0;
     this.longestThrowThisRoundM = 0;
     this.longestFellingThrowThisRoundM = null;
+    this.opponentThrewThisRound = false;
     this.pendingThrows.clear();
     this.causedFellingThisThrow.clear();
   }

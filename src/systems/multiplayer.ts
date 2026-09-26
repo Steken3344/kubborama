@@ -40,7 +40,7 @@ import {
   resolveHostId,
 } from '../core/multiplayerAuthority.js';
 import type {
-  HelloMessage,
+  OutgoingHelloMessage,
   PeerJoinInfo,
 } from '../core/multiplayerAuthority.js';
 import {
@@ -63,9 +63,11 @@ import type { ThrowRelayMessage } from '../core/throwRelay.js';
 import { STICKS_PER_ROUND } from '../core/scoring.js';
 import { log } from '../core/log.js';
 import { debugContext, STICK_BELOW_GROUND_Y } from '../debug/debugContext.js';
+import type { Settings } from '../core/settings.js';
 import { settingsState } from '../settingsState.js';
 import { activeFarBaselineZ } from './activeCourt.js';
 import { localPoseOf } from './objectPose.js';
+import { SettingsSystem } from './settings.js';
 
 // King, both kubb baselines, and every stick — MP2's shared court
 // state (see class doc). A stick's initial throw is relayed
@@ -223,11 +225,18 @@ export class MultiplayerSystem extends createSystem({}) {
   private room?: Room;
   private presenceAction?: MessageAction<PresenceMessage>;
   private pieceSyncAction?: MessageAction<PieceSyncMessage>;
-  private helloAction?: MessageAction<HelloMessage>;
+  private helloAction?: MessageAction<OutgoingHelloMessage>;
   private throwRelayAction?: MessageAction<ThrowRelayMessage>;
   private matchSyncAction?: MessageAction<MatchSyncMessage>;
   private matchState: MatchState = initialMatchState();
   private physicsSystem!: PhysicsSystem;
+  private settingsSystem!: SettingsSystem;
+  /** gh#15: each peer's game mode from its hello (absent from a peer on
+   * the previous build). */
+  private readonly peerGameModes = new Map<string, Settings['gameMode']>();
+  /** True only while adopting the host's mode — that relayout's manual
+   * Reset is local housekeeping, not a guest "Ny runda" to relay. */
+  private adoptingHostGameMode = false;
   private sendTimerS = 0;
   private micTrack: MediaStreamTrack | null = null;
   private remoteAudioElements = new Map<string, HTMLAudioElement>();
@@ -266,6 +275,13 @@ export class MultiplayerSystem extends createSystem({}) {
       );
     }
     this.physicsSystem = physicsSystem;
+    const settingsSystem = this.world.getSystem(SettingsSystem);
+    if (!settingsSystem) {
+      throw new Error(
+        'MultiplayerSystem requires SettingsSystem to be registered first',
+      );
+    }
+    this.settingsSystem = settingsSystem;
     for (const id of NETWORKED_PIECE_IDS) {
       const entity = this.world.requireSceneEntity(id);
       this.networkedPieces.set(id, entity);
@@ -301,7 +317,7 @@ export class MultiplayerSystem extends createSystem({}) {
       this.dbgPresenceIn += 1;
       gameEvents.emit('PeerPresence', { peerId, message });
     };
-    this.helloAction = this.room.makeAction<HelloMessage>('hello');
+    this.helloAction = this.room.makeAction<OutgoingHelloMessage>('hello');
     this.helloAction.onMessage = (data, { peerId }) => {
       const message = parseHelloMessage(data);
       if (!message) {
@@ -309,6 +325,9 @@ export class MultiplayerSystem extends createSystem({}) {
         return;
       }
       this.peerJoinedAtMs.set(peerId, message.joinedAtMs);
+      if (message.gameMode) {
+        this.peerGameModes.set(peerId, message.gameMode);
+      }
       this.refreshDebugRole();
       log('debug', 'net', 'hello received', {
         peerId,
@@ -317,6 +336,8 @@ export class MultiplayerSystem extends createSystem({}) {
         rolesResolved: this.rolesResolved(),
         iAmHost: this.isHostNow(),
       });
+      // Before the reposition: the far baseline depends on the mode.
+      this.adoptHostGameModeIfGuest();
       this.maybeRepositionAsGuest();
       this.announceMatchStartIfHost();
       this.applyPendingMatchSync();
@@ -429,9 +450,10 @@ export class MultiplayerSystem extends createSystem({}) {
     );
     this.room.onPeerJoin = (peerId) => {
       log('info', 'net', 'peer joined', { peerId, roomId });
-      void this.helloAction?.send(buildHelloMessage(this.joinedAtMs), {
-        target: peerId,
-      });
+      void this.helloAction?.send(
+        buildHelloMessage(this.joinedAtMs, settingsState.current.gameMode),
+        { target: peerId },
+      );
     };
     this.room.onPeerLeave = (peerId) => {
       log('info', 'net', 'peer left', { peerId });
@@ -439,6 +461,7 @@ export class MultiplayerSystem extends createSystem({}) {
       this.refreshDebugRole();
       this.removeRemoteAudio(peerId);
       this.peerJoinedAtMs.delete(peerId);
+      this.peerGameModes.delete(peerId);
       // Only clear match state once EVERY peer is gone, not on a leave
       // in a room with 3+ peers — hasMultiplayerPeer() reflects the
       // count AFTER this leave (getPeers() is already updated by the
@@ -466,6 +489,8 @@ export class MultiplayerSystem extends createSystem({}) {
         if (sticksAtFarRack) {
           this.moveSticksToNearRack();
         }
+        // gh#15: back to the player's own mode (a no-op for a host).
+        this.settingsSystem.releaseMatchGameMode();
         gameEvents.emit('MultiplayerPeerDisconnected', {});
       }
     };
@@ -480,6 +505,7 @@ export class MultiplayerSystem extends createSystem({}) {
   }
 
   destroy(): void {
+    this.settingsSystem.releaseMatchGameMode();
     this.room?.leave();
     this.micTrack?.stop();
     this.micTrack = null;
@@ -624,6 +650,38 @@ export class MultiplayerSystem extends createSystem({}) {
     }
     this.setMatchState(this.matchState);
     this.broadcastMatchState();
+  }
+
+  /** gh#15: the host's game mode is authoritative — a guest plays on
+   * the host's court (kubb rows, far baseline, sin-bin row and
+   * pieceSync positions all depend on it). Temporary: SettingsSystem
+   * never persists it and restores the guest's own mode when the room
+   * empties. Idempotent, so it simply re-runs on every hello. */
+  private adoptHostGameModeIfGuest(): void {
+    const hostPeerId = this.resolvedHostPeerId();
+    if (hostPeerId === null) {
+      return; // roles unresolved, or this client is the host
+    }
+    const hostMode = this.peerGameModes.get(hostPeerId);
+    if (!hostMode) {
+      if (this.peerJoinedAtMs.has(hostPeerId)) {
+        log('warn', 'net', 'host sent no game mode (older build)', {});
+      }
+      return;
+    }
+    if (hostMode === settingsState.current.gameMode) {
+      return;
+    }
+    log('info', 'net', "adopting the host's game mode", {
+      hostMode,
+      ownMode: settingsState.current.gameMode,
+    });
+    this.adoptingHostGameMode = true;
+    try {
+      this.settingsSystem.adoptMatchGameMode(hostMode);
+    } finally {
+      this.adoptingHostGameMode = false;
+    }
   }
 
   /** Erik's finding, 2026-09-02 — see the class doc's phase-4 note.
@@ -782,6 +840,12 @@ export class MultiplayerSystem extends createSystem({}) {
     });
     entity.setValue(StickState, 'phase', StickPhase.Flying);
     entity.setValue(StickState, 'lastThrowerHand', message.hand);
+    // gh#16: the opponent's throw — RoundSystem counts it (so their turn
+    // still ends) but StatsSystem leaves it out of our own stats.
+    gameEvents.emit('ThrowRelayed', {
+      stickId: String(entity.index),
+      releasePosition: message.position,
+    });
     log('info', 'net', 'applied relayed throw', { stickId: message.stickId });
   }
 
@@ -836,6 +900,9 @@ export class MultiplayerSystem extends createSystem({}) {
       return;
     }
     if (!this.isHostNow()) {
+      if (this.adoptingHostGameMode) {
+        return; // the relayout's own reset — see adoptHostGameModeIfGuest
+      }
       // Guest pressed "Ny runda" (spec review C2): not authoritative —
       // relay it. The host's resulting reset + fresh match state
       // overwrite the guest's local teleport via pieceSync/matchSync

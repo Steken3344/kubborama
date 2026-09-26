@@ -42,6 +42,11 @@ function saveSettings(settings: Settings): void {
  * rule is about.
  */
 export class SettingsSystem extends createSystem({}) {
+  /** gh#15: the player's own game mode while a multiplayer guest plays
+   * on the host's (adoptMatchGameMode) — null when no override is
+   * active. persist() always writes this, never the borrowed mode. */
+  private preferredGameMode: Settings['gameMode'] | null = null;
+
   init(): void {
     settingsState.current = loadSettings();
     refreshTranslator();
@@ -63,7 +68,11 @@ export class SettingsSystem extends createSystem({}) {
   }
 
   private persist(): void {
-    saveSettings(settingsState.current);
+    saveSettings(
+      this.preferredGameMode === null
+        ? settingsState.current
+        : { ...settingsState.current, gameMode: this.preferredGameMode },
+    );
   }
 
   setLanguage(language: Language): void {
@@ -78,8 +87,42 @@ export class SettingsSystem extends createSystem({}) {
   }
 
   setGameMode(gameMode: Settings['gameMode']): void {
+    // An explicit choice replaces any borrowed match mode.
+    this.preferredGameMode = null;
     settingsState.current = { ...settingsState.current, gameMode };
     this.persist();
+    gameEvents.emit('GameModeChanged', { gameMode });
+  }
+
+  /** gh#15: a multiplayer guest plays on the host's court. Applied live
+   * (same GameModeChanged relayout as the button) but never persisted;
+   * releaseMatchGameMode() restores the player's own mode. */
+  /** True while a borrowed match mode is active — MenuSystem locks the
+   * game-mode button then too, since matchActivity only turns on a
+   * network round trip AFTER the adoption (review, 2026-09-26). */
+  isGameModeBorrowed(): boolean {
+    return this.preferredGameMode !== null;
+  }
+
+  adoptMatchGameMode(gameMode: Settings['gameMode']): void {
+    this.preferredGameMode ??= settingsState.current.gameMode;
+    this.applyUnpersistedGameMode(gameMode);
+  }
+
+  releaseMatchGameMode(): void {
+    const preferred = this.preferredGameMode;
+    if (preferred === null) {
+      return;
+    }
+    this.preferredGameMode = null;
+    this.applyUnpersistedGameMode(preferred);
+  }
+
+  private applyUnpersistedGameMode(gameMode: Settings['gameMode']): void {
+    if (settingsState.current.gameMode === gameMode) {
+      return;
+    }
+    settingsState.current = { ...settingsState.current, gameMode };
     gameEvents.emit('GameModeChanged', { gameMode });
   }
 

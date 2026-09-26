@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildHelloMessage,
   isHost,
   parseHelloMessage,
   resolveHostId,
@@ -80,6 +81,23 @@ describe('parseHelloMessage', () => {
     expect(parseHelloMessage({ joinedAtMs: 0 })).toBeNull();
     expect(parseHelloMessage({ joinedAtMs: -1 })).toBeNull();
     expect(parseHelloMessage({ joinedAtMs: 1.5 })).toBeNull();
+  });
+
+  it("carries the sender's game mode", () => {
+    expect(parseHelloMessage(buildHelloMessage(12345, 'advanced'))).toEqual({
+      joinedAtMs: 12345,
+      gameMode: 'advanced',
+    });
+  });
+
+  it('still accepts a pre-gh#15 hello without a game mode', () => {
+    expect(parseHelloMessage({ joinedAtMs: 12345 })?.gameMode).toBeUndefined();
+  });
+
+  it('rejects an unknown game mode', () => {
+    expect(
+      parseHelloMessage({ joinedAtMs: 12345, gameMode: 'tournament' }),
+    ).toBeNull();
   });
 
   it('rejects a non-object payload', () => {

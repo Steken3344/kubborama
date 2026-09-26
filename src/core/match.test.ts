@@ -6,6 +6,7 @@ import {
   kubbSide,
   otherSide,
   score,
+  turnPassedTo,
   withKingFelled,
   withKubbFelled,
   withTurnAdvanced,
@@ -133,5 +134,21 @@ describe('withTurnAdvanced / score', () => {
     s = withTurnAdvanced(s);
     s = withKubbFelled(s, 'kubb-9');
     expect(score(s)).toEqual({ host: 2, guest: 1 });
+  });
+});
+
+describe('turnPassedTo', () => {
+  it('is true when the turn just flipped to the given side', () => {
+    expect(turnPassedTo('host', 'guest', 'guest')).toBe(true);
+    expect(turnPassedTo('guest', 'host', 'host')).toBe(true);
+  });
+  it('is false when the turn flipped away from the given side', () => {
+    expect(turnPassedTo('guest', 'host', 'guest')).toBe(false);
+  });
+  it('is false when the turn did not change (repeat broadcasts)', () => {
+    expect(turnPassedTo('guest', 'guest', 'guest')).toBe(false);
+  });
+  it('is false for the first known turn (no previous turn)', () => {
+    expect(turnPassedTo(null, 'host', 'host')).toBe(false);
   });
 });

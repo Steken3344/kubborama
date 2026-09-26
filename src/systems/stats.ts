@@ -29,7 +29,8 @@ function saveStats(stats: Stats): void {
   }
 }
 
-/** Folds every finished round (RoundSystem's RoundEnded) into
+/** Folds every finished round (RoundSystem's RoundEnded) of the LOCAL
+ * player (an opponent's relayed turn is skipped, gh#16) into
  * lifetime totals + personal bests, persisted to localStorage. The
  * HUD reads `stats` directly (same-frame, no event round-trip
  * needed). */
@@ -40,6 +41,10 @@ export class StatsSystem extends createSystem({}) {
   init(): void {
     this.stats = loadStats();
     this.unsubscribeRoundEnded = gameEvents.on('RoundEnded', (e) => {
+      if (e.byOpponent) {
+        // gh#16: the opponent's turn, relayed to this host — not ours.
+        return;
+      }
       this.stats = recordRound(this.stats, {
         result: e.result,
         sticksThrownThisRound: e.sticksThrownThisRound,

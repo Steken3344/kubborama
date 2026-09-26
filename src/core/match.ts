@@ -39,6 +39,19 @@ export function otherSide(side: MatchSide): MatchSide {
   return side === 'host' ? 'guest' : 'host';
 }
 
+/** True only on the broadcast where the turn flips TO `side` — a repeat
+ * of the same turn, a flip away, or the very first known turn (`prev`
+ * null) are all false. RoundSystem uses it to start `side`'s own round
+ * clean (gh#16): kubbs felled during the opponent's turn must not be
+ * credited to the next local round. */
+export function turnPassedTo(
+  prev: MatchSide | null,
+  next: MatchSide,
+  side: MatchSide,
+): boolean {
+  return prev !== null && prev !== next && next === side;
+}
+
 /** kubb-0..(kubbsPerSide-1) are the far baseline (guest's side);
  * kubb-(kubbsPerSide)..(2*kubbsPerSide-1) the near baseline (host's).
  * `null` for an out-of-range index. */

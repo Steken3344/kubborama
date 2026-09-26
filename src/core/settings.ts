@@ -2,10 +2,14 @@ import { z } from 'zod';
 
 export const SETTINGS_SCHEMA_VERSION = 1;
 
+/** Exported for the multiplayer `hello` handshake (gh#15), which
+ * carries the sender's mode so a guest can adopt the host's court. */
+export const gameModeSchema = z.enum(['simple', 'advanced']);
+
 const settingsSchema = z.object({
   version: z.literal(SETTINGS_SCHEMA_VERSION),
   language: z.enum(['sv', 'en']),
-  gameMode: z.enum(['simple', 'advanced']),
+  gameMode: gameModeSchema,
   musicVolumePercent: z.number().min(0).max(100),
   sfxVolumePercent: z.number().min(0).max(100),
   hapticsEnabled: z.boolean(),
