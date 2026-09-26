@@ -4,6 +4,7 @@ import { installDebugRelay } from './debug/debugRelay.js';
 import { DebugWatchSystem } from './systems/debugWatch.js';
 import { CourtLayoutSystem } from './systems/courtLayout.js';
 import { CourtLinesSystem } from './systems/courtLines.js';
+import { GateProbeSystem } from './systems/gateProbe.js';
 import { GrabHighlightSystem } from './systems/grabHighlight.js';
 import { HandoffSystem } from './systems/handoff.js';
 import { HudSystem } from './systems/hud.js';
@@ -119,6 +120,10 @@ World.create(
   // and other breadcrumbs — registered last so it observes the frame's
   // final state.
   world.registerSystem(DebugWatchSystem);
+  // Debug mode only: gate-report probes (docs/superpowers/specs/
+  // 2026-09-26-gate-report-design.md). Must come after MultiplayerSystem
+  // — see the class doc.
+  world.registerSystem(GateProbeSystem);
 
   document.getElementById('splash')?.classList.add('splash-hidden');
 });
