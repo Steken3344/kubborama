@@ -101,8 +101,9 @@ applies, as today). Geometry comes in as a plain
   `nudgeClear`.
 
 `core/matchSync.ts` → schema **v3** (v2 rejected with the existing
-version-mismatch log). `core/matchSinBin.ts` is removed (the sin-bin row
-is replaced by the inkast rack) along with `data/sin-bin.json`.
+version-mismatch log). `core/matchSinBin.ts` is removed (the match
+sin-bin row is replaced by the inkast rack); `data/sin-bin.json` and
+`core/sinBin.ts` stay for solo.
 
 ## Adapters
 
@@ -121,12 +122,13 @@ is replaced by the inkast rack) along with `data/sin-bin.json`.
 - **Sticks are not grabbable during `inkast`** (the rack is emptied of
   its grab component until the phase is `throwing`), so RoundSystem's
   6-stick accounting is untouched. The HUD shows "Inkast: N kvar".
-- **MatchRulesSystem**: drives kubbs from `effects` (raise / return to
-  rack) and from state diffs on both clients (the host's pieceSync keeps
-  positions authoritative); emits a new `PieceRaised { entityId }`
-  event. **ToppleSystem** subscribes and re-arms that piece so it can be
-  felled again (today it only re-arms on Reset), and uses
-  `leaningFelledDeg` for kubbs while `matchActivity` is on.
+- **MatchRulesSystem**: the host applies `effects` (raise / restore
+  home / return to rack), delivered on the bus as `MatchEffects`; the
+  guest follows the host's pieceSync. The inkast rack is placed from
+  the state diff on both clients. **ToppleSystem** re-arms a felled
+  piece as soon as it is observed upright and at rest again (so a
+  raised kubb can be felled again on both clients, no extra event), and
+  uses `leaningFelledDeg` while `matchActivity` is on.
 - **MenuSystem**: a round-end reset during a match moves **only sticks**
   (kubbs stay where they are — they are field kubbs, inkast items or
   lying felled kubbs).
