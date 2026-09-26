@@ -78,3 +78,63 @@ describe('scene JSON stays in sync with config.ts courtLayout()', () => {
     });
   });
 });
+
+describe('scenery keeps the play area clear (2026-09-26)', () => {
+  // Erik: on the 8 m court "pinnarna och bordet hamnar i ett träd" —
+  // tree-18 stood where the far stick rack and the inkast rack are.
+  // Every decoration collider must stay out of the LARGEST court plus
+  // the rack/inkast zones behind both baselines (±0.8 m wide, 1.7 m
+  // deep — the rack sits ~1.09 m behind, the inkast rack 0.5 m).
+  const largest = { widthM: 5, lengthM: 8 };
+  const zones = [
+    {
+      name: 'court',
+      x0: -largest.widthM / 2,
+      x1: largest.widthM / 2,
+      z0: -largest.lengthM,
+      z1: 0,
+    },
+    {
+      name: 'far racks',
+      x0: -0.8,
+      x1: 0.8,
+      z0: -largest.lengthM - 1.7,
+      z1: -largest.lengthM,
+    },
+    { name: 'near racks', x0: -0.8, x1: 0.8, z0: 0, z1: 1.7 },
+  ];
+  const decorations = (
+    scene.nodes as Array<{
+      id: string;
+      transform?: { position?: number[]; rotationDeg?: number[] };
+      components?: { PhysicsShape?: { shape: string; dimensions: number[] } };
+    }>
+  ).filter((n) => /^(tree|rock|bush|cliff|campsite)-/u.test(n.id));
+
+  it('has decorations to check', () => {
+    expect(decorations.length).toBeGreaterThan(20);
+  });
+
+  it.each(decorations.map((n) => [n.id, n] as const))('%s', (_id, n) => {
+    const shape = n.components?.PhysicsShape;
+    const [x = 0, , z = 0] = n.transform?.position ?? [];
+    if (!shape) {
+      return;
+    }
+    const [d0 = 0, , d2 = 0] = shape.dimensions;
+    const yawRad = ((n.transform?.rotationDeg?.[1] ?? 0) * Math.PI) / 180;
+    const c = Math.abs(Math.cos(yawRad));
+    const s = Math.abs(Math.sin(yawRad));
+    // Cylinder: radius; box: half extents of its yaw-rotated footprint.
+    const hx = shape.shape === 'Cylinder' ? d0 : (d0 * c + d2 * s) / 2;
+    const hz = shape.shape === 'Cylinder' ? d0 : (d0 * s + d2 * c) / 2;
+    for (const zone of zones) {
+      const overlaps =
+        x + hx > zone.x0 &&
+        x - hx < zone.x1 &&
+        z + hz > zone.z0 &&
+        z - hz < zone.z1;
+      expect(overlaps, `${n.id} overlaps the ${zone.name}`).toBe(false);
+    }
+  });
+});

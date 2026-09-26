@@ -5121,3 +5121,45 @@ docs/superpowers/specs/2026-09-26-field-kubbs-design.md.
   host through Vite's module URLs (`import('/src/core/events.ts')` from
   the page gives the app's own bus) — a cheap way to exercise
   multiplayer rule paths without headsets.
+
+## 2026-09-26 — SPIKE: Havok in Node for an authoritative server — GO
+
+Question (docs/superpowers/specs/2026-09-26-authoritative-server-design.md
+milestone 1): can a Node server run the same physics as the headsets?
+
+Method (throwaway scripts, not committed): `@babylonjs/havok` 1.3.14 —
+the package IWSDK itself uses — loaded in Node 22 with the WASM binary
+read from disk (17 ms init). The whole court was rebuilt from
+`public/scenes/main.iwsdk.scene.json` (every collider is a Box or
+Cylinder with explicit `dimensions`, density/friction/restitution and
+damping — exactly the calls IWSDK's PhysicsSystem makes: CreateBox /
+CreateCylinder, SetMaterial MINIMUM/MAXIMUM, BuildMassProperties).
+Four stick throws with fixed release velocities were run in Node and in
+the browser (IWSDK, headless Chromium, `world.update` forced to a fixed
+1/60 s step — without that, software WebGL runs at ~8.6 fps and IWSDK's
+0.1 s delta clamp makes the comparison meaningless).
+
+Findings:
+- **Flight matches**: first ground contact agrees within a few cm and
+  ~0.03 s (e.g. z −7.852 in both, t 0.95 vs 0.98 s).
+- **Rest positions after bouncing/rolling are chaotic**, not engine
+  differences: changing Node's own timestep by 0.4 % (1/60 → 0.0166 s)
+  moves a rest point from (0.84, −8.35) to (0.23, −8.23) — which is
+  what the browser produced (0.26, −8.17).
+- Consequence: physics must have exactly ONE authority; no client can
+  reproduce it past the first contact. Clients predict only the local
+  throw's flight and reconcile — the pattern the guest already uses.
+- The server needs a fixed timestep and must also run the gameplay
+  force/detection adapters (StickGroundDamping, Wind, Topple, rest and
+  round end) — all thin adapters over `src/core/*`, so portable.
+
+Verdict: **go** for MP5 (server skeleton).
+
+## 2026-09-26 — Advanced court: far rack and inkast rack inside tree-18
+
+Erik: "när man har stor plan hamnar pinnarna och bordet inte rätt,
+hamnar i ett träd". tree-18 (x 0.18, z −8.86, radius 0.49 m) overlaps
+the 8 m court's far stick rack (z −9.09) and the guest's inkast rack
+(z −8.5): the scenery was laid out for the 6 m court. Also in the same
+session: the host headset slept at 19:05:03 when taken off, freezing the
+match (landing never reported) — the reason for the server plan above.
