@@ -1117,3 +1117,14 @@ Scenery moved out of the 8 m court + racks, with a regression test.
 
 **Next session: MP5 — server skeleton** (spec → plan → build). The MP4
 headset gate waits for the server (no headset needs to stay awake then).
+
+**2026-09-26, late — MP5 server skeleton built.** `server/` (Havok world
+from the scene JSON, GameServer room with sides A/B, fixed 60 Hz, 20 Hz
+snapshots, WebSocket on the dev server at `/__kubb/game`), shared zod
+protocol, client ServerLinkSystem (`?server=1`). Two headless clients:
+identical server-tick stick positions, throw rests where the spike
+predicted. Review: no Critical; hardened the boundary (sticks only, 6
+throws/s, bounded vectors), teardown on Vite restart, IWSDK physics
+defaults. Next: **MP6 — rules on the server** (throw turns, inkast,
+topple, rounds, match, "Ny runda"); open question in docs/QUESTIONS.md
+about side identity on reload.
