@@ -1,13 +1,22 @@
 import { createSystem, MeshStandardMaterial, Object3D } from '@iwsdk/core';
 import type { Entity, Mesh } from '@iwsdk/core';
 import { avatar, avatarPaletteEntry } from '../config.js';
+import {
+  addFitSample,
+  armEndToHandM,
+  emptyFitWindow,
+  FIT_WINDOW_MS,
+  restartFitWindow,
+} from '../core/avatarFit.js';
+import type { FitWindow } from '../core/avatarFit.js';
 import { solveAvatarPose } from '../core/avatarPose.js';
-import type { Segment } from '../core/avatarPose.js';
+import type { AvatarPose, Segment } from '../core/avatarPose.js';
 import { gameEvents } from '../core/events.js';
 import type { GameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
 import type { Pose } from '../core/presence.js';
-import { yawFromQuaternion } from '../core/quat.js';
+import { pitchFromQuaternion, yawFromQuaternion } from '../core/quat.js';
+import { debugContext } from '../debug/debugContext.js';
 
 interface AvatarInstance {
   entity: Entity;
@@ -17,6 +26,8 @@ interface AvatarInstance {
   colorIndex: number;
   smoothedYawRad: number;
   lastMessageAtMs: number;
+  /** Gate report: 1 Hz maxima of the avatar-fit numbers. */
+  fit: FitWindow;
 }
 
 /**
@@ -139,6 +150,7 @@ export class PeerAvatarSystem extends createSystem({}) {
       colorIndex: event.message.colorIndex,
       smoothedYawRad: yawFromQuaternion(event.message.head.quaternion),
       lastMessageAtMs: performance.now(),
+      fit: emptyFitWindow(),
     };
     this.avatars.set(peerId, instance);
     log('info', 'net', 'peer avatar created', {
@@ -172,6 +184,10 @@ export class PeerAvatarSystem extends createSystem({}) {
     if (message.colorIndex !== instance.colorIndex) {
       instance.colorIndex = message.colorIndex;
       instance.material.color.set(avatarPaletteEntry(message.colorIndex).hex);
+      log('info', 'gate', 'avatar color', {
+        event: 'received',
+        colorIndex: message.colorIndex,
+      });
     }
 
     const nowMs = performance.now();
@@ -199,6 +215,46 @@ export class PeerAvatarSystem extends createSystem({}) {
     this.applyPose(instance.root, 'torso', solved.torso);
     this.applySegment(instance.root, 'leftArm', solved.leftArm);
     this.applySegment(instance.root, 'rightArm', solved.rightArm);
+    if (debugContext.enabled) {
+      this.sampleFit(instance, nowMs, solved, message);
+    }
+  }
+
+  /** Gate report (MP3b): 1 Hz maxima of the numbers the checklist asks
+   * about — see core/avatarFit.ts. */
+  private sampleFit(
+    instance: AvatarInstance,
+    nowMs: number,
+    solved: AvatarPose,
+    message: GameEvents['PeerPresence']['message'],
+  ): void {
+    const w = instance.fit;
+    addFitSample(w, {
+      atMs: nowMs,
+      torsoYawRad: instance.smoothedYawRad,
+      headPitchRad: pitchFromQuaternion(message.head.quaternion),
+      leftArmEndToHandM: armEndToHandM(
+        solved.leftShoulder,
+        solved.leftArm,
+        message.leftHand.position,
+      ),
+      rightArmEndToHandM: armEndToHandM(
+        solved.rightShoulder,
+        solved.rightArm,
+        message.rightHand.position,
+      ),
+    });
+    if (w.startMs === null || nowMs - w.startMs < FIT_WINDOW_MS) {
+      return;
+    }
+    log('info', 'gate', 'avatar fit', {
+      leftArmEndToHandM: w.maxLeftArmEndToHandM,
+      rightArmEndToHandM: w.maxRightArmEndToHandM,
+      handSizeM: avatar.handSizeM,
+      maxTorsoYawRateRadS: w.maxTorsoYawRateRadS,
+      maxHeadPitchRad: w.maxHeadPitchRad,
+    });
+    restartFitWindow(w);
   }
 
   /** No mirroring (2026-09-02): both peers already send shared-world

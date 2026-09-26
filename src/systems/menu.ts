@@ -130,6 +130,7 @@ export class MenuSystem extends createSystem({
     this.wireButton('tab-stats-button', () => this.setActiveTab('stats'));
 
     this.wireButton('reset-button', () => {
+      log('info', 'gate', 'reset pressed', {});
       this.resetAll('manual');
       this.setMenuOpen(false);
     });
@@ -137,6 +138,10 @@ export class MenuSystem extends createSystem({
       this.settingsSystem.toggleLanguage();
     });
     this.wireButton('game-mode-button', () => {
+      log('info', 'gate', 'mode button pressed', {
+        locked: this.isGameModeLocked(),
+        gameMode: settingsState.current.gameMode,
+      });
       if (this.isGameModeLocked()) {
         return; // MP3a: a court relayout mid-match is undefined; locked
       }
@@ -194,6 +199,10 @@ export class MenuSystem extends createSystem({
       this.settingsSystem.setAvatarColorIndex(
         (settingsState.current.avatarColorIndex + 1) % avatarPalette.length,
       );
+      log('info', 'gate', 'avatar color', {
+        event: 'sent',
+        colorIndex: settingsState.current.avatarColorIndex,
+      });
       this.refreshLabels();
       // The HUD tints my score digit with this color and has no settings
       // subscription of its own (code review, 2026-09-05).

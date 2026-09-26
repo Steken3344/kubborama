@@ -79,8 +79,11 @@ export class MatchRulesSystem extends createSystem({
     if (this.restartInS > 0) {
       return;
     }
+    log('info', 'gate', 'match restart', {
+      // restartInS has just crossed 0, so this is ≥ the configured delay.
+      secondsSinceFinished: match.restartDelayS - this.restartInS,
+    });
     this.restartInS = null;
-    log('info', 'state', 'match auto-restart', {});
     gameEvents.emit('ResetRequested', {});
   }
 

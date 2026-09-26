@@ -2,8 +2,10 @@ import { createSystem, UIKitMLAsset } from '@iwsdk/core';
 import type { GameEvents } from '../core/events.js';
 import type { ThrowStyle } from '../core/underhandClassifier.js';
 import { gameEvents } from '../core/events.js';
+import { log } from '../core/log.js';
 import { isFinished, score } from '../core/match.js';
 import { avatarPaletteEntry } from '../config.js';
+import { debugContext } from '../debug/debugContext.js';
 import { i18nState } from '../i18nState.js';
 import { settingsState } from '../settingsState.js';
 import { StatsSystem } from './stats.js';
@@ -31,6 +33,9 @@ export class HudSystem extends createSystem({}) {
   /** MP3b: the opponent's chosen palette index, from its last presence
    * message — colors their half of the score. null until one arrives. */
   private opponentColorIndex: number | null = null;
+  /** Gate report: last tint logged per digit, so only changes log. */
+  private loggedMyColor: number | null = null;
+  private loggedTheirColor: number | null = null;
 
   init(): void {
     const statsSystem = this.world.getSystem(StatsSystem);
@@ -176,6 +181,9 @@ export class HudSystem extends createSystem({}) {
     this.hudPanel
       .requireElementById('match-score-b')
       .setProperties({ text: String(s.guest), color: guestColor });
+    if (debugContext.enabled) {
+      this.logDigitTints();
+    }
     // Absolute "Spelare A/B" turn labels, not "din/motst. tur" (Erik,
     // 2026-09-02); once decided, the relative won/lost verdict.
     show('turn-row');
@@ -234,5 +242,27 @@ export class HudSystem extends createSystem({}) {
     this.hudPanel
       .requireElementById('throw-style')
       .setProperties({ text, color });
+  }
+
+  private logDigitTints(): void {
+    const mine = settingsState.current.avatarColorIndex;
+    if (mine !== this.loggedMyColor) {
+      this.loggedMyColor = mine;
+      log('info', 'gate', 'avatar color', {
+        event: 'tinted',
+        who: 'mine',
+        colorIndex: mine,
+      });
+    }
+    if (this.opponentColorIndex !== this.loggedTheirColor) {
+      this.loggedTheirColor = this.opponentColorIndex;
+      if (this.opponentColorIndex !== null) {
+        log('info', 'gate', 'avatar color', {
+          event: 'tinted',
+          who: 'opponent',
+          colorIndex: this.opponentColorIndex,
+        });
+      }
+    }
   }
 }

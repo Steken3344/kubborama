@@ -672,7 +672,7 @@ export class MultiplayerSystem extends createSystem({}) {
     if (hostMode === settingsState.current.gameMode) {
       return;
     }
-    log('info', 'net', "adopting the host's game mode", {
+    log('info', 'gate', 'mode adopted', {
       hostMode,
       ownMode: settingsState.current.gameMode,
     });

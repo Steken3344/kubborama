@@ -1,5 +1,6 @@
 import { createSystem } from '@iwsdk/core';
 import { gameEvents } from '../core/events.js';
+import { log } from '../core/log.js';
 import type { Language } from '../core/i18n.js';
 import {
   decodeSettings,
@@ -123,6 +124,7 @@ export class SettingsSystem extends createSystem({}) {
       return;
     }
     this.preferredGameMode = null;
+    log('info', 'gate', 'mode released', { restoredMode: preferred });
     this.applyUnpersistedGameMode(preferred);
   }
 
