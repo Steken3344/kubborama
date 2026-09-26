@@ -1091,3 +1091,15 @@ release, sync, avatars PASS). Review fixes applied; follow-ups gh#23
 once per headset (then the bare URL works), start the two headsets in
 DIFFERENT game modes, play a full match; I run `gate:new` before and
 `gate:report --watch` during. Only the EYES items need his answer.
+
+**2026-09-26, later — MP4 field kubbs built.** Erik chose a real
+physical inkast and a house rule for two missed tosses. Spec + plan in
+docs/superpowers/. v3 reducer with `{state, effects}`, inkast rack,
+raising, field-first, advantage line, leaning = felled, rebound raised,
+king by inkast = loss; matchSync v3, throwRelay v2. Verified with two
+headless Playwright peers driving events into the host (retry, clamp,
+field-first; identical state; sync 0 incidents). Review found one
+Critical (king judged by the phase at decision time, not when it fell)
+and two Important — all fixed. Follow-ups gh#25, gh#26. gh#18 stays open
+until Erik's 2-headset gate: a full match via `gate:report`, and
+calibrating the toss feel in `src/data/inkast.json`.
