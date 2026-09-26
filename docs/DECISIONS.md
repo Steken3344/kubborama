@@ -5163,3 +5163,19 @@ the 8 m court's far stick rack (z −9.09) and the guest's inkast rack
 (z −8.5): the scenery was laid out for the 6 m court. Also in the same
 session: the host headset slept at 19:05:03 when taken off, freezing the
 match (landing never reported) — the reason for the server plan above.
+
+## 2026-09-26 — MP5 server skeleton: choices made autonomously
+
+On Erik's "kör på" (all reversible): server code in `server/` (strict
+TS, type-checked with the app via tsconfig include); started inside the
+Vite dev server through `ssrLoadModule` so `src/core` resolves exactly
+as in the app, and attached to Vite's HTTPS server so `wss://` works on
+the LAN with the existing certificate (only `/__kubb/game` upgrades are
+taken). `ws` became a direct dependency. Opt-in per headset with
+`?server=1` (remembered; `?server=0` to leave) so the Trystero path keeps
+working while MP6 moves the rules. `welcome` carries the room's game
+mode (the first joiner's), adopted like gh#15. Side ≠ authority: sides
+A/B are assigned by the server in join order.
+Gotcha: the server module is loaded once, so server-side edits need
+`npx iwsdk dev down && npx iwsdk dev up` (a stale server sent a v0
+`welcome` that the client correctly dropped as malformed).

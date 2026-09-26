@@ -562,6 +562,25 @@ docs/superpowers/plans/2026-09-05-avatars.md · Log: docs/DECISIONS.md
       rendered in solo). Tune `avatar.json` dims if proportions look
       off. 🎧 Not self-approvable.
 
+## MP5 — Authoritative server skeleton `status: built + verified with two headless clients`
+
+Spec: docs/superpowers/specs/2026-09-26-authoritative-server-design.md
+(MP5 section). Spike (Havok in Node) GO — docs/DECISIONS.md 2026-09-26.
+
+- [x] `src/core/serverProtocol.ts` — zod WebSocket protocol both ways.
+- [x] `server/physicsWorld.ts` — Havok world from the scene JSON + court
+      preset; `server/gameServer.ts` — room, sides A/B, fixed 60 Hz,
+      20 Hz snapshots; `server/wsServer.ts` on Vite's HTTPS server at
+      `/__kubb/game`, started with `npm run dev`.
+- [x] Client `ServerLinkSystem` (`?server=1`): join, adopt the room's
+      court, side B to the far baseline, apply snapshots, send throws;
+      MultiplayerSystem keeps voice/avatars only.
+- [x] Two headless clients: identical stick positions per server tick;
+      a thrown stick rests where the spike predicted.
+- Known interim gap (MP6): rules, rounds and the match still run locally
+      in server mode. Server code changes need a dev-server restart
+      (loaded once via ssrLoadModule).
+
 ## MP4 — Field kubbs `status: built + verified with two headless peers; awaiting Erik's 2-headset gate`
 
 Spec: docs/superpowers/specs/2026-09-26-field-kubbs-design.md · Plan:
