@@ -26,7 +26,12 @@ import {
   withKubbFelled,
   withTurnAdvanced,
 } from '../core/match.js';
-import type { MatchSide, MatchState, MatchStep } from '../core/match.js';
+import type {
+  MatchPhase,
+  MatchSide,
+  MatchState,
+  MatchStep,
+} from '../core/match.js';
 import type { CourtPoint } from '../core/inkast.js';
 import type { Quat } from '../core/quat.js';
 import type { Vec3 } from '../core/vec3.js';
@@ -264,6 +269,8 @@ export class MultiplayerSystem extends createSystem({}) {
    * toppled by the same stick must get counted first (spec review I1).
    * null = no decision pending. */
   private kingFelledAtS: number | null = null;
+  /** MP4: the match phase when the king fell (see withKingFelled). */
+  private kingFelledPhase: MatchPhase = 'throwing';
 
   // Reused every send tick instead of allocated fresh — see
   // .claude/rules (never allocate in update()); the throttled ~20Hz
@@ -449,6 +456,7 @@ export class MultiplayerSystem extends createSystem({}) {
           // The event's own timestamp — same elics clock as update()'s
           // `time`, and current rather than last frame's.
           this.kingFelledAtS = event.timeS;
+          this.kingFelledPhase = this.matchState.phase;
         }
       }),
       // No RoundEnded subscription on purpose — the turn advance rides
@@ -1012,7 +1020,7 @@ export class MultiplayerSystem extends createSystem({}) {
    * turn. Same-reference return from the reducer means nothing to do. */
   private applyPendingKingDecision(): void {
     this.kingFelledAtS = null;
-    const next = withKingFelled(this.matchState);
+    const next = withKingFelled(this.matchState, this.kingFelledPhase);
     if (next === this.matchState) {
       return;
     }

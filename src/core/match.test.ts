@@ -241,6 +241,14 @@ describe('withKingFelled (rules 4, 9)', () => {
     const s = withKingFelled(guestWithTwoFieldKubbs());
     expect(s.endReason).toBe('kingFelledEarly');
   });
+  it('judges by the phase the king fell in, not the phase at decision time', () => {
+    // The last tossed kubb can land (phase → throwing) before the king's
+    // deferred decision is applied — the decision must still be rule 4.
+    const s = initialMatchState(); // phase 'throwing' now
+    const lost = withKingFelled(s, 'inkast');
+    expect(lost.endReason).toBe('kingFelledByInkast');
+    expect(lost.winner).toBe('guest');
+  });
   it('a king felled during the inkast is a loss for the tosser', () => {
     const s = withTurnAdvanced(fell(initialMatchState(), 'kubb-0'));
     const lost = withKingFelled(s);

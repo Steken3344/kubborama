@@ -64,7 +64,15 @@ export class ToppleSystem extends createSystem({
   private isPastStartupGrace = createStartupGate(pieces.throw.startupGraceS);
 
   init(): void {
-    this.unsubscribeReset = gameEvents.on('Reset', () => {
+    this.unsubscribeReset = gameEvents.on('Reset', (e) => {
+      // MP4: a round-end reset in a match moves only the sticks — the
+      // felled kubbs are still lying there (about to join the inkast
+      // rack), and forgetting them would make them topple "again" (on
+      // the guest, until the host's matchSync racks them). Raised kubbs
+      // re-arm by being seen upright instead (maybeRearm).
+      if (e.cause === 'roundEnd' && matchActivity.current.active) {
+        return;
+      }
       this.restAccumS.clear();
       this.felledReported.clear();
     });

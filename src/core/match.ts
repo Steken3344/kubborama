@@ -310,14 +310,19 @@ export function withInkastLanded(
 
 /** Rules 4 and 9. The thrower is `currentTurn` (locomotion is off and
  * sticks live at exactly one rack per turn); during the inkast the
- * thrower IS the tosser. */
-export function withKingFelled(state: MatchState): MatchState {
+ * thrower IS the tosser. `phaseWhenFelled` is the phase at the moment
+ * the king fell: the host defers the decision, and the last tossed kubb
+ * can land (phase → throwing) inside that grace (review, 2026-09-26). */
+export function withKingFelled(
+  state: MatchState,
+  phaseWhenFelled: MatchPhase = state.phase,
+): MatchState {
   if (isFinished(state)) {
     return state;
   }
   const thrower = state.currentTurn;
   const opponent = otherSide(thrower);
-  if (state.phase === 'inkast') {
+  if (phaseWhenFelled === 'inkast') {
     return { ...state, winner: opponent, endReason: 'kingFelledByInkast' };
   }
   const cleared = standingKubbs(state)[opponent] === 0;

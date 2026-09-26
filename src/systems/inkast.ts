@@ -142,6 +142,9 @@ export class InkastSystem extends createSystem({
       state !== null && !isFinished(state) && state.phase === 'inkast';
     inkastLock.current.active = inkastActive;
     for (const stick of this.queries.sticks.entities) {
+      if (stick.hasComponent(Grabbed)) {
+        continue; // off-turn holding isn't blocked — don't yank it
+      }
       setGrabbable(stick, !inkastActive);
     }
     const tossable = new Set(
