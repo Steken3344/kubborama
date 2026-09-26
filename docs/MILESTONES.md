@@ -530,6 +530,13 @@ docs/superpowers/plans/2026-09-05-match-rules.md · Log: docs/DECISIONS.md
 - Filed: gh#15 host/guest game-mode mismatch, gh#16 relayed-throw stats
   pollution.
 
+- Gate run (2026-09-26): use `npm run gate:new` then
+  `npm run gate:report -- --watch` (README "Gate report") — every item
+  above except the visual ones is answered from the debug log; Erik
+  only plays and answers the EYES questions. Already PASS from a
+  headless two-peer session: gh15-adopt, gh15-release, score/sync
+  agreement, avatars on both, arm end at the mitten.
+
 ## MP3b — Avatars `status: built + emulator-verified (asset renders, no errors); awaiting Erik's 2-headset gate`
 
 Spec: docs/superpowers/specs/2026-09-05-avatars-design.md · Plan:

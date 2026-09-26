@@ -5058,3 +5058,31 @@ test URL) were unavailable. Erik stopped the headset session: testing
 alone with sleeping headsets and typing long URLs is too costly. The
 Quest keyboard also turned `erik-test` into `erik—test` (em dash) —
 use room names without punctuation.
+
+## 2026-09-26 — Gate report: the headset log answers the checklist
+
+Erik: "måste få ut mer av loggarna, kan inte testa så här" — playing,
+watching and reporting at once, alone, is not workable. Built (spec
+docs/superpowers/specs/2026-09-26-gate-report-design.md): debug-only
+`gate` log channel with probes (most in the event-driven
+`systems/gateProbe.ts`, one-liners where the fact lives), a 1 Hz
+`sync snapshot` per client, and `npm run gate:report` whose pure rules
+(`scripts/gate/checks.mjs`, vitest) print PASS / FAIL / NOT SEEN / EYES
+per checklist item. Statuses are English (project language rule), not
+the Swedish words in the first spec draft.
+
+- GateProbeSystem must be registered AFTER MultiplayerSystem: the
+  host's king decision can land inside the Reset{roundEnd} cascade, and
+  the probe's own Reset handler zeroes the stick count.
+- `?room=` / `?debug=1` are now persisted settings (`roomId`,
+  `debugRelay`), so a bookmark of the bare LAN URL is enough.
+- Verified without headsets: two headless Playwright clients in one
+  room (host Simple, guest Advanced) → PASS gh15-adopt, gh15-release
+  (guest's court relaid to Advanced after the host left), score/sync
+  agreement (6 pairs, 0 incidents), avatars on both, arm end at the
+  mitten. Headless tabs are throttled (snapshots every ~2.3 s instead
+  of 1 s) and Trystero needs ~20 s to notice a closed peer.
+- Observation, not a failure: `avatar fit` shows ~8 rad/s torso yaw in
+  the first second after an avatar appears (smoothing converging from
+  yaw 0 to the peer's real heading). The torso check only applies to
+  full look-ups (pitch ≥ 1.0 rad), so it does not count.

@@ -100,6 +100,22 @@ Every line carries the client id and its host/guest role, so two headsets
 posting to the same server interleave into one timeline. Debug mode also
 turns on a below-ground stick watchdog and per-second network counters.
 
+`?room=<name>` and `?debug=1` are **remembered** after one visit, so a
+bookmark of the bare LAN URL (`https://<LAN-IP>:<port>`) rejoins the same
+room with debug on. Use a room name without punctuation (the Quest
+keyboard turns `-` into `—`); `?room=kubborama-lobby` returns to the
+public lobby.
+
+### Gate report (headset tests without watching)
+
+1. `npm run gate:new` — archive the old log so the session starts empty.
+2. Both headsets open the bookmark and just play.
+3. `npm run gate:report -- --watch` — the gate checklist (MP3a, MP3b,
+   gh#15/#16) as PASS / FAIL / NOT SEEN, updated live, with the log line
+   that proves each verdict and a host/guest sync check. Only the EYES
+   items at the bottom need a human answer. `--since HH:MM` limits it to
+   part of the file.
+
 ## Project layout
 
 See the generated `CLAUDE.md` for IWSDK-specific project conventions
