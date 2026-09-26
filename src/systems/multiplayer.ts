@@ -303,7 +303,7 @@ export class MultiplayerSystem extends createSystem({}) {
       this.stickNearRackHomePoses.set(`stick-${i}`, localPoseOf(object3D));
     }
 
-    const roomId = this.roomIdFromUrl();
+    const roomId = this.roomId();
     this.room = joinRoom({ appId: multiplayer.appId }, roomId);
     this.presenceAction = this.room.makeAction<PresenceMessage>('presence');
     this.presenceAction.onMessage = (data, { peerId }) => {
@@ -1105,9 +1105,9 @@ export class MultiplayerSystem extends createSystem({}) {
     this.remoteAudioElements.delete(peerId);
   }
 
-  private roomIdFromUrl(): string {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('room') || multiplayer.defaultRoomId;
+  /** `?room=` is persisted by SettingsSystem at boot (registered first). */
+  private roomId(): string {
+    return settingsState.current.roomId ?? multiplayer.defaultRoomId;
   }
 
   private sendPresence(): void {

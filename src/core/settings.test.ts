@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { decodeSettings, defaultSettings, encodeSettings } from './settings.js';
+import {
+  decodeSettings,
+  defaultSettings,
+  encodeSettings,
+  urlSettingOverrides,
+} from './settings.js';
 
 describe('defaultSettings', () => {
   it('starts in Swedish, simple mode, haptics on, no profile name yet', () => {
@@ -45,5 +50,31 @@ describe('encode/decode', () => {
     expect(decoded.avatarColorIndex).toBe(0);
     const negative = { ...defaultSettings(), avatarColorIndex: -1 };
     expect(decodeSettings(JSON.stringify(negative))).toEqual(defaultSettings());
+  });
+});
+
+describe('roomId migration', () => {
+  it('decodes a pre-roomId settings JSON, keeping its values', () => {
+    const old: Record<string, unknown> = {
+      ...defaultSettings(),
+      language: 'en',
+    };
+    delete old['roomId'];
+    const decoded = decodeSettings(JSON.stringify(old));
+    expect(decoded.language).toBe('en');
+    expect(decoded.roomId).toBeNull();
+  });
+});
+
+describe('urlSettingOverrides', () => {
+  it('reads room and debug', () => {
+    expect(urlSettingOverrides('?room=eriktest&debug=1')).toEqual({
+      roomId: 'eriktest',
+      debugRelay: true,
+    });
+  });
+  it('ignores an empty or overlong room and debug other than 1', () => {
+    expect(urlSettingOverrides('?room=&debug=0')).toEqual({});
+    expect(urlSettingOverrides(`?room=${'x'.repeat(65)}`)).toEqual({});
   });
 });

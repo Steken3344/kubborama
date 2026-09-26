@@ -5,6 +5,7 @@ import {
   decodeSettings,
   defaultSettings,
   encodeSettings,
+  urlSettingOverrides,
 } from '../core/settings.js';
 import type { Settings } from '../core/settings.js';
 import { disableDebugRelay, enableDebugRelay } from '../debug/debugRelay.js';
@@ -49,6 +50,13 @@ export class SettingsSystem extends createSystem({}) {
 
   init(): void {
     settingsState.current = loadSettings();
+    // `?room=` / `?debug=1` are remembered (gate report spec §4), so the
+    // bare LAN URL works after one visit.
+    const overrides = urlSettingOverrides(window.location.search);
+    if (Object.keys(overrides).length > 0) {
+      settingsState.current = { ...settingsState.current, ...overrides };
+      this.persist();
+    }
     refreshTranslator();
     // Debug mode persisted from the settings tab — a no-op in the
     // production build (see src/debug/debugRelay.ts).

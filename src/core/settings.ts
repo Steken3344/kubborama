@@ -6,6 +6,8 @@ export const SETTINGS_SCHEMA_VERSION = 1;
  * carries the sender's mode so a guest can adopt the host's court. */
 export const gameModeSchema = z.enum(['simple', 'advanced']);
 
+const roomIdSchema = z.string().min(1).max(64);
+
 const settingsSchema = z.object({
   version: z.literal(SETTINGS_SCHEMA_VERSION),
   language: z.enum(['sv', 'en']),
@@ -36,6 +38,10 @@ const settingsSchema = z.object({
    * (src/debug/debugRelay.ts). A no-op in the production build, so a
    * persisted `true` is harmless there; `.default(false)` for migration. */
   debugRelay: z.boolean().default(false),
+  /** Multiplayer room remembered from `?room=` (gate report spec §4):
+   * after one visit the bare LAN URL rejoins it. null = the public
+   * lobby (config). `.default(null)` for migration. */
+  roomId: roomIdSchema.nullable().default(null),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -53,6 +59,7 @@ export function defaultSettings(): Settings {
     micMuted: true,
     avatarColorIndex: 0,
     debugRelay: false,
+    roomId: null,
   };
 }
 
@@ -71,4 +78,18 @@ export function decodeSettings(json: string): Settings {
   }
   const result = settingsSchema.safeParse(parsed);
   return result.success ? result.data : defaultSettings();
+}
+
+/** `?room=<id>` and `?debug=1` from a URL search string — the values
+ * SettingsSystem persists at boot. Invalid values are ignored. */
+export function urlSettingOverrides(search: string): {
+  roomId?: string;
+  debugRelay?: true;
+} {
+  const params = new URLSearchParams(search);
+  const room = roomIdSchema.safeParse(params.get('room') ?? '');
+  return {
+    ...(room.success ? { roomId: room.data } : {}),
+    ...(params.get('debug') === '1' ? { debugRelay: true as const } : {}),
+  };
 }

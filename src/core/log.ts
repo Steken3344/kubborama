@@ -17,7 +17,8 @@ export type LogChannel =
   | 'settings'
   | 'match'
   | 'avatar'
-  | 'debug';
+  | 'debug'
+  | 'gate';
 
 export interface LogEntry {
   level: LogLevel;
