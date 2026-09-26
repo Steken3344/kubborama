@@ -5093,3 +5093,31 @@ the Swedish words in the first spec draft.
   not PASS, when both headsets already had the same mode; the sin-bin
   rule keys on role so a mid-match reload is still compared;
   `gh15-release` checks the restored mode; new `same-room` check.
+
+## 2026-09-26 — MP4 field kubbs (gh#18)
+
+Erik's choices: the inkast is a real physical toss; a kubb that misses
+twice follows a house rule (moved just inside the target half and
+raised) instead of the official opponent placement. Built per
+docs/superpowers/specs/2026-09-26-field-kubbs-design.md.
+
+- **Reducer returns `{ state, effects }`.** Rules that move bodies
+  without changing the state (an early baseline kubb, a rebound, an
+  inkast hit) cannot be derived from a state diff on the guest, so the
+  host applies effects (`MatchEffects` → MatchRulesSystem) and the guest
+  follows pieceSync. Only the inkast rack is placed from the state diff
+  on both clients (immediate feedback).
+- **Re-arm by observation.** ToppleSystem forgets a felled piece once it
+  is seen upright and at rest again — works on both clients with no
+  extra event, and covers every way a kubb gets raised.
+- **Sticks are locked during the inkast** (grab component removed,
+  StickPull paused) so RoundSystem's six-stick round never contains a
+  toss; the toss is not a `Thrown` and not a `ThrowRelayed`.
+- A round-end reset in a match now moves **only sticks**; kubbs stay
+  where they are (field, lying felled, rack).
+- The HUD's A–B felled score became "standing kubbs per half"; the gate
+  report's `mp3a-sinbin` item is replaced by the mp4-* items.
+- Verified with two headless Playwright peers, driving events into the
+  host through Vite's module URLs (`import('/src/core/events.ts')` from
+  the page gives the app's own bus) — a cheap way to exercise
+  multiplayer rule paths without headsets.

@@ -493,7 +493,7 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
 - Review gate → tagged v0.7-m6 (2026-09-05) ✅ → **POC COMPLETE 🎉** — every
   M0-M6 milestone is tagged; MP1-MP3 multiplayer continues on top of it.
 
-## MP3a — Match rules `status: built + emulator-verified (solo paths); awaiting Erik's 2-headset gate`
+## MP3a — Match rules `status: superseded by MP4 (sin-bin replaced by field kubbs); king/score/restart/reset items still gated`
 
 Spec: docs/superpowers/specs/2026-09-05-match-rules-design.md · Plan:
 docs/superpowers/plans/2026-09-05-match-rules.md · Log: docs/DECISIONS.md
@@ -561,6 +561,31 @@ docs/superpowers/plans/2026-09-05-avatars.md · Log: docs/DECISIONS.md
       not twitch the torso; the two-span score row lays out (never
       rendered in solo). Tune `avatar.json` dims if proportions look
       off. 🎧 Not self-approvable.
+
+## MP4 — Field kubbs `status: built + verified with two headless peers; awaiting Erik's 2-headset gate`
+
+Spec: docs/superpowers/specs/2026-09-26-field-kubbs-design.md · Plan:
+docs/superpowers/plans/2026-09-26-field-kubbs.md · gh#18 (with §3.4
+leaning = felled, §3.6 rebound raised, §3.7 king by inkast).
+
+- [x] Pure reducer v3 (`core/match.ts`: phase, baseline/field kubbs,
+      inkast queue, `{state, effects}`) + `core/inkast.ts` geometry;
+      matchSync v3, throwRelay v2 (`pieceId`). Replaces MP3a's sin-bin.
+- [x] Host applies steps and emits `MatchEffects`; MatchRulesSystem
+      stands the inkast rack and raises / restores / re-racks kubbs;
+      ToppleSystem: leaning (20°) = felled in a match, re-arm when
+      upright again.
+- [x] InkastSystem: physical toss (grab + shared release maths), sticks
+      locked during the inkast, guest toss relayed, host detects landing.
+- [x] Advantage line (shown, not enforced; sticks moved onto it); HUD
+      standing kubbs per half + "Inkast: N kvar".
+- [x] Two headless peers (events driven into the host): missed toss →
+      back to rack, second miss clamped in, legal landing raised, early
+      baseline kubb restored; identical state on both, sync 0 incidents.
+- [ ] **GATE (Erik, 2 headsets, `gate:report`)**: a full match with
+      field kubbs. Calibrate the toss feel (`src/data/inkast.json`
+      `tossVelocityMultiplier` / `tossAngularMultiplier`) — EYES item.
+      Watch the report's mp4-* items. 🎧 Not self-approvable.
 
 ## M7 — MP1 co-presence (multiplayer) `status: MP1+MP2 confirmed live end-to-end with 2 real headsets (2026-09-02); post-review hardening done`
 

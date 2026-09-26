@@ -35,6 +35,9 @@ turn structure is faithful for the **baseline-only** phase of a game.
 
 ## 2. The big gap: no field kubbs (fältkubbar / inkast)
 
+> **Implemented 2026-09-26 as MP4** (docs/superpowers/specs/2026-09-26-field-kubbs-design.md),
+> with a house rule instead of opponent placement after two missed tosses.
+
 In real kubb a felled baseline kubb is NOT removed from play. At the start
 of the next turn the team that lost it **tosses it underhand from behind
 its own baseline onto the opponent's half** (the "inkast"). The receiving
