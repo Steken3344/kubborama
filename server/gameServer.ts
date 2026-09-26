@@ -16,6 +16,9 @@ import type { PhysicsWorld } from './physicsWorld.js';
 /** Fixed simulation rate and the snapshot rate derived from it. */
 export const TICK_HZ = 60;
 export const SNAPSHOT_EVERY_TICKS = 3; // → 20 Hz, like the Trystero pieceSync
+/** At most this many throws per client per second — six sticks is a
+ * whole turn; anything faster is a flood (review, 2026-09-26). */
+const MAX_THROWS_PER_SECOND = 6;
 
 /** What the transport (wsServer.ts, or a test) gives the game server. */
 export interface ClientConnection {
@@ -25,8 +28,9 @@ export interface ClientConnection {
 
 /** What the game server gives back for each connection. */
 export interface ClientHandle {
-  /** One decoded JSON message from the client (untrusted). */
-  receive(data: unknown): Promise<void>;
+  /** One decoded JSON message from the client (untrusted). Resolves to
+   * whether it was accepted and acted on. */
+  receive(data: unknown): Promise<boolean>;
   /** The connection went away. */
   close(): void;
 }
@@ -34,6 +38,8 @@ export interface ClientHandle {
 interface Player {
   connection: ClientConnection;
   side: MatchSide;
+  /** Times (ms) of this player's recent accepted throws. */
+  recentThrowsMs: number[];
 }
 
 const SIDES: readonly MatchSide[] = ['host', 'guest'];
@@ -49,6 +55,8 @@ const SIDES: readonly MatchSide[] = ['host', 'guest'];
  * Match rules arrive in MP6.
  */
 export class GameServer {
+  constructor(private readonly nowMs: () => number = () => performance.now()) {}
+
   private players = new Map<ClientConnection, Player>();
   private world: PhysicsWorld | null = null;
   private worldPromise: Promise<PhysicsWorld> | null = null;
@@ -108,40 +116,55 @@ export class GameServer {
   private async onMessage(
     connection: ClientConnection,
     data: unknown,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const message = parseClientMessage(data);
     if (!message) {
       if (isJoinWithOtherProtocol(data)) {
         connection.send({ type: 'rejected', reason: 'protocol' });
         connection.close();
       }
-      return;
+      return false;
     }
     if (message.type === 'join') {
-      await this.onJoin(connection, message);
-      return;
+      return this.onJoin(connection, message);
     }
-    if (!this.players.has(connection) || !this.world) {
-      return; // only joined players act
+    const player = this.players.get(connection);
+    if (!player || !this.world) {
+      return false; // only joined players act
     }
-    this.world.applyThrow(message);
+    // MP5: only sticks are thrown (kubb tosses join with MP6's inkast);
+    // turn ownership is MP6's match rules.
+    if (!message.pieceId.startsWith('stick-') || !this.allowThrow(player)) {
+      return false;
+    }
+    return this.world.applyThrow(message);
+  }
+
+  private allowThrow(player: Player): boolean {
+    const now = this.nowMs();
+    player.recentThrowsMs = player.recentThrowsMs.filter((t) => now - t < 1000);
+    if (player.recentThrowsMs.length >= MAX_THROWS_PER_SECOND) {
+      return false;
+    }
+    player.recentThrowsMs.push(now);
+    return true;
   }
 
   private async onJoin(
     connection: ClientConnection,
     message: Extract<ClientMessage, { type: 'join' }>,
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (this.players.has(connection)) {
-      return;
+      return false;
     }
     const taken = new Set([...this.players.values()].map((p) => p.side));
     const side = SIDES.find((s) => !taken.has(s));
     if (!side) {
       connection.send({ type: 'rejected', reason: 'full' });
       connection.close();
-      return;
+      return false;
     }
-    this.players.set(connection, { connection, side });
+    this.players.set(connection, { connection, side, recentThrowsMs: [] });
     await this.ensureWorld(message.gameMode);
     connection.send({
       type: 'welcome',
@@ -150,6 +173,7 @@ export class GameServer {
       gameMode: this.gameMode,
     });
     this.broadcast({ type: 'peers', count: this.players.size });
+    return true;
   }
 
   private async ensureWorld(gameMode: Settings['gameMode']): Promise<void> {
@@ -157,7 +181,13 @@ export class GameServer {
       this.gameMode = gameMode;
       this.worldPromise = createPhysicsWorld(courtPresetForMode(gameMode));
     }
-    this.world = await this.worldPromise;
+    const pending = this.worldPromise;
+    const world = await pending;
+    // The room may have emptied (and a new world been started) while
+    // this one was building — only the CURRENT promise may install.
+    if (this.worldPromise === pending) {
+      this.world = world;
+    }
   }
 
   private onClose(connection: ClientConnection): void {

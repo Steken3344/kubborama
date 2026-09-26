@@ -66,3 +66,25 @@ describe('serverProtocol', () => {
     ).toBeNull();
   });
 });
+
+describe('serverProtocol — magnitudes (review)', () => {
+  it('rejects absurd velocities and positions far off the court', () => {
+    expect(
+      parseClientMessage({
+        type: 'throw',
+        ...pose,
+        linearVelocity: [0, 0, -1e12],
+      }),
+    ).toBeNull();
+    expect(
+      parseClientMessage({
+        type: 'throw',
+        ...pose,
+        angularVelocity: [500, 0, 0],
+      }),
+    ).toBeNull();
+    expect(
+      parseClientMessage({ type: 'throw', ...pose, position: [0, 1, -500] }),
+    ).toBeNull();
+  });
+});

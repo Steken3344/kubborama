@@ -11,8 +11,15 @@ export function startDevGameServer(
   httpServer: HttpServer | Http2SecureServer,
 ): GameServer {
   const game = new GameServer();
-  attachGameWebSocket(httpServer, game);
+  const wss = attachGameWebSocket(httpServer, game);
   game.start();
+  // Vite restarts (config edits) close this httpServer and build a new
+  // one — stop this instance with it, or its timer and world would keep
+  // running forever (review, 2026-09-26).
+  httpServer.once('close', () => {
+    game.stop();
+    wss.close();
+  });
   console.log(`[kubb-server] game server listening on ${SERVER_PATH}`);
   return game;
 }

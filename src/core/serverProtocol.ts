@@ -15,6 +15,14 @@ export const SERVER_PATH = '/__kubb/game';
 
 const finite = z.number().finite();
 const vec3 = z.tuple([finite, finite, finite]);
+/** Bounded components (review, 2026-09-26): a finite-but-absurd value
+ * would still destabilise the shared Havok world for every player. The
+ * whole scene fits in ±20 m; a strong real throw is ~12 m/s and
+ * ~40 rad/s. */
+const bounded = (limit: number) => z.number().min(-limit).max(limit);
+const positionVec = z.tuple([bounded(20), bounded(20), bounded(20)]);
+const linearVec = z.tuple([bounded(30), bounded(30), bounded(30)]);
+const angularVec = z.tuple([bounded(100), bounded(100), bounded(100)]);
 const quat = z.tuple([finite, finite, finite, finite]);
 // Scene ids are short (`stick-5`, `kubb-9`, `king`); a long one is garbage.
 const pieceId = z.string().min(1).max(32);
@@ -30,10 +38,10 @@ const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('throw'),
     pieceId,
-    position: vec3,
+    position: positionVec,
     quaternion: quat,
-    linearVelocity: vec3,
-    angularVelocity: vec3,
+    linearVelocity: linearVec,
+    angularVelocity: angularVec,
   }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessageSchema>;

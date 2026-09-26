@@ -81,3 +81,12 @@ double jump. Three options, pick one when it bothers you in the headset:
    is the floor.
 
 Suggested default: 1 until it is actually noticed in play.
+
+## MP6: should a headset that reloads mid-match get its side back?
+
+Today (MP5) the game server assigns side A/B purely by join order, so a
+headset that reloads during a match can come back on the other side.
+Once MP6 gives sides meaning (score, inkast queue), options: (1) the
+server remembers a per-browser id (localStorage) and returns the same
+side for N minutes — recommended; (2) the free side is always taken
+(today's behaviour); (3) the match pauses until the same id rejoins.

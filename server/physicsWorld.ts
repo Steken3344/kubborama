@@ -50,6 +50,7 @@ interface SceneNode {
       state?: string;
       linearDamping?: number;
       angularDamping?: number;
+      gravityFactor?: number;
     };
   };
 }
@@ -60,7 +61,8 @@ const DEFAULTS = {
   friction: 0.5,
   restitution: 0,
   linearDamping: 0,
-  angularDamping: 0.1,
+  angularDamping: 0,
+  gravityFactor: 1,
 };
 
 export interface ThrowInput {
@@ -189,7 +191,10 @@ export async function createPhysicsWorld(
       body,
       bodyDef.angularDamping ?? DEFAULTS.angularDamping,
     );
-    hk.HP_Body_SetGravityFactor(body, 1);
+    hk.HP_Body_SetGravityFactor(
+      body,
+      bodyDef.gravityFactor ?? DEFAULTS.gravityFactor,
+    );
     const mass = hk.HP_Shape_BuildMassProperties(shape);
     hk.HP_Body_SetMassProperties(
       body,
@@ -201,7 +206,9 @@ export async function createPhysicsWorld(
       body,
       bodyDef.state === 'DYNAMIC'
         ? hk.MotionType.DYNAMIC
-        : hk.MotionType.STATIC,
+        : bodyDef.state === 'KINEMATIC'
+          ? hk.MotionType.KINEMATIC
+          : hk.MotionType.STATIC,
     );
     hk.HP_World_AddBody(world, body, false);
     bodies.set(node.id, body);
@@ -226,10 +233,15 @@ export async function createPhysicsWorld(
     },
     applyThrow(input) {
       const body = bodies.get(input.pieceId);
-      if (!body) {
+      const [qx, qy, qz, qw] = input.quaternion;
+      const qLength = Math.hypot(qx, qy, qz, qw);
+      if (!body || qLength < 1e-6) {
         return false;
       }
-      hk.HP_Body_SetQTransform(body, [input.position, input.quaternion]);
+      hk.HP_Body_SetQTransform(body, [
+        input.position,
+        [qx / qLength, qy / qLength, qz / qLength, qw / qLength],
+      ]);
       hk.HP_Body_SetLinearVelocity(body, input.linearVelocity);
       hk.HP_Body_SetAngularVelocity(body, input.angularVelocity);
       return true;

@@ -114,3 +114,41 @@ describe('GameServer (MP5)', () => {
     expect(stick?.position[1]).toBeGreaterThan(0.5);
   });
 });
+
+describe('GameServer — untrusted clients (review)', () => {
+  const throwOf = (pieceId: string) => ({
+    type: 'throw',
+    pieceId,
+    position: [0.2, 1, -0.3],
+    quaternion: [0, 0, 0, 1],
+    linearVelocity: [0, 3.2, -6],
+    angularVelocity: [-22, 0, 0],
+  });
+  const kingZ = (server: GameServer, a: ReturnType<typeof fakeClient>) => {
+    for (let i = 0; i < 3; i++) server.tick();
+    const last = a.received.filter((m) => m.type === 'snapshot').at(-1);
+    return last?.type === 'snapshot'
+      ? last.pieces.find((p) => p.id === 'king')?.position[2]
+      : undefined;
+  };
+  it('only sticks can be thrown (no teleporting the king)', async () => {
+    const server = new GameServer();
+    const a = fakeClient();
+    const ha = server.connect(a.connection);
+    await ha.receive(join());
+    const before = kingZ(server, a);
+    await ha.receive(throwOf('king'));
+    expect(kingZ(server, a)).toBeCloseTo(before ?? 0, 3);
+  });
+  it('limits how many throws one client may send per second', async () => {
+    const server = new GameServer();
+    const a = fakeClient();
+    const ha = server.connect(a.connection);
+    await ha.receive(join());
+    let applied = 0;
+    for (let i = 0; i < 50; i++) {
+      if (await ha.receive(throwOf('stick-1'))) applied += 1;
+    }
+    expect(applied).toBeLessThanOrEqual(6);
+  });
+});
