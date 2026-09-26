@@ -89,19 +89,6 @@ describe('runChecks', () => {
     expect(status([early, win], 'mp3a-king-6th')).toBe('PASS');
     expect(status([win], 'mp3a-king-6th')).toBe('NOT SEEN');
   });
-  it('mp3a-sinbin: FAILs when a sin-bin kubb moves or vanishes within a match', () => {
-    const a = g('host', 'sin-bin after round', {
-      kubbs: { 'kubb-1': [2, 0.15, 1] },
-    });
-    const same = g('host', 'sin-bin after round', {
-      kubbs: { 'kubb-1': [2, 0.15, 1], 'kubb-2': [2.3, 0.15, 1] },
-    });
-    const gone = g('host', 'sin-bin after round', { kubbs: {} });
-    expect(status([a, same], 'mp3a-sinbin')).toBe('PASS');
-    expect(status([a, gone], 'mp3a-sinbin')).toBe('FAIL');
-    const fresh = g('host', 'match state', { fresh: true });
-    expect(status([a, fresh, gone], 'mp3a-sinbin')).toBe('NOT SEEN');
-  });
   it('mp3a-restart: PASS in [9, 12] s followed by a fresh host turn', () => {
     const r = g('host', 'match restart', { secondsSinceFinished: 10.02 });
     const fresh = g('host', 'match state', { fresh: true, turn: 'host' });
@@ -203,17 +190,6 @@ describe('review fixes', () => {
     expect(status([adopted, good], 'gh15-release')).toBe('PASS');
     expect(status([adopted, bad], 'gh15-release')).toBe('FAIL');
   });
-  it('mp3a-sinbin still compares across a reload (new client id, same role)', () => {
-    const a = g(
-      'host',
-      'sin-bin after round',
-      { kubbs: { 'kubb-1': [2, 0.15, 1] } },
-      100,
-      'aaa',
-    );
-    const gone = g('host', 'sin-bin after round', { kubbs: {} }, 100, 'bbb');
-    expect(status([a, gone], 'mp3a-sinbin')).toBe('FAIL');
-  });
   it('same-room FAILs when clients joined different rooms', () => {
     const j = (client, roomId) => ({
       level: 'info',
@@ -228,5 +204,51 @@ describe('review fixes', () => {
     expect(status([j('a', 'x'), j('b', 'x')], 'same-room')).toBe('PASS');
     expect(status([j('a', 'x'), j('b', 'y')], 'same-room')).toBe('FAIL');
     expect(status([j('a', 'x')], 'same-room')).toBe('NOT SEEN');
+  });
+});
+
+describe('MP4 field kubbs', () => {
+  const landed = (legal, attempt, kubbId = 'kubb-0') =>
+    g('host', 'inkast landed', { kubbId, legal, attempt });
+  const raised = (reason, kubbId = 'kubb-0') =>
+    g('host', 'kubb raised', { kubbId, reason });
+  it('mp4-inkast-legal: a legal landing is raised as a field kubb', () => {
+    expect(
+      status([landed(true, 1), raised('inkast')], 'mp4-inkast-legal'),
+    ).toBe('PASS');
+    expect(status([landed(true, 1)], 'mp4-inkast-legal')).toBe('FAIL');
+    expect(status([], 'mp4-inkast-legal')).toBe('NOT SEEN');
+  });
+  it('mp4-inkast-retry: a first miss goes back to the rack', () => {
+    const miss = landed(false, 1);
+    const back = g('host', 'kubb returned to rack', { kubbId: 'kubb-0' });
+    expect(status([miss, back], 'mp4-inkast-retry')).toBe('PASS');
+    expect(status([landed(false, 1)], 'mp4-inkast-retry')).toBe('FAIL');
+  });
+  it('mp4-inkast-clamp: a second miss is clamped in and raised', () => {
+    expect(
+      status([landed(false, 2), raised('inkastClamped')], 'mp4-inkast-clamp'),
+    ).toBe('PASS');
+    expect(
+      status([landed(false, 2), raised('inkast')], 'mp4-inkast-clamp'),
+    ).toBe('FAIL');
+  });
+  it('mp4-field-first, mp4-rebound, mp4-advantage', () => {
+    expect(status([raised('earlyBaseline', 'kubb-7')], 'mp4-field-first')).toBe(
+      'PASS',
+    );
+    expect(status([], 'mp4-field-first')).toBe('NOT SEEN');
+    expect(status([raised('rebound', 'kubb-6')], 'mp4-rebound')).toBe('PASS');
+    const line = (z) => g('host', 'advantage line', { side: 'host', z });
+    expect(status([line(null)], 'mp4-advantage')).toBe('NOT SEEN');
+    expect(status([line(-3)], 'mp4-advantage')).toBe('PASS');
+  });
+  it('sync compares the phase', () => {
+    const e = [];
+    for (let i = 0; i < 4; i++) {
+      e.push(snap('host', { phase: 'inkast' }));
+      e.push(snap('guest', { phase: 'throwing' }));
+    }
+    expect(syncPairs(e).incidents.map((i) => i.field)).toContain('phase');
   });
 });

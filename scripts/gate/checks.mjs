@@ -6,7 +6,6 @@ export const THRESHOLDS = {
   pairWindowMs: 1500,
   incidentMinPairs: 3,
   positionToleranceM: 0.15,
-  sinBinToleranceM: 0.1,
   restartMinS: 9,
   restartMaxS: 12,
   lookUpPitchRad: 1.0,
@@ -70,42 +69,69 @@ function within(entries, from, predicate) {
 const freshState = (e) =>
   e.channel === 'gate' && e.message === 'match state' && e.data.fresh;
 
-function sinBinCheck(entries) {
-  const id = 'mp3a-sinbin';
-  const label = 'felled kubbs stay in the sin-bin across rounds';
-  // Keyed by ROLE, not client id: a headset that reloads mid-match gets a
-  // new client id but keeps its side, and must still be compared.
-  const prevByRole = new Map();
-  let compared = 0;
-  for (const e of entries) {
-    if (freshState(e)) {
-      prevByRole.delete(e.role);
-      continue;
-    }
-    if (e.channel !== 'gate' || e.message !== 'sin-bin after round') continue;
-    if (e.role === 'solo') continue;
-    const prev = prevByRole.get(e.role);
-    prevByRole.set(e.role, e.data.kubbs);
-    if (!prev || Object.keys(prev).length === 0) continue;
-    compared += 1;
-    for (const [kubb, p] of Object.entries(prev)) {
-      const q = e.data.kubbs[kubb];
-      const moved =
-        !q ||
-        Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) >
-          THRESHOLDS.sinBinToleranceM;
-      if (moved)
-        return verdict(
-          id,
-          label,
-          'FAIL',
-          `${kubb} ${q ? 'moved' : 'left the sin-bin'}: ${fmt(e)}`,
-        );
-    }
-  }
-  return compared === 0
-    ? verdict(id, label, 'NOT SEEN')
-    : verdict(id, label, 'PASS', `${compared} round transitions`);
+/** MP4: an inkast landing followed (within followUpMs) by what the
+ * reducer should have done with it. */
+function fieldKubbChecks(entries) {
+  const landings = gate(entries, 'inkast landed');
+  const raised = (reason) => (e) =>
+    e.channel === 'gate' &&
+    e.message === 'kubb raised' &&
+    e.data.reason === reason;
+  const followedBy = (l, predicate) =>
+    within(entries, l, (e) => predicate(e) && e.data.kubbId === l.data.kubbId);
+  const anyRaise = (id, label, reason) => {
+    const hit = gate(entries, 'kubb raised').find(
+      (e) => e.data.reason === reason,
+    );
+    return hit
+      ? verdict(id, label, 'PASS', fmt(hit))
+      : verdict(id, label, 'NOT SEEN');
+  };
+  const lines = gate(entries, 'advantage line').filter(
+    (e) => e.data.z !== null,
+  );
+  return [
+    allOf(
+      'mp4-inkast-legal',
+      'a legal inkast is raised as a field kubb',
+      landings.filter((l) => l.data.legal),
+      (l) => !followedBy(l, raised('inkast')),
+    ),
+    allOf(
+      'mp4-inkast-retry',
+      'a first missed toss goes back to the rack',
+      landings.filter((l) => !l.data.legal && l.data.attempt === 1),
+      (l) =>
+        !followedBy(
+          l,
+          (e) => e.channel === 'gate' && e.message === 'kubb returned to rack',
+        ),
+    ),
+    allOf(
+      'mp4-inkast-clamp',
+      'a second miss is moved inside and raised (house rule)',
+      landings.filter((l) => !l.data.legal && l.data.attempt === 2),
+      (l) => !followedBy(l, raised('inkastClamped')),
+    ),
+    anyRaise(
+      'mp4-field-first',
+      'an early baseline kubb is raised again',
+      'earlyBaseline',
+    ),
+    anyRaise(
+      'mp4-rebound',
+      'an own-side rebound kubb is raised again',
+      'rebound',
+    ),
+    lines.length > 0
+      ? verdict(
+          'mp4-advantage',
+          'the advantage line is shown',
+          'PASS',
+          fmt(lines[0]),
+        )
+      : verdict('mp4-advantage', 'the advantage line is shown', 'NOT SEEN'),
+  ];
 }
 
 function resetCheck(entries, side) {
@@ -161,7 +187,7 @@ function colorCheck(entries) {
   );
 }
 
-const SYNC_FIELDS = ['turn', 'winner', 'score', 'felled', 'gameMode'];
+const SYNC_FIELDS = ['turn', 'phase', 'winner', 'score', 'felled', 'gameMode'];
 
 function piecesDiffer(a, b) {
   for (const [id, p] of Object.entries(a)) {
@@ -312,7 +338,7 @@ export function runChecks(entries) {
       ),
       (e) => !e.data.statsRecorded,
     ),
-    sinBinCheck(entries),
+    ...fieldKubbChecks(entries),
     sync.pairs === 0
       ? verdict('mp3a-score', 'score agrees on both', 'NOT SEEN')
       : scoreIncidents.length > 0
@@ -414,6 +440,11 @@ export function runChecks(entries) {
             `${sync.pairs} pairs, 0 incidents`,
           ),
     sameRoomCheck(entries),
+    verdict(
+      'eyes-toss-feel',
+      'the kubb toss feels right (weight, force)',
+      'EYES',
+    ),
     verdict('eyes-proportions', 'avatar proportions look right', 'EYES'),
     verdict('eyes-visor', 'the visor sits on the head', 'EYES'),
     verdict('eyes-score-row', 'the two-colored score row lays out', 'EYES'),
