@@ -1072,3 +1072,22 @@ settings-tab Debug button), `npm run debug:tail`, below-ground stick
 watchdog with pieceSync attribution, per-second network counters,
 match/sin-bin/king breadcrumbs. Next: Erik plugs in USB-C, opens the app
 with `?debug=1`, reproduces; I follow the NDJSON live.
+
+## 2026-09-26 — gh#15/gh#16 fixed; gate report so headset tests answer themselves
+
+Fixed and closed gh#15 (guest adopts the host's game mode, temporarily —
+Erik's choice; verified live on two headsets) and gh#16 (the opponent's
+relayed turn stays out of stats; the guest starts its own turn clean).
+The headset session stalled on ergonomics: headsets sleep when taken
+off, the Quest 3 exposes no adb interface, long URLs are painful. Erik:
+"måste få ut mer av loggarna". Built the gate report (spec + plan in
+docs/superpowers/): debug-only `gate` probes, 1 Hz host/guest sync
+snapshots, `npm run gate:report [-- --watch]`, remembered `?room`/
+`?debug`. Verified with two headless Playwright peers (gh15 adopt +
+release, sync, avatars PASS). Review fixes applied; follow-ups gh#23
+(sharp alert), gh#24 (sync gap detection).
+
+**Erik's next actions**: bookmark `https://192.168.1.147:8081/?room=eriktest&debug=1`
+once per headset (then the bare URL works), start the two headsets in
+DIFFERENT game modes, play a full match; I run `gate:new` before and
+`gate:report --watch` during. Only the EYES items need his answer.
