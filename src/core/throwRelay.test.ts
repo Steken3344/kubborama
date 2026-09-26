@@ -6,7 +6,7 @@ import {
 } from './throwRelay.js';
 
 const base = {
-  stickId: 'stick-2',
+  pieceId: 'stick-2',
   position: [0.5, 0.9, -0.3] as [number, number, number],
   quaternion: [0, 0, 0, 1] as [number, number, number, number],
   linearVelocity: [1.2, 3.4, -5.6] as [number, number, number],
@@ -18,7 +18,7 @@ describe('buildThrowRelayMessage', () => {
   it('stamps the current schema version', () => {
     const message = buildThrowRelayMessage(base);
     expect(message.version).toBe(THROW_RELAY_SCHEMA_VERSION);
-    expect(message.stickId).toBe('stick-2');
+    expect(message.pieceId).toBe('stick-2');
   });
 });
 
@@ -34,13 +34,21 @@ describe('parseThrowRelayMessage (untrusted network boundary)', () => {
     expect(parseThrowRelayMessage(42)).toBeNull();
   });
 
+  it('is v2 and rejects a v1 (stickId) relay', () => {
+    expect(THROW_RELAY_SCHEMA_VERSION).toBe(2);
+    const { pieceId, ...rest } = buildThrowRelayMessage(base);
+    expect(
+      parseThrowRelayMessage({ ...rest, version: 1, stickId: pieceId }),
+    ).toBeNull();
+  });
+
   it('rejects a mismatched schema version', () => {
     const message = buildThrowRelayMessage(base);
     expect(parseThrowRelayMessage({ ...message, version: 999 })).toBeNull();
   });
 
-  it('rejects a missing stickId', () => {
-    const { stickId: _stickId, ...rest } = buildThrowRelayMessage(base);
+  it('rejects a missing pieceId', () => {
+    const { pieceId: _pieceId, ...rest } = buildThrowRelayMessage(base);
     expect(parseThrowRelayMessage(rest)).toBeNull();
   });
 

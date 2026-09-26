@@ -25,3 +25,26 @@ export function tiltAngleDeg(quaternion: Quat): number {
 export function isToppled(quaternion: Quat, toppleAngleDeg: number): boolean {
   return tiltAngleDeg(quaternion) > toppleAngleDeg;
 }
+
+/**
+ * MP4 (§3.4, "leaning = felled", match only): a kubb can only come to
+ * rest noticeably tilted by leaning on a stick or another kubb, and the
+ * real rules count that as felled — so in a match the resting-tilt
+ * threshold drops to `leaningDeg`. Solo keeps its tuned per-mode angle.
+ */
+export function felledAngleDeg(
+  modeAngleDeg: number,
+  inMatch: boolean,
+  leaningDeg: number,
+): number {
+  return inMatch ? Math.min(modeAngleDeg, leaningDeg) : modeAngleDeg;
+}
+
+/** A felled piece standing (nearly) vertical again has been raised —
+ * ToppleSystem re-arms it so it can be felled a second time. */
+export function isUprightAgain(
+  quaternion: Quat,
+  rearmBelowDeg: number,
+): boolean {
+  return tiltAngleDeg(quaternion) < rearmBelowDeg;
+}

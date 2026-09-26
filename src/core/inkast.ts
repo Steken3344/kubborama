@@ -1,5 +1,5 @@
 import { farBaselineZ } from './court-layout.js';
-import type { CourtPreset } from './court-layout.js';
+import type { CourtPreset, Vec3 } from './court-layout.js';
 import type { MatchSide } from './match.js';
 
 /**
@@ -105,4 +105,31 @@ export function nudgeClear(
 /** Millimetre rounding keeps float noise out of states and tests. */
 function round(value: number): number {
   return Math.round(value * 1000) / 1000;
+}
+
+export interface InkastRackLayout {
+  offsetM: number;
+  spacingM: number;
+  kubbHeightM: number;
+}
+
+/** Slot `slot` of `count` in the inkast rack: a row of upright kubbs
+ * `offsetM` behind the THROWER's own baseline (outside the court), so
+ * they are at hand where the thrower stands. */
+export function inkastRackPosition(
+  h: CourtHalves,
+  thrower: MatchSide,
+  slot: number,
+  count: number,
+  rack: InkastRackLayout,
+): Vec3 {
+  const z =
+    thrower === 'host'
+      ? h.nearBaselineZ + rack.offsetM
+      : h.farBaselineZ - rack.offsetM;
+  return [
+    round((slot - (count - 1) / 2) * rack.spacingM),
+    rack.kubbHeightM / 2,
+    round(z),
+  ];
 }

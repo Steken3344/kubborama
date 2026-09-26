@@ -4,6 +4,7 @@ import {
   courtHalves,
   halfBounds,
   halfOfZ,
+  inkastRackPosition,
   isLegalLanding,
   nudgeClear,
 } from './inkast.js';
@@ -67,5 +68,18 @@ describe('nudgeClear', () => {
   it('stays inside the sidelines', () => {
     const p = nudgeClear({ x: 2.45, z: -2 }, [{ x: 2.4, z: -2 }], 0.12, h);
     expect(Math.abs(p.x)).toBeLessThanOrEqual(2.5);
+  });
+});
+
+describe('inkastRackPosition', () => {
+  const rack = { offsetM: 0.5, spacingM: 0.15, kubbHeightM: 0.15 };
+  it('stands the row behind the thrower’s own baseline, centred on x', () => {
+    expect(inkastRackPosition(h, 'host', 0, 1, rack)).toEqual([0, 0.075, 0.5]);
+    expect(inkastRackPosition(h, 'guest', 0, 2, rack)).toEqual([
+      -0.075, 0.075, -8.5,
+    ]);
+    expect(inkastRackPosition(h, 'guest', 1, 2, rack)).toEqual([
+      0.075, 0.075, -8.5,
+    ]);
   });
 });

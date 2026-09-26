@@ -2,7 +2,7 @@ import { createSystem, UIKitMLAsset } from '@iwsdk/core';
 import type { GameEvents } from '../core/events.js';
 import type { ThrowStyle } from '../core/underhandClassifier.js';
 import { gameEvents } from '../core/events.js';
-import { isFinished, score } from '../core/match.js';
+import { isFinished, standingKubbs } from '../core/match.js';
 import { avatarPaletteEntry } from '../config.js';
 import { debugContext } from '../debug/debugContext.js';
 import { i18nState } from '../i18nState.js';
@@ -147,7 +147,9 @@ export class HudSystem extends createSystem({}) {
     }
     const t = i18nState.t;
     const { state, mySide } = this.lastMatchState;
-    const s = score(state);
+    // MP4: kubbs still standing on each half (baseline + field) —
+    // Player A (host) half left, as before.
+    const s = standingKubbs(state);
     const show = (id: string) =>
       this.hudPanel.requireElementById(id).setProperties({ display: 'flex' });
 
@@ -191,9 +193,12 @@ export class HudSystem extends createSystem({}) {
       ? state.winner === mySide
         ? t('matchWon')
         : t('matchLost')
-      : state.currentTurn === 'host'
-        ? t('matchPlayerATurn')
-        : t('matchPlayerBTurn');
+      : (state.currentTurn === 'host'
+          ? t('matchPlayerATurn')
+          : t('matchPlayerBTurn')) +
+        (state.phase === 'inkast'
+          ? `, ${t('inkastRemaining', { n: state.inkastQueue.length })}`
+          : '');
     this.hudPanel
       .requireElementById('turn-value')
       .setProperties({ text: turnText });
@@ -203,7 +208,9 @@ export class HudSystem extends createSystem({}) {
         text:
           state.endReason === 'allKubbsAndKing'
             ? t('matchEndKing')
-            : t('matchEndKingEarly'),
+            : state.endReason === 'kingFelledByInkast'
+              ? t('matchEndKingByInkast')
+              : t('matchEndKingEarly'),
       });
     } else {
       this.hudPanel

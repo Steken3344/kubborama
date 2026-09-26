@@ -1,9 +1,9 @@
 import { createSystem } from '@iwsdk/core';
-import { OutOfPlay } from '../components/out-of-play.js';
 import { Resettable } from '../components/resettable.js';
 import { StickState } from '../components/stick-state.js';
+import { KUBB_COUNT } from '../core/court-layout.js';
 import { gameEvents } from '../core/events.js';
-import { score } from '../core/match.js';
+import { standingKubbs } from '../core/match.js';
 import type { MatchSide, MatchState } from '../core/match.js';
 import { debugContext } from '../debug/debugContext.js';
 import { settingsState } from '../settingsState.js';
@@ -28,7 +28,6 @@ function round5cm(value: number): number {
  */
 export class GateProbeSystem extends createSystem({
   pieces: { required: [Resettable], excluded: [StickState] },
-  outOfPlay: { required: [OutOfPlay] },
 }) {
   private statsSystem!: StatsSystem;
   private mySide: MatchSide | null = null;
@@ -71,11 +70,8 @@ export class GateProbeSystem extends createSystem({
         }
         this.roundsPlayedSeen = after;
       }),
-      gameEvents.on('Reset', (e) => {
+      gameEvents.on('Reset', () => {
         this.sticksThisRound = 0;
-        if (e.cause === 'roundEnd' && this.mySide !== null) {
-          this.logSinBin();
-        }
       }),
       gameEvents.on('MatchStateChanged', (e) => {
         const prev = this.lastState;
@@ -84,16 +80,23 @@ export class GateProbeSystem extends createSystem({
         if (!debugContext.enabled) {
           return;
         }
-        const { host, guest } = e.state.felledKubbIds;
+        const standing = standingKubbs(e.state);
         gateLog('match state', {
           mySide: e.mySide,
           turn: e.state.currentTurn,
+          phase: e.state.phase,
           winner: e.state.winner,
           endReason: e.state.endReason,
-          felledHost: host.length,
-          felledGuest: guest.length,
+          standingHost: standing.host,
+          standingGuest: standing.guest,
+          fieldKubbs: e.state.fieldKubbs.length,
+          inkastQueue: e.state.inkastQueue.length,
           fresh:
-            host.length === 0 && guest.length === 0 && e.state.winner === null,
+            e.state.fieldKubbs.length === 0 &&
+            e.state.felledThisTurn.length === 0 &&
+            e.state.inkastQueue.length === 0 &&
+            standing.host + standing.guest === KUBB_COUNT * 2 &&
+            e.state.winner === null,
         });
         if ((prev?.winner ?? null) === null && e.state.winner !== null) {
           gateLog('king decision', {
@@ -126,19 +129,15 @@ export class GateProbeSystem extends createSystem({
     gateLog('sync snapshot', {
       turn: this.lastState.currentTurn,
       winner: this.lastState.winner,
-      score: score(this.lastState),
-      felled: this.lastState.felledKubbIds,
+      phase: this.lastState.phase,
+      score: standingKubbs(this.lastState),
+      felled: {
+        baselineKubbs: this.lastState.baselineKubbs,
+        fieldKubbs: this.lastState.fieldKubbs,
+        inkastQueue: this.lastState.inkastQueue,
+      },
       gameMode: settingsState.current.gameMode,
       pieces: this.roundedPositions(this.queries.pieces.entities),
-    });
-  }
-
-  private logSinBin(): void {
-    if (!debugContext.enabled) {
-      return;
-    }
-    gateLog('sin-bin after round', {
-      kubbs: this.roundedPositions(this.queries.outOfPlay.entities),
     });
   }
 

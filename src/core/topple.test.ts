@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { fromAxisAngle } from './quat.js';
-import { isToppled, tiltAngleDeg } from './topple.js';
+import {
+  felledAngleDeg,
+  isToppled,
+  isUprightAgain,
+  tiltAngleDeg,
+} from './topple.js';
 
 describe('tiltAngleDeg', () => {
   it('is 0 for an upright (identity) orientation', () => {
@@ -57,5 +62,18 @@ describe('isToppled', () => {
   it('treats the exact threshold as not-yet-toppled', () => {
     const q = fromAxisAngle([1, 0, 0], (60 * Math.PI) / 180);
     expect(isToppled(q, 60)).toBe(false);
+  });
+});
+
+describe('felledAngleDeg / isUprightAgain (MP4)', () => {
+  it('uses the leaning threshold only in a match', () => {
+    expect(felledAngleDeg(60, false, 20)).toBe(60);
+    expect(felledAngleDeg(60, true, 20)).toBe(20);
+    expect(felledAngleDeg(15, true, 20)).toBe(15);
+  });
+  it('is upright again only when nearly vertical', () => {
+    expect(isUprightAgain([0, 0, 0, 1], 10)).toBe(true);
+    const tilted = fromAxisAngle([1, 0, 0], (30 * Math.PI) / 180);
+    expect(isUprightAgain(tilted, 10)).toBe(false);
   });
 });

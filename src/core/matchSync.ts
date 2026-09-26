@@ -8,26 +8,47 @@ import type { MatchState } from './match.js';
  * event-driven rather than at ~20 Hz. Network messages are an untrusted
  * boundary (CLAUDE.md): malformed data is dropped, never trusted.
  *
- * v2 (MP3a, 2026-09-05): per-side felled-kubb id lists replace the two
- * remaining-counters, `endReason` added. v1 is rejected; with the PWA's
+ * v3 (MP4, 2026-09-26): the field-kubb state (phase, standing baseline
+ * and field kubbs, inkast queue). v2 is rejected; with the PWA's
  * autoUpdate one headset can briefly run the old build until it
  * reloads, so the receiver logs a distinct version-mismatch warning
  * (see peekSchemaVersion) instead of a generic "malformed".
  */
-export const MATCH_SYNC_SCHEMA_VERSION = 2;
+export const MATCH_SYNC_SCHEMA_VERSION = 3;
 
 const matchSideSchema = z.enum(['host', 'guest']);
+// Bounded everywhere: there are KUBB_COUNT * 2 kubbs, so a longer list
+// is garbage — and would otherwise drive that many setBodyTransform
+// calls on the receiving side.
+const kubbIdList = z.array(z.string()).max(KUBB_COUNT * 2);
 
 const matchStateSchema = z.object({
   currentTurn: matchSideSchema,
-  // Bounded: a side has KUBB_COUNT kubbs, so a longer list is garbage —
-  // and would otherwise drive that many setBodyTransform calls.
-  felledKubbIds: z.object({
-    host: z.array(z.string()).max(KUBB_COUNT),
-    guest: z.array(z.string()).max(KUBB_COUNT),
-  }),
+  phase: z.enum(['inkast', 'throwing']),
+  baselineKubbs: z.object({ host: kubbIdList, guest: kubbIdList }),
+  fieldKubbs: z
+    .array(
+      z.object({
+        kubbId: z.string(),
+        half: matchSideSchema,
+        x: z.number().finite(),
+        z: z.number().finite(),
+      }),
+    )
+    .max(KUBB_COUNT * 2),
+  felledThisTurn: kubbIdList,
+  inkastQueue: z
+    .array(
+      z.object({
+        kubbId: z.string(),
+        attempt: z.union([z.literal(1), z.literal(2)]),
+      }),
+    )
+    .max(KUBB_COUNT * 2),
   winner: matchSideSchema.nullable(),
-  endReason: z.enum(['allKubbsAndKing', 'kingFelledEarly']).nullable(),
+  endReason: z
+    .enum(['allKubbsAndKing', 'kingFelledEarly', 'kingFelledByInkast'])
+    .nullable(),
 });
 
 const matchSyncMessageSchema = z.object({

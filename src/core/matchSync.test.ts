@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { initialMatchState, withKingFelled, withKubbFelled } from './match.js';
+import { KUBB_COUNT } from './court-layout.js';
+import {
+  initialMatchState,
+  withKingFelled,
+  withKubbFelled,
+  withTurnAdvanced,
+} from './match.js';
 import {
   buildMatchSyncMessage,
   MATCH_SYNC_SCHEMA_VERSION,
@@ -7,52 +13,63 @@ import {
   peekSchemaVersion,
 } from './matchSync.js';
 
-describe('matchSync v2', () => {
-  it('stamps version 2', () => {
-    expect(MATCH_SYNC_SCHEMA_VERSION).toBe(2);
-    expect(buildMatchSyncMessage(initialMatchState()).version).toBe(2);
+describe('matchSync v3', () => {
+  it('stamps version 3', () => {
+    expect(MATCH_SYNC_SCHEMA_VERSION).toBe(3);
+    expect(buildMatchSyncMessage(initialMatchState()).version).toBe(3);
   });
 
-  it('round-trips a mid-match and a finished state', () => {
-    let s = withKubbFelled(initialMatchState(), 'kubb-0');
+  it('round-trips an inkast state and a finished state', () => {
+    let s = withKubbFelled(initialMatchState(), 'kubb-0', 0, -7.9).state;
+    s = withTurnAdvanced(s);
+    expect(s.phase).toBe('inkast');
     expect(parseMatchSyncMessage(buildMatchSyncMessage(s))).toEqual(
       buildMatchSyncMessage(s),
     );
     s = withKingFelled(s);
     expect(
       parseMatchSyncMessage(buildMatchSyncMessage(s))?.state.endReason,
-    ).toBe('kingFelledEarly');
+    ).toBe('kingFelledByInkast');
   });
 
-  it('rejects a v1 message and garbage', () => {
-    const v1 = {
-      version: 1,
+  it('rejects a v2 message (and says it was v2) and garbage', () => {
+    const v2 = {
+      version: 2,
       state: {
         currentTurn: 'host',
-        hostKubbsRemaining: 5,
-        guestKubbsRemaining: 5,
+        felledKubbIds: { host: [], guest: [] },
         winner: null,
+        endReason: null,
       },
     };
-    expect(parseMatchSyncMessage(v1)).toBeNull();
+    expect(parseMatchSyncMessage(v2)).toBeNull();
+    expect(peekSchemaVersion(v2)).toBe(2);
     expect(parseMatchSyncMessage(null)).toBeNull();
-    expect(parseMatchSyncMessage({ version: 2, state: {} })).toBeNull();
+    expect(parseMatchSyncMessage({ version: 3, state: {} })).toBeNull();
   });
 
-  it('rejects an unknown endReason', () => {
-    const bad = buildMatchSyncMessage(initialMatchState());
+  it('rejects oversize lists and non-finite positions', () => {
+    const ok = buildMatchSyncMessage(initialMatchState());
+    const tooMany = Array.from({ length: KUBB_COUNT * 2 + 1 }, (_, i) => ({
+      kubbId: `kubb-${i}`,
+      half: 'host',
+      x: 0,
+      z: -1,
+    }));
     expect(
       parseMatchSyncMessage({
-        ...bad,
-        state: { ...bad.state, endReason: 'x' },
+        ...ok,
+        state: { ...ok.state, fieldKubbs: tooMany },
       }),
     ).toBeNull();
-  });
-
-  it('peeks the version of anything object-shaped, else null', () => {
-    expect(peekSchemaVersion({ version: 1 })).toBe(1);
-    expect(peekSchemaVersion({ version: '1' })).toBeNull();
-    expect(peekSchemaVersion('nope')).toBeNull();
-    expect(peekSchemaVersion(null)).toBeNull();
+    expect(
+      parseMatchSyncMessage({
+        ...ok,
+        state: {
+          ...ok.state,
+          fieldKubbs: [{ kubbId: 'kubb-0', half: 'host', x: Infinity, z: 0 }],
+        },
+      }),
+    ).toBeNull();
   });
 });

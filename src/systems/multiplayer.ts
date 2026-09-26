@@ -11,7 +11,7 @@ import type { Entity } from '@iwsdk/core';
 import { joinRoom, selfId } from 'trystero';
 import type { MessageAction, Room } from 'trystero';
 import { StickPhase, StickState } from '../components/stick-state.js';
-import { match, multiplayer } from '../config.js';
+import { inkast, match, multiplayer } from '../config.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { gameEvents } from '../core/events.js';
 import type { GameEvents } from '../core/events.js';
@@ -19,11 +19,17 @@ import {
   initialMatchState,
   isFinished,
   kubbId,
+  advantageLineZ,
+  kubbIndexFromId,
+  withInkastLanded,
   withKingFelled,
   withKubbFelled,
   withTurnAdvanced,
 } from '../core/match.js';
-import type { MatchState } from '../core/match.js';
+import type { MatchSide, MatchState, MatchStep } from '../core/match.js';
+import type { CourtPoint } from '../core/inkast.js';
+import type { Quat } from '../core/quat.js';
+import type { Vec3 } from '../core/vec3.js';
 import {
   buildMatchSyncMessage,
   MATCH_SYNC_SCHEMA_VERSION,
@@ -65,7 +71,7 @@ import { log } from '../core/log.js';
 import { debugContext, STICK_BELOW_GROUND_Y } from '../debug/debugContext.js';
 import type { Settings } from '../core/settings.js';
 import { settingsState } from '../settingsState.js';
-import { activeFarBaselineZ } from './activeCourt.js';
+import { activeCourtHalves, activeFarBaselineZ } from './activeCourt.js';
 import { localPoseOf } from './objectPose.js';
 import { SettingsSystem } from './settings.js';
 import { gateLog } from '../debug/gateLog.js';
@@ -204,7 +210,7 @@ const NETWORKED_PIECE_IDS = [
  *    at the far baseline. Sticks move there when it becomes the guest's turn:
  *    the turn advance rides on `MenuSystem`'s `Reset{cause:'roundEnd'}`
  *    (emitted only after its own teleport of every stick back to the
- *    near rack), and `moveSticksToFarRack()` mirrors a home pose
+ *    near rack), and `placeSticksForTurn()` mirrors a home pose
  *    captured once at init() — so neither the timing nor the pose
  *    source depends on which order the two systems were registered
  *    in (see onResetForMatch()). This also means the off-turn player
@@ -290,7 +296,7 @@ export class MultiplayerSystem extends createSystem({}) {
       debugContext.pieceIdByEntityIndex.set(entity.index, id);
     }
     // Captured once, here, at init() — code review, 2026-09-02:
-    // moveSticksToFarRack() used to read each stick's CURRENT pose and
+    // The far-rack placement used to read each stick's CURRENT pose and
     // assume MenuSystem's own RoundEnded reset had already re-racked it
     // (an implicit src/index.ts registration-order contract). Capturing
     // the authored near-rack pose directly removes that dependency —
@@ -430,7 +436,10 @@ export class MultiplayerSystem extends createSystem({}) {
         this.relayLocalThrowIfGuest(event);
       }),
       gameEvents.on('KubbFelled', (event) => {
-        this.onKubbFelledForMatch(event.entityId);
+        this.onKubbFelledForMatch(event.entityId, event.position);
+      }),
+      gameEvents.on('InkastLanded', (event) => {
+        this.onInkastLanded(event);
       }),
       gameEvents.on('KingFelled', (event) => {
         if (!this.isHostNow() || !this.hasMultiplayerPeer()) {
@@ -802,17 +811,44 @@ export class MultiplayerSystem extends createSystem({}) {
     // before physics steps again this frame — the stick's current
     // orientation IS its release orientation.
     log('info', 'net', 'relayed local throw to host', {
-      stickId: pieceId,
+      pieceId,
       releaseSpeedMps: event.releaseSpeedMps,
     });
     void this.throwRelayAction.send(
       buildThrowRelayMessage({
-        stickId: pieceId,
+        pieceId,
         position: event.releasePosition,
         quaternion: localPoseOf(object3D).quaternion,
         linearVelocity: event.releaseVelocity,
         angularVelocity: event.angularVelocity,
         hand: event.handId,
+      }),
+    );
+  }
+
+  /** MP4: InkastSystem on a GUEST hands its kubb toss to the host, which
+   * owns kubb physics — same message and client-side prediction as a
+   * relayed stick throw. A no-op for the host (its toss is local). */
+  relayToss(
+    kubbPieceId: string,
+    position: Vec3,
+    quaternion: Quat,
+    linearVelocity: Vec3,
+    angularVelocity: Vec3,
+    hand: 'left' | 'right',
+  ): void {
+    if (this.isHostNow() || !this.throwRelayAction) {
+      return;
+    }
+    log('info', 'net', 'relayed inkast toss to host', { pieceId: kubbPieceId });
+    void this.throwRelayAction.send(
+      buildThrowRelayMessage({
+        pieceId: kubbPieceId,
+        position,
+        quaternion,
+        linearVelocity,
+        angularVelocity,
+        hand,
       }),
     );
   }
@@ -826,7 +862,7 @@ export class MultiplayerSystem extends createSystem({}) {
    * earlier and the guest later re-threw kept the HOST's own last hand,
    * misattributing impact haptics to the wrong controller. */
   private applyThrowRelay(message: ThrowRelayMessage): void {
-    const entity = this.networkedPieces.get(message.stickId);
+    const entity = this.networkedPieces.get(message.pieceId);
     if (!entity) {
       return;
     }
@@ -839,6 +875,13 @@ export class MultiplayerSystem extends createSystem({}) {
       linearVelocity: message.linearVelocity,
       angularVelocity: message.angularVelocity,
     });
+    if (kubbIndexFromId(message.pieceId) !== null) {
+      // MP4: a guest's inkast toss — InkastSystem watches it land. Not a
+      // stick throw, so no ThrowRelayed (RoundSystem must not count it).
+      gameEvents.emit('KubbTossed', { kubbId: message.pieceId });
+      log('info', 'net', 'applied relayed toss', { pieceId: message.pieceId });
+      return;
+    }
     entity.setValue(StickState, 'phase', StickPhase.Flying);
     entity.setValue(StickState, 'lastThrowerHand', message.hand);
     // gh#16: the opponent's throw — RoundSystem counts it (so their turn
@@ -847,7 +890,7 @@ export class MultiplayerSystem extends createSystem({}) {
       stickId: String(entity.index),
       releasePosition: message.position,
     });
-    log('info', 'net', 'applied relayed throw', { stickId: message.stickId });
+    log('info', 'net', 'applied relayed throw', { pieceId: message.pieceId });
   }
 
   /** Only the host computes match transitions — a guest's own local
@@ -855,7 +898,7 @@ export class MultiplayerSystem extends createSystem({}) {
    * RoundSystem run on every client independently), but the guest's
    * copy of MatchState comes from the host via matchSyncAction, never
    * computed locally, so this bails out immediately for a guest. */
-  private onKubbFelledForMatch(entityId: string): void {
+  private onKubbFelledForMatch(entityId: string, position: Vec3): void {
     if (!this.isHostNow() || !this.hasMultiplayerPeer()) {
       return;
     }
@@ -863,14 +906,62 @@ export class MultiplayerSystem extends createSystem({}) {
     if (!pieceId) {
       return;
     }
-    // The reducer ignores non-kubb ids, duplicates and own-side
-    // ricochets by returning the same reference — nothing to broadcast.
-    const nextState = withKubbFelled(this.matchState, pieceId);
-    if (nextState === this.matchState) {
+    // The reducer ignores non-kubb ids and duplicates by returning the
+    // same reference; re-raises come back as effects.
+    this.applyMatchStep(
+      withKubbFelled(this.matchState, pieceId, position[0], position[2]),
+    );
+  }
+
+  /** MP4: a tossed kubb came to rest (InkastSystem, host only). */
+  private onInkastLanded(event: GameEvents['InkastLanded']): void {
+    if (!this.isHostNow() || !this.hasMultiplayerPeer()) {
       return;
     }
-    this.setMatchState(nextState);
-    this.broadcastMatchState();
+    this.applyMatchStep(
+      withInkastLanded(
+        this.matchState,
+        event.kubbId,
+        event.x,
+        event.z,
+        activeCourtHalves(),
+        this.standingPiecePositions(event.kubbId),
+        { insetM: inkast.clampInsetM, minSeparationM: inkast.minSeparationM },
+      ),
+    );
+  }
+
+  /** The one place a reducer step lands on the host: new state →
+   * HUD + guest; effects → MatchRulesSystem moves the bodies. */
+  private applyMatchStep(step: MatchStep): void {
+    if (step.state !== this.matchState) {
+      this.setMatchState(step.state);
+      this.broadcastMatchState();
+    }
+    if (step.effects.length > 0) {
+      gameEvents.emit('MatchEffects', { effects: step.effects });
+    }
+  }
+
+  /** Where every standing piece except `exceptId` is (baseline kubbs and
+   * king from their bodies, field kubbs from the state) — what a raised
+   * kubb must not be stood inside. Event-rate, not per frame. */
+  private standingPiecePositions(exceptId: string): CourtPoint[] {
+    const points: CourtPoint[] = this.matchState.fieldKubbs
+      .filter((k) => k.kubbId !== exceptId)
+      .map((k) => ({ x: k.x, z: k.z }));
+    const ids = [
+      'king',
+      ...this.matchState.baselineKubbs.host,
+      ...this.matchState.baselineKubbs.guest,
+    ];
+    for (const id of ids) {
+      const p = this.networkedPieces.get(id)?.object3D?.position;
+      if (p && id !== exceptId) {
+        points.push({ x: p.x, z: p.z });
+      }
+    }
+    return points;
   }
 
   /** The one Reset subscriber that cares WHY it was reset. MenuSystem
@@ -948,20 +1039,33 @@ export class MultiplayerSystem extends createSystem({}) {
     }
     const nextState = withTurnAdvanced(this.matchState);
     this.setMatchState(nextState);
-    if (nextState.currentTurn === 'guest') {
-      this.moveSticksToFarRack();
-    }
+    this.placeSticksForTurn(nextState.currentTurn);
     this.broadcastMatchState();
   }
 
-  /** Mirrors each stick's captured near-rack home pose
-   * (`stickNearRackHomePoses`, set once in init()) to the far rack —
-   * the same transform as the guest's own player teleport, not a
-   * second hardcoded layout. */
-  private moveSticksToFarRack(): void {
-    this.placeSticks((nearRackPose) =>
-      mirrorPoseToFarBaseline(nearRackPose, activeFarBaselineZ()),
-    );
+  /** The new thrower's rack: its own baseline's, shifted onto its
+   * advantage line when field kubbs stand on its half (MP4 rule 8 —
+   * shown, not enforced: the sticks simply wait where the thrower may
+   * stand). */
+  private placeSticksForTurn(side: MatchSide): void {
+    const farZ = activeFarBaselineZ();
+    const lineZ = advantageLineZ(this.matchState, side, activeCourtHalves());
+    const baselineZ = side === 'host' ? 0 : farZ;
+    const shiftZ = lineZ === null ? 0 : lineZ - baselineZ;
+    this.placeSticks((nearRackPose) => {
+      const pose =
+        side === 'host'
+          ? nearRackPose
+          : mirrorPoseToFarBaseline(nearRackPose, farZ);
+      return {
+        position: [
+          pose.position[0],
+          pose.position[1],
+          pose.position[2] + shiftZ,
+        ],
+        quaternion: pose.quaternion,
+      };
+    });
   }
 
   /** Back to the captured near-rack home pose — used when the room
@@ -1014,8 +1118,9 @@ export class MultiplayerSystem extends createSystem({}) {
     log('debug', 'match', 'matchSync applied', {
       from: peerId,
       turn: message.state.currentTurn,
-      felledHostSide: message.state.felledKubbIds.host.length,
-      felledGuestSide: message.state.felledKubbIds.guest.length,
+      phase: message.state.phase,
+      fieldKubbs: message.state.fieldKubbs.length,
+      inkastQueue: message.state.inkastQueue.length,
       winner: message.state.winner,
     });
     this.setMatchState(message.state);

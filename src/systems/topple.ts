@@ -5,14 +5,15 @@ import { KingProtected } from '../components/king-protected.js';
 import { OutOfPlay } from '../components/out-of-play.js';
 import { Resettable } from '../components/resettable.js';
 import { StickState } from '../components/stick-state.js';
-import { getGameMode, pieces } from '../config.js';
+import { getGameMode, inkast, pieces } from '../config.js';
 import { gameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
 import type { Quat } from '../core/quat.js';
 import { accumulateHeldDuration, isResting } from '../core/restState.js';
 import { createStartupGate } from '../core/startupGrace.js';
-import { isToppled } from '../core/topple.js';
+import { felledAngleDeg, isToppled, isUprightAgain } from '../core/topple.js';
 import type { Vec3 } from '../core/vec3.js';
+import { matchActivity } from '../matchActivityState.js';
 import { settingsState } from '../settingsState.js';
 import { readBodySpeed } from './bodySpeed.js';
 
@@ -83,18 +84,29 @@ export class ToppleSystem extends createSystem({
   }
 
   private checkOne(entity: Entity, delta: number, timeS: number): void {
-    if (this.felledReported.has(entity.index)) {
-      return;
-    }
-
     const orientation = entity.getVectorView(Transform, 'orientation');
     this.tmpQuat[0] = orientation[0] ?? 0;
     this.tmpQuat[1] = orientation[1] ?? 0;
     this.tmpQuat[2] = orientation[2] ?? 0;
     this.tmpQuat[3] = orientation[3] ?? 1;
-    const toppleAngleDeg = getGameMode(
+
+    if (this.felledReported.has(entity.index)) {
+      this.maybeRearm(entity);
+      return;
+    }
+
+    const modeAngleDeg = getGameMode(
       settingsState.current.gameMode,
     ).toppleAngleDeg;
+    // MP4 §3.4: a resting kubb leaning on something counts as felled in
+    // a match; the king keeps the mode's angle.
+    const toppleAngleDeg = entity.hasComponent(KingPiece)
+      ? modeAngleDeg
+      : felledAngleDeg(
+          modeAngleDeg,
+          matchActivity.current.active,
+          inkast.leaningFelledDeg,
+        );
     if (!isToppled(this.tmpQuat, toppleAngleDeg)) {
       this.restAccumS.delete(entity.index);
       return;
@@ -133,5 +145,21 @@ export class ToppleSystem extends createSystem({
       });
       log('info', 'state', 'kubb felled', { entityIndex: entity.index });
     }
+  }
+
+  /** MP4: a felled piece seen upright and at rest again has been raised
+   * (field kubb, early baseline kubb, rebound) — re-arm it so it can be
+   * felled again. Works identically on the guest, whose kubbs are
+   * raised by the host's pieceSync. `tmpQuat` is already filled. */
+  private maybeRearm(entity: Entity): void {
+    if (!isUprightAgain(this.tmpQuat, inkast.rearmBelowDeg)) {
+      return;
+    }
+    readBodySpeed(entity, this.tmpSpeed);
+    if (!isResting(this.tmpSpeed[0], this.tmpSpeed[1], pieces.throw)) {
+      return;
+    }
+    this.felledReported.delete(entity.index);
+    this.restAccumS.delete(entity.index);
   }
 }

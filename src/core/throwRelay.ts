@@ -16,11 +16,13 @@ import { quaternionSchema, vec3Schema } from './networkSchemas.js';
  * released (client-side prediction + server reconciliation, the
  * standard pattern for exactly this problem).
  */
-export const THROW_RELAY_SCHEMA_VERSION = 1;
+export const THROW_RELAY_SCHEMA_VERSION = 2;
 
 const throwRelaySchema = z.object({
   version: z.literal(THROW_RELAY_SCHEMA_VERSION),
-  stickId: z.string(),
+  // v2 (MP4, 2026-09-26): any networked piece — a stick, or a kubb
+  // tossed in the inkast (was `stickId` in v1).
+  pieceId: z.string(),
   position: vec3Schema,
   quaternion: quaternionSchema,
   linearVelocity: vec3Schema,

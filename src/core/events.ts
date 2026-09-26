@@ -1,5 +1,5 @@
 import type { Language } from './i18n.js';
-import type { MatchSide, MatchState } from './match.js';
+import type { MatchEffect, MatchSide, MatchState } from './match.js';
 import type { PresenceMessage } from './presence.js';
 import type { RoundResult } from './scoring.js';
 import type { Settings } from './settings.js';
@@ -136,6 +136,24 @@ export interface GameEvents {
    * Changed alone can't express "no match anymore," it only ever
    * carries a real state. */
   MultiplayerPeerDisconnected: Record<string, never>;
+  /** MP4: a kubb was tossed in the inkast — emitted on the HOST for its
+   * own toss and for a guest's relayed one (InkastSystem then watches
+   * it come to rest). */
+  KubbTossed: {
+    kubbId: string;
+  };
+  /** MP4: a tossed kubb came to rest (host only) — MultiplayerSystem
+   * feeds it to the reducer. */
+  InkastLanded: {
+    kubbId: string;
+    x: number;
+    z: number;
+  };
+  /** MP4: physical instructions from the reducer (host only) —
+   * MatchRulesSystem moves the bodies. */
+  MatchEffects: {
+    effects: readonly MatchEffect[];
+  };
   /** MP3a: "please perform a full manual reset" — emitted by
    * MatchRulesSystem (auto-restart timer, room emptied) and by
    * MultiplayerSystem (a guest's relayed "Ny runda"); handled by

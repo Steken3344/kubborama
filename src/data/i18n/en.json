@@ -54,5 +54,7 @@
   "statsStreak": "King-fell streak: {value}",
   "statsRoundsPlayed": "Rounds played: {value}",
   "statsAccuracy": "Accuracy: {value}%",
-  "versionLabel": "Version: {version}"
+  "versionLabel": "Version: {version}",
+  "inkastRemaining": "Inkast: {n} left",
+  "matchEndKingByInkast": "King felled by an inkast"
 }

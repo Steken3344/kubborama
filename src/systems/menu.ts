@@ -6,7 +6,6 @@ import {
   UIKitMLAsset,
 } from '@iwsdk/core';
 import type { Entity } from '@iwsdk/core';
-import { OutOfPlay } from '../components/out-of-play.js';
 import { Resettable } from '../components/resettable.js';
 import { StickPhase, StickState } from '../components/stick-state.js';
 import { audio, avatarPalette, avatarPaletteEntry } from '../config.js';
@@ -59,10 +58,11 @@ const PROFILE_NAME_OPTIONS: Array<string | null> = [null, 'Erik', 'Gast'];
  */
 export class MenuSystem extends createSystem({
   resettable: { required: [Resettable] },
-  // MP3a: during a match a ROUND-end reset must leave sin-binned kubbs
-  // where they are; only a manual reset (abort / auto-restart) moves
-  // everything. Two queries, picked by cause — not an if in the loop.
-  resettableInPlay: { required: [Resettable], excluded: [OutOfPlay] },
+  // MP4: during a match a ROUND-end reset moves only the sticks — the
+  // kubbs are field kubbs, lying felled kubbs about to join the inkast
+  // rack, or rack kubbs; only a manual reset (abort / auto-restart)
+  // moves everything. Two queries, picked by cause.
+  sticks: { required: [Resettable, StickState] },
 }) {
   private grabSystem!: GrabSystem;
   private physicsSystem!: PhysicsSystem;
@@ -436,6 +436,12 @@ export class MenuSystem extends createSystem({
    * duplicating it — switching mode mid-round is exactly a reset, just
    * onto a different layout.
    */
+  /** MP4: MatchRulesSystem stands an early/rebounded baseline kubb
+   * back on its spot — the same home pose a reset would use. */
+  homePoseOf(entityIndex: number): HomePose | undefined {
+    return this.homePoses.get(entityIndex);
+  }
+
   applyCourtLayout(homePoses: ReadonlyMap<number, HomePose>): void {
     for (const [entityIndex, pose] of homePoses) {
       this.homePoses.set(entityIndex, pose);
@@ -446,7 +452,7 @@ export class MenuSystem extends createSystem({
   private resetAll(cause: GameEvents['Reset']['cause']): void {
     const query =
       cause === 'roundEnd' && matchActivity.current.active
-        ? this.queries.resettableInPlay
+        ? this.queries.sticks
         : this.queries.resettable;
     for (const entity of query.entities) {
       this.resetOne(entity);
