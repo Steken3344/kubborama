@@ -49,6 +49,7 @@ interface Seat {
   /** Set while the player is away; the seat is freed after the grace. */
   leftAtMs: number | null;
   recentThrowsMs: number[];
+  lastPresenceMs: number;
 }
 
 const SIDES: readonly MatchSide[] = ['host', 'guest'];
@@ -155,6 +156,24 @@ export class GameServer {
     if (!seat || !this.host) {
       return false; // only seated players act
     }
+    if (message.type === 'presence') {
+      // Relay only, capped at ~40 Hz (a client sends 20 Hz).
+      const now = this.nowMs();
+      if (now - seat.lastPresenceMs < 25) {
+        return false;
+      }
+      seat.lastPresenceMs = now;
+      for (const other of this.seats) {
+        if (other !== seat) {
+          other.connection?.send({
+            type: 'presence',
+            side: seat.side,
+            message: message.message,
+          });
+        }
+      }
+      return true;
+    }
     if (message.type === 'reset') {
       this.log('info', 'gate', 'reset pressed', { side: seat.side });
       this.host.reset();
@@ -203,6 +222,7 @@ export class GameServer {
         connection,
         leftAtMs: null,
         recentThrowsMs: [],
+        lastPresenceMs: -Infinity,
       };
       this.seats.push(seat);
     }

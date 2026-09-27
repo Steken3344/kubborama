@@ -3,7 +3,7 @@
   "rackSpacingM": 0.15,
   "clampInsetM": 0.05,
   "minSeparationM": 0.12,
-  "tossVelocityMultiplier": 1.0,
+  "tossVelocityMultiplier": 1.4,
   "tossAngularMultiplier": 1.0,
   "maxTossFlightS": 6,
   "leaningFelledDeg": 20,

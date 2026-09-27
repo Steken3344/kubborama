@@ -173,3 +173,31 @@ describe('GameServer — untrusted clients (review)', () => {
     expect(applied).toBeLessThanOrEqual(6);
   });
 });
+
+describe('GameServer — presence relay (MP7)', () => {
+  it("forwards a player's head + hands to the other player only", async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const ha = server.connect(a.connection);
+    const hb = server.connect(b.connection);
+    await ha.receive(join());
+    await hb.receive(join());
+    const pose = { position: [0, 1.6, 0], quaternion: [0, 0, 0, 1] };
+    const message = {
+      version: 2,
+      head: pose,
+      leftHand: pose,
+      rightHand: pose,
+      colorIndex: 1,
+    };
+    clock.now += 100;
+    const accepted = await ha.receive({ type: 'presence', message });
+    const toB = b.received.filter((m) => m.type === 'presence');
+    const toA = a.received.filter((m) => m.type === 'presence');
+    expect(accepted).toBe(true);
+    expect(toB).toHaveLength(1);
+    expect(toB[0]?.type === 'presence' && toB[0].side).toBe('host');
+    expect(toA).toHaveLength(0);
+  });
+});

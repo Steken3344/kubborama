@@ -5219,3 +5219,19 @@ Built per the MP6 section of the server spec. Choices (reversible):
   bus events they used to consume (MatchStateChanged, RoundEnded) now
   come from ServerLinkSystem, so HUD, stats, inkast grab, advantage line
   and gate probes are unchanged.
+
+## 2026-09-27 — MP7 session 1: stronger toss, avatars through the server
+
+Erik's first full server match: field-kubb flow worked live (miss →
+rack, second miss → clamped and raised, early baseline kubb re-raised,
+advantage line, gh#16 stats on both, sync 0 incidents). Two findings:
+- "Kastet är för svagt": his kubb tosses left the hand at ~6.4 m/s
+  (sticks 8–10 m/s) — a 45° toss at 6.4 m/s reaches ~4.2 m, short of the
+  8 m court's far half. `tossVelocityMultiplier` 1.0 → 1.4 (~9 m/s).
+  Still an EYES item: recalibrate on his next word.
+- "Ingen avatar syntes": no Trystero `peer joined` at all that session
+  (Nostr signaling), so no presence. Avatars now travel through the game
+  server (client `presence` → relayed to the other seat, capped ~40 Hz);
+  MultiplayerSystem ignores Trystero presence in server mode. Voice still
+  uses Trystero — if it keeps failing, move it too (WebRTC via the server
+  as signaler).

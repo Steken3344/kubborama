@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { matchStateSchema } from './matchSync.js';
+import { presenceMessageSchema } from './presence.js';
 import { gameModeSchema } from './settings.js';
 
 /**
@@ -41,6 +42,9 @@ const clientMessageSchema = z.discriminatedUnion('type', [
   }),
   /** "Ny runda". */
   z.object({ type: z.literal('reset') }),
+  /** This player's head + hands (~20 Hz), relayed to the other player
+   * for the avatar — the Trystero route proved unreliable (MP7). */
+  z.object({ type: z.literal('presence'), message: presenceMessageSchema }),
   /** A released stick (or kubb) — the throwRelay v2 shape. */
   z.object({
     type: z.literal('throw'),
@@ -76,6 +80,12 @@ const serverMessageSchema = z.discriminatedUnion('type', [
     pieces: z.array(pieceTransform).max(64),
   }),
   z.object({ type: z.literal('peers'), count: z.number().int().nonnegative() }),
+  /** The other player's head + hands, for PeerAvatarSystem. */
+  z.object({
+    type: z.literal('presence'),
+    side,
+    message: presenceMessageSchema,
+  }),
   /** The match (null = practice: fewer than two players). */
   z.object({ type: z.literal('match'), state: matchStateSchema.nullable() }),
   /** A finished round — the RoundEnded payload plus who threw it. */

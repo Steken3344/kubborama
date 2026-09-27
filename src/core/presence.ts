@@ -24,7 +24,7 @@ const poseSchema = z.object({
 });
 export type Pose = z.infer<typeof poseSchema>;
 
-const presenceMessageSchema = z.object({
+export const presenceMessageSchema = z.object({
   version: z.literal(PRESENCE_SCHEMA_VERSION),
   head: poseSchema,
   leftHand: poseSchema,

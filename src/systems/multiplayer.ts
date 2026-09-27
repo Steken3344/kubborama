@@ -78,6 +78,7 @@ import { settingsState } from '../settingsState.js';
 import { activeCourtHalves, activeFarBaselineZ } from './activeCourt.js';
 import { localPoseOf } from './objectPose.js';
 import { applyPieceTransforms } from './pieceApply.js';
+import { ServerLinkSystem } from './serverLink.js';
 import { SettingsSystem } from './settings.js';
 import { gateLog } from '../debug/gateLog.js';
 
@@ -319,6 +320,9 @@ export class MultiplayerSystem extends createSystem({}) {
     this.room = joinRoom({ appId: multiplayer.appId }, roomId);
     this.presenceAction = this.room.makeAction<PresenceMessage>('presence');
     this.presenceAction.onMessage = (data, { peerId }) => {
+      if (this.viaServer) {
+        return; // avatars come through the game server (ServerLinkSystem)
+      }
       const message = parsePresenceMessage(data);
       if (!message) {
         log('warn', 'net', 'dropped malformed presence message', { peerId });
@@ -1229,7 +1233,7 @@ export class MultiplayerSystem extends createSystem({}) {
   }
 
   private sendPresence(): void {
-    if (!this.presenceAction) {
+    if (!this.presenceAction && !this.viaServer) {
       return;
     }
     this.dbgPresenceOut += 1;
@@ -1242,7 +1246,11 @@ export class MultiplayerSystem extends createSystem({}) {
       rightHand: this.rightPose,
       colorIndex: settingsState.current.avatarColorIndex,
     });
-    void this.presenceAction.send(message);
+    if (this.viaServer) {
+      this.world.getSystem(ServerLinkSystem)?.sendPresence(message);
+      return;
+    }
+    void this.presenceAction?.send(message);
   }
 
   /** A piece's LOCAL pose as a fresh Pose — pieces are direct children

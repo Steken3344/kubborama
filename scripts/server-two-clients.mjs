@@ -144,6 +144,11 @@ const serverGate = entries
   .filter((e) => e.role === 'server')
   .map((e) => `${e.message} ${JSON.stringify(e.data)}`);
 const stickAccepted = phases.includes('guest/throwing');
+const avatarsSeenBy = new Set(
+  entries
+    .filter((e) => e.message === 'peer avatar created')
+    .map((e) => e.client),
+);
 const ok =
   a.errors.length + b.errors.length === 0 &&
   welcomes
@@ -158,7 +163,8 @@ const ok =
   (tossed === null
     ? phases.includes('guest/throwing')
     : serverGate.some((l) => l.startsWith('inkast landed'))) &&
-  stickAccepted;
+  stickAccepted &&
+  avatarsSeenBy.size === 2;
 console.log(
   JSON.stringify(
     {

@@ -5,6 +5,7 @@ import type { GameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
 import { NETWORKED_PIECE_IDS } from '../core/pieceSync.js';
 import { defaultPose, mirrorPoseToFarBaseline } from '../core/presence.js';
+import type { PresenceMessage } from '../core/presence.js';
 import {
   parseServerMessage,
   SERVER_PATH,
@@ -66,6 +67,8 @@ export class ServerLinkSystem extends createSystem({}) {
   private stopped = false;
   /** Whether the last server `match` message carried a match. */
   private inMatch = false;
+  /** The other player's avatar id while their presence is arriving. */
+  private peerAvatarId: string | null = null;
   private nowS = 0;
 
   init(): void {
@@ -152,6 +155,7 @@ export class ServerLinkSystem extends createSystem({}) {
       this.side = null;
       this.settingsSystem.releaseMatchGameMode();
       this.leaveMatch();
+      this.dropPeerAvatar();
       if (!this.stopped) {
         setTimeout(() => this.connect(), RECONNECT_DELAY_MS);
       }
@@ -187,6 +191,16 @@ export class ServerLinkSystem extends createSystem({}) {
         return;
       case 'peers':
         log('info', 'net', 'game server players', { count: message.count });
+        if (message.count < 2) {
+          this.dropPeerAvatar();
+        }
+        return;
+      case 'presence':
+        this.peerAvatarId = `server-${message.side}`;
+        gameEvents.emit('PeerPresence', {
+          peerId: this.peerAvatarId,
+          message: message.message,
+        });
         return;
       case 'match':
         if (message.state === null) {
@@ -239,6 +253,18 @@ export class ServerLinkSystem extends createSystem({}) {
 
   update(_delta: number, timeS: number): void {
     this.nowS = timeS;
+  }
+
+  private dropPeerAvatar(): void {
+    if (this.peerAvatarId !== null) {
+      gameEvents.emit('PeerLeft', { peerId: this.peerAvatarId });
+      this.peerAvatarId = null;
+    }
+  }
+
+  /** MultiplayerSystem's 20 Hz head + hands, routed through the server. */
+  sendPresence(message: PresenceMessage): void {
+    this.send({ type: 'presence', message });
   }
 
   /** The match ended for us (the other player left, or we dropped). */
