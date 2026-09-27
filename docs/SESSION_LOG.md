@@ -1128,3 +1128,17 @@ throws/s, bounded vectors), teardown on Vite restart, IWSDK physics
 defaults. Next: **MP6 — rules on the server** (throw turns, inkast,
 topple, rounds, match, "Ny runda"); open question in docs/QUESTIONS.md
 about side identity on reload.
+
+**2026-09-27 — dev defaults, sides by XR, MP6 built.** Bare LAN URL now
+enough (server + debug + private room by default on the dev server). The
+first server-mode headset test showed the managed editor browser taking
+side A → players now join only when they enter XR. Second headset test:
+the host slept 47 s while the guest kept receiving 60 Hz ticks —
+sleeping headsets no longer freeze the game. MP6 built: the whole match
+on the server (server/matchHost.ts), seats by clientId with a 60 s
+rejoin grace, clients follow the server's match through the existing
+bus events. `npm run check:server` plays a full turn incl. B's inkast.
+Review: no Critical; Havok world leak and a local relayout reset fixed.
+
+**Next: MP7 — the headset gate** (a full match with field kubbs through
+the server, toss feel) — Erik, two headsets, `gate:report`.
