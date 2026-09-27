@@ -137,7 +137,18 @@ function fieldKubbChecks(entries) {
 function resetCheck(entries, side) {
   const id = `mp3a-reset-${side}`;
   const label = `"Ny runda" from the ${side} resets the match on both`;
-  const presses = gate(entries, 'reset pressed').filter((e) => e.role === side);
+  // Only presses DURING a match count — in practice (one player) there
+  // is no second headset to reset (Erik's MP7 session, 2026-09-27).
+  const matchStartAt = entries.find(
+    (e) =>
+      e.channel === 'gate' && e.message === 'match state' && e.role === 'guest',
+  );
+  const presses = gate(entries, 'reset pressed').filter(
+    (e) =>
+      e.role === side &&
+      matchStartAt !== undefined &&
+      at(e) >= at(matchStartAt),
+  );
   return allOf(
     id,
     label,

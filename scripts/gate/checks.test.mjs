@@ -101,11 +101,12 @@ describe('runChecks', () => {
     ).toBe('FAIL');
   });
   it('mp3a-reset-guest: needs a fresh state on both sides within 3 s', () => {
+    const inMatch = g('guest', 'match state', { fresh: false });
     const press = g('guest', 'reset pressed', {});
     const h = g('host', 'match state', { fresh: true });
     const gu = g('guest', 'match state', { fresh: true });
-    expect(status([press, h, gu], 'mp3a-reset-guest')).toBe('PASS');
-    expect(status([press, h], 'mp3a-reset-guest')).toBe('FAIL');
+    expect(status([inMatch, press, h, gu], 'mp3a-reset-guest')).toBe('PASS');
+    expect(status([inMatch, press, h], 'mp3a-reset-guest')).toBe('FAIL');
   });
   it('mp3b-arms and mp3b-torso', () => {
     const fit = (over) =>
@@ -250,5 +251,12 @@ describe('MP4 field kubbs', () => {
       e.push(snap('guest', { phase: 'throwing' }));
     }
     expect(syncPairs(e).incidents.map((i) => i.field)).toContain('phase');
+  });
+});
+
+describe('reset presses outside a match (MP7 session)', () => {
+  it('a practice press before any match is NOT SEEN, not FAIL', () => {
+    const press = g('host', 'reset pressed', {});
+    expect(status([press], 'mp3a-reset-host')).toBe('NOT SEEN');
   });
 });
