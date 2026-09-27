@@ -1,4 +1,4 @@
-import { createSystem } from '@iwsdk/core';
+import { createSystem, Grabbed } from '@iwsdk/core';
 import { Resettable } from '../components/resettable.js';
 import { StickState } from '../components/stick-state.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
@@ -27,8 +27,11 @@ function round5cm(value: number): number {
  * `stickNumberInRound` is still that round's count.
  */
 export class GateProbeSystem extends createSystem({
-  pieces: { required: [Resettable], excluded: [StickState] },
-  sticks: { required: [StickState] },
+  // A piece in the local hand follows the hand, not the authority — it
+  // would read as a host/guest disagreement (MP7 session: the guest
+  // holding its inkast kubb), so held pieces are left out.
+  pieces: { required: [Resettable], excluded: [StickState, Grabbed] },
+  sticks: { required: [StickState], excluded: [Grabbed] },
 }) {
   private statsSystem!: StatsSystem;
   private mySide: MatchSide | null = null;
