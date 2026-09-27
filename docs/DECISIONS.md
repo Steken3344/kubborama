@@ -5200,3 +5200,22 @@ lobby. The production build keeps Trystero (no server until MP8).
   `window.__kubbDev` hook — importing `/src/...` module URLs from the
   page breaks after an HMR update (Vite's `?t=` gives the page a second
   module instance with empty state).
+
+## 2026-09-27 — MP6: the match on the server
+
+Built per the MP6 section of the server spec. Choices (reversible):
+- **Side on reload** (docs/QUESTIONS.md MP6 question): option 1 — seats
+  keyed by a per-browser `clientId`; a seat survives a disconnect for
+  60 s, so a reload continues the match on the same side. After 60 s the
+  seat is free and, with one player left, the server drops to practice.
+- **Practice vs match**: one player = practice (six sticks, then
+  everything back to that player's rack); the second player joining
+  starts a fresh match; a seat expiring ends it.
+- The server's rules reuse `src/core` unchanged; only detection and
+  sequencing were re-implemented (server/matchHost.ts), against a
+  `MatchWorld` interface so the rules are tested on a scripted world.
+- In server mode the client-side authority stands down: RoundSystem,
+  SimpleRules, the menu's round-end reset and MatchRules' restart; the
+  bus events they used to consume (MatchStateChanged, RoundEnded) now
+  come from ServerLinkSystem, so HUD, stats, inkast grab, advantage line
+  and gate probes are unchanged.

@@ -562,6 +562,27 @@ docs/superpowers/plans/2026-09-05-avatars.md · Log: docs/DECISIONS.md
       rendered in solo). Tune `avatar.json` dims if proportions look
       off. 🎧 Not self-approvable.
 
+## MP6 — The match on the server `status: built + verified with two headless players; headset gate = MP7`
+
+Spec: docs/superpowers/specs/2026-09-26-authoritative-server-design.md
+(MP6 section).
+
+- [x] `server/matchHost.ts`: stick flight/settle, wind + ground damping,
+      topple (leaning = felled in a match, re-arm when upright), round
+      with quiet-court end, v3 match (turns, inkast, raise / restore /
+      re-rack, king deferral, advantage-line rack, auto-restart),
+      practice with one player, Ny runda. Rule tests on a scripted world.
+- [x] Seats by clientId with a 60 s rejoin grace (a reload keeps the
+      side and the match); server gate lines in the NDJSON log.
+- [x] Clients in server mode follow the server's `match`/`round`
+      messages through the existing bus events; local rules stand down.
+- [x] `npm run check:server`: A's full turn, round end with gh#16 stats
+      semantics on both, B's inkast judged and raised by the server,
+      B's stick accepted, identical stick positions.
+- [ ] **MP7 GATE (Erik, 2 headsets, `gate:report`)**: a full match with
+      field kubbs through the server; the toss feel (EYES). Sleeping
+      headsets no longer freeze anything.
+
 ## MP5 — Authoritative server skeleton `status: built + verified with two headless clients`
 
 Spec: docs/superpowers/specs/2026-09-26-authoritative-server-design.md
