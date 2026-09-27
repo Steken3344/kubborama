@@ -9,12 +9,13 @@ no menus in the way.
 **Play now:** https://steken3344.github.io/kubborama/ (open in the
 Quest browser, tap "Enter XR")
 
-Status: early prototype (M7 — 2-headset multiplayer, confirmed working
-live; MP3b — procedural body avatars in a player-chosen color; MP4 —
-real kubb match rules: felled kubbs are tossed back (inkast) and raised
-as field kubbs, field kubbs first, advantage line, king decides; both
-awaiting the 2-headset gate). See [docs/MILESTONES.md](docs/MILESTONES.md) for
-what's built and what's next.
+Status: prototype (v0.8-mp7, 2026-09-27) — two-headset matches with
+real kubb rules (field kubbs: inkast, raising, field kubbs first,
+advantage line; the king decides) run on an authoritative game server
+that starts with the dev server; avatars and voice between headsets.
+The public GitHub Pages build still uses the headset-hosted multiplayer
+until the server moves to the cloud (MP8). See
+[docs/MILESTONES.md](docs/MILESTONES.md) for what's built and what's next.
 
 ## Tech stack
 

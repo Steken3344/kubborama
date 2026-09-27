@@ -1142,3 +1142,11 @@ Review: no Critical; Havok world leak and a local relayout reset fixed.
 
 **Next: MP7 — the headset gate** (a full match with field kubbs through
 the server, toss feel) — Erik, two headsets, `gate:report`.
+
+**2026-09-27, evening — MP7 gate PASSED, tagged v0.8-mp7.** Two server
+sessions on real headsets: session 1 exposed a weak toss (×1.4 now) and
+no avatars (Trystero never connected → presence through the server);
+session 2 passed legal inkast, king early with the 6th stick, restart,
+avatars. Erik: "kastet känns bra, avatar ok, godkänn". gh#18 and gh#19
+closed. Next candidates: MP8 (cloud server), gh#21 best-of-3, gh#20
+toss-up for the start, gh#27 Ny runda debounce, voice via the server.
