@@ -1,4 +1,4 @@
-import { createSystem, PhysicsSystem } from '@iwsdk/core';
+import { createSystem, PhysicsSystem, VisibilityState } from '@iwsdk/core';
 import type { Entity } from '@iwsdk/core';
 import { gameEvents } from '../core/events.js';
 import type { GameEvents } from '../core/events.js';
@@ -73,7 +73,25 @@ export class ServerLinkSystem extends createSystem({}) {
         this.socket?.close();
       },
     );
-    this.connect();
+    // A client becomes a PLAYER only once it enters XR (Erik's test,
+    // 2026-09-27: the managed editor browser loaded the app, joined
+    // first and took side A from his headset). A plain browser tab never
+    // takes a side. `?player=1` joins at once — for headless tests.
+    // Leaving XR (headset asleep) keeps the connection, so the side is
+    // kept too.
+    const joinNow =
+      new URLSearchParams(window.location.search).get('player') === '1';
+    if (joinNow) {
+      this.connect();
+      return;
+    }
+    this.cleanupFuncs.push(
+      this.world.visibilityState.subscribe((state) => {
+        if (state !== VisibilityState.NonImmersive && !this.socket) {
+          this.connect();
+        }
+      }),
+    );
   }
 
   private connect(): void {

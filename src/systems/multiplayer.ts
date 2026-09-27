@@ -557,6 +557,9 @@ export class MultiplayerSystem extends createSystem({}) {
   /** Debug mode: every shipped log line says which headset it came from
    * (src/debug/debugContext.ts). 'solo' until a peer's hello resolves. */
   private refreshDebugRole(): void {
+    if (this.viaServer) {
+      return; // ServerLinkSystem sets the role from the server's side
+    }
     debugContext.role = !this.hasMultiplayerPeer()
       ? 'solo'
       : !this.rolesResolved()

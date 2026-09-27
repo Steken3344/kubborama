@@ -21,7 +21,8 @@
     "postinstall": "patch-package",
     "debug:tail": "node scripts/debug-tail.mjs",
     "gate:report": "node scripts/gate-report.mjs",
-    "gate:new": "node scripts/gate-new.mjs"
+    "gate:new": "node scripts/gate-new.mjs",
+    "check:server": "node scripts/server-two-clients.mjs"
   },
   "dependencies": {
     "@iwsdk/core": "0.5.3",

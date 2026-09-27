@@ -1,4 +1,6 @@
 import { World } from '@iwsdk/core';
+import { gameEvents } from './core/events.js';
+import { debugContext } from './debug/debugContext.js';
 import projectOptions from 'virtual:iwsdk-project';
 import { installDebugRelay } from './debug/debugRelay.js';
 import { DebugWatchSystem } from './systems/debugWatch.js';
@@ -42,6 +44,16 @@ World.create(
   document.getElementById('scene-container') as HTMLDivElement,
   projectOptions,
 ).then((world) => {
+  // Dev-only test hook for the headless multiplayer checks (scripts/
+  // server-two-clients.mjs): the app's OWN bus and debug context —
+  // importing their module URLs from a page breaks after an HMR update
+  // (Vite adds ?t= to the app's imports, so the page gets a second copy).
+  if (import.meta.env.DEV) {
+    (globalThis as unknown as Record<string, unknown>)['__kubbDev'] = {
+      gameEvents,
+      debugContext,
+    };
+  }
   // M4: SettingsSystem loads persisted settings + wires the i18n
   // translator before anything else reads settingsState/i18nState
   // (haptics scaling, MenuSystem/HudSystem's labels, ToppleSystem's

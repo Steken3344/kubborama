@@ -5190,3 +5190,13 @@ always on, and the default room is `kubborama-dev` instead of the public
 lobby. The production build keeps Trystero (no server until MP8).
 `serverChoice` replaces the one-day-old `serverMode` boolean: its stored
 `false` on Erik's headsets would otherwise have kept 'auto' off.
+- Same day, first server-mode test: the **managed editor browser** loaded
+  the app, joined the game server first and took side A from Erik's
+  headset. Fix: a client becomes a player only when it enters XR
+  (`world.visibilityState` leaves NonImmersive); plain tabs never take a
+  side; `?player=1` joins at once for headless checks. Leaving XR keeps
+  the connection and the side. The headless check is now a committed
+  script, `npm run check:server`, driving the app through a dev-only
+  `window.__kubbDev` hook — importing `/src/...` module URLs from the
+  page breaks after an HMR update (Vite's `?t=` gives the page a second
+  module instance with empty state).
