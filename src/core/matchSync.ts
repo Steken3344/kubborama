@@ -22,7 +22,7 @@ const matchSideSchema = z.enum(['host', 'guest']);
 // calls on the receiving side.
 const kubbIdList = z.array(z.string()).max(KUBB_COUNT * 2);
 
-const matchStateSchema = z.object({
+export const matchStateSchema = z.object({
   currentTurn: matchSideSchema,
   phase: z.enum(['inkast', 'throwing']),
   baselineKubbs: z.object({ host: kubbIdList, guest: kubbIdList }),

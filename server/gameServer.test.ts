@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { SERVER_PROTOCOL_VERSION } from '../src/core/serverProtocol.js';
 import type { ServerMessage } from '../src/core/serverProtocol.js';
-import { GameServer } from './gameServer.js';
+import { GameServer, REJOIN_GRACE_MS } from './gameServer.js';
+import { noServerLog } from './serverLog.js';
+
+const clock = { now: 0 };
 
 function fakeClient() {
   const received: ServerMessage[] = [];
@@ -22,15 +25,20 @@ function fakeClient() {
   };
 }
 
-const join = (gameMode: 'simple' | 'advanced' = 'simple') => ({
+let nextId = 0;
+const join = (
+  gameMode: 'simple' | 'advanced' = 'simple',
+  clientId = `client-${(nextId += 1)}-xxxx`,
+) => ({
   type: 'join',
   protocol: SERVER_PROTOCOL_VERSION,
   gameMode,
+  clientId,
 });
 
 describe('GameServer (MP5)', () => {
   it('assigns side A then B, rejects a third player', async () => {
-    const server = new GameServer();
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
     const a = fakeClient();
     const b = fakeClient();
     const c = fakeClient();
@@ -57,13 +65,26 @@ describe('GameServer (MP5)', () => {
     expect(a.received).toContainEqual({ type: 'peers', count: 2 });
   });
 
-  it('frees a side when a player leaves', async () => {
-    const server = new GameServer();
+  it('keeps a seat for the rejoin grace, then frees it', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
     const a = fakeClient();
     const b = fakeClient();
+    const again = fakeClient();
     const ha = server.connect(a.connection);
-    await ha.receive(join());
+    await ha.receive(join('simple', 'headset-A-1234'));
     ha.close();
+    // Same browser back within the grace → same side.
+    const hAgain = server.connect(again.connection);
+    await hAgain.receive(join('simple', 'headset-A-1234'));
+    expect(again.received).toContainEqual({
+      type: 'welcome',
+      protocol: SERVER_PROTOCOL_VERSION,
+      side: 'host',
+      gameMode: 'simple',
+    });
+    hAgain.close();
+    clock.now += REJOIN_GRACE_MS + 1;
+    server.tick();
     const hb = server.connect(b.connection);
     await hb.receive(join());
     expect(b.received).toContainEqual({
@@ -75,7 +96,7 @@ describe('GameServer (MP5)', () => {
   });
 
   it('rejects a wrong protocol and ignores garbage', async () => {
-    const server = new GameServer();
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
     const a = fakeClient();
     const ha = server.connect(a.connection);
     await ha.receive({ type: 'nonsense' });
@@ -84,7 +105,7 @@ describe('GameServer (MP5)', () => {
   });
 
   it('sends snapshots at 20 Hz of a 60 Hz simulation, and applies a throw', async () => {
-    const server = new GameServer();
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
     const a = fakeClient();
     const ha = server.connect(a.connection);
     await ha.receive(join());
@@ -132,7 +153,7 @@ describe('GameServer — untrusted clients (review)', () => {
       : undefined;
   };
   it('only sticks can be thrown (no teleporting the king)', async () => {
-    const server = new GameServer();
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
     const a = fakeClient();
     const ha = server.connect(a.connection);
     await ha.receive(join());
@@ -141,7 +162,7 @@ describe('GameServer — untrusted clients (review)', () => {
     expect(kingZ(server, a)).toBeCloseTo(before ?? 0, 3);
   });
   it('limits how many throws one client may send per second', async () => {
-    const server = new GameServer();
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
     const a = fakeClient();
     const ha = server.connect(a.connection);
     await ha.receive(join());

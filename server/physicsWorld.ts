@@ -73,7 +73,21 @@ export interface ThrowInput {
   angularVelocity: Vec3;
 }
 
+export interface Pose {
+  position: Vec3;
+  quaternion: Quat;
+}
+
 export interface PhysicsWorld {
+  /** Where a body starts on this court (preset / far rack / scene). */
+  homePose(id: string): Pose | null;
+  /** Current pose of a body. */
+  pose(id: string): Pose | null;
+  /** Teleport a body and stop it (a raise, a reset, a rack placement). */
+  setPose(id: string, pose: Pose): void;
+  setAngularDamping(id: string, damping: number): void;
+  /** One-step impulse at the body's centre (wind: force × dt). */
+  applyImpulse(id: string, impulse: Vec3): void;
   /** Advance by exactly `dtS` (the server runs a fixed timestep). */
   step(dtS: number): void;
   /** Current transforms of the given dynamic pieces, in that order. */
@@ -152,6 +166,7 @@ export async function createPhysicsWorld(
   }
 
   const bodies = new Map<string, HP_BodyId>();
+  const homes = new Map<string, Pose>();
   for (const node of nodes) {
     const shapeDef = node.components?.PhysicsShape;
     if (!shapeDef) {
@@ -183,6 +198,10 @@ export async function createPhysicsWorld(
       farPose?.quaternion ??
       fromEulerDegXYZ((node.transform?.rotationDeg ?? [0, 0, 0]) as Vec3);
     hk.HP_Body_SetQTransform(body, [position, quaternion]);
+    homes.set(node.id, {
+      position: [...position],
+      quaternion: [...quaternion],
+    });
     hk.HP_Body_SetLinearDamping(
       body,
       bodyDef.linearDamping ?? DEFAULTS.linearDamping,
@@ -214,7 +233,46 @@ export async function createPhysicsWorld(
     bodies.set(node.id, body);
   }
 
+  const setPose = (id: string, pose: Pose): void => {
+    const body = bodies.get(id);
+    if (!body) {
+      return;
+    }
+    hk.HP_Body_SetQTransform(body, [pose.position, pose.quaternion]);
+    hk.HP_Body_SetLinearVelocity(body, [0, 0, 0]);
+    hk.HP_Body_SetAngularVelocity(body, [0, 0, 0]);
+  };
+
   return {
+    homePose(id) {
+      const home = homes.get(id);
+      return home
+        ? { position: [...home.position], quaternion: [...home.quaternion] }
+        : null;
+    },
+    pose(id) {
+      const body = bodies.get(id);
+      if (!body) {
+        return null;
+      }
+      const [position, quaternion] = hk.HP_Body_GetQTransform(body)[1];
+      return { position, quaternion };
+    },
+    setPose,
+    setAngularDamping(id, damping) {
+      const body = bodies.get(id);
+      if (body) {
+        hk.HP_Body_SetAngularDamping(body, damping);
+      }
+    },
+    applyImpulse(id, impulse) {
+      const body = bodies.get(id);
+      if (!body) {
+        return;
+      }
+      const [position] = hk.HP_Body_GetQTransform(body)[1];
+      hk.HP_Body_ApplyImpulse(body, position, impulse);
+    },
     step(dtS) {
       hk.HP_World_SetIdealStepTime(world, dtS);
       hk.HP_World_Step(world, dtS);

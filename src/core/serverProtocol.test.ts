@@ -21,11 +21,13 @@ describe('serverProtocol', () => {
         type: 'join',
         protocol: SERVER_PROTOCOL_VERSION,
         gameMode: 'advanced',
+        clientId: 'abcdef123456',
       }),
     ).toEqual({
       type: 'join',
       protocol: SERVER_PROTOCOL_VERSION,
       gameMode: 'advanced',
+      clientId: 'abcdef123456',
     });
     expect(parseClientMessage({ type: 'throw', ...pose })?.type).toBe('throw');
   });
@@ -86,5 +88,39 @@ describe('serverProtocol — magnitudes (review)', () => {
     expect(
       parseClientMessage({ type: 'throw', ...pose, position: [0, 1, -500] }),
     ).toBeNull();
+  });
+});
+
+describe('serverProtocol v2 (MP6)', () => {
+  it('join needs a clientId; reset is a message', () => {
+    expect(
+      parseClientMessage({
+        type: 'join',
+        protocol: SERVER_PROTOCOL_VERSION,
+        gameMode: 'simple',
+      }),
+    ).toBeNull();
+    expect(parseClientMessage({ type: 'reset' })).toEqual({ type: 'reset' });
+  });
+  it('round and match messages parse', () => {
+    const round = {
+      type: 'round',
+      side: 'guest',
+      result: {
+        roundNumber: 2,
+        kubbsFelled: 1,
+        kingFelled: false,
+        sticksThrownWhenKingFelled: null,
+      },
+      sticksThrownThisRound: 6,
+      longestThrowM: 6.2,
+      longestFellingThrowM: null,
+      roundDurationS: 31.5,
+    };
+    expect(parseServerMessage(round)).toEqual(round);
+    expect(parseServerMessage({ type: 'match', state: null })).toEqual({
+      type: 'match',
+      state: null,
+    });
   });
 });

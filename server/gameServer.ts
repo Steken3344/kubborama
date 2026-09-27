@@ -1,4 +1,5 @@
 import { courtPresetForMode } from '../src/config.js';
+import type { MatchSide } from '../src/core/match.js';
 import { NETWORKED_PIECE_IDS } from '../src/core/pieceSync.js';
 import {
   parseClientMessage,
@@ -8,10 +9,12 @@ import type {
   ClientMessage,
   ServerMessage,
 } from '../src/core/serverProtocol.js';
-import type { MatchSide } from '../src/core/match.js';
 import type { Settings } from '../src/core/settings.js';
+import { MatchHost } from './matchHost.js';
 import { createPhysicsWorld } from './physicsWorld.js';
 import type { PhysicsWorld } from './physicsWorld.js';
+import { appendServerLog } from './serverLog.js';
+import type { ServerLog } from './serverLog.js';
 
 /** Fixed simulation rate and the snapshot rate derived from it. */
 export const TICK_HZ = 60;
@@ -19,6 +22,10 @@ export const SNAPSHOT_EVERY_TICKS = 3; // → 20 Hz, like the Trystero pieceSync
 /** At most this many throws per client per second — six sticks is a
  * whole turn; anything faster is a flood (review, 2026-09-26). */
 const MAX_THROWS_PER_SECOND = 6;
+/** A dropped player keeps its side this long: a reloading headset
+ * rejoins with the same clientId and the match simply continues
+ * (docs/QUESTIONS.md, option 1 — decided 2026-09-27). */
+export const REJOIN_GRACE_MS = 60_000;
 
 /** What the transport (wsServer.ts, or a test) gives the game server. */
 export interface ClientConnection {
@@ -35,34 +42,48 @@ export interface ClientHandle {
   close(): void;
 }
 
-interface Player {
-  connection: ClientConnection;
+interface Seat {
   side: MatchSide;
-  /** Times (ms) of this player's recent accepted throws. */
+  clientId: string;
+  connection: ClientConnection | null;
+  /** Set while the player is away; the seat is freed after the grace. */
+  leftAtMs: number | null;
   recentThrowsMs: number[];
 }
 
 const SIDES: readonly MatchSide[] = ['host', 'guest'];
 
+export interface GameServerOptions {
+  nowMs?: () => number;
+  log?: ServerLog;
+}
+
 /**
- * MP5 (docs/superpowers/specs/2026-09-26-authoritative-server-design.md):
- * one room, two player slots (side A = 'host', side B = 'guest' — the
- * side, not the authority; this server is always the authority). The
- * first player's game mode picks the court; the physics world is built
- * on the first join and dropped when the room empties, so the next
- * session starts from a fresh court. `tick()` advances exactly one
- * fixed 1/TICK_HZ step; `start()` drives it from wall-clock time.
- * Match rules arrive in MP6.
+ * MP5/MP6 (docs/superpowers/specs/2026-09-26-authoritative-server-design.md):
+ * one room, two seats (side A = 'host', side B = 'guest' — the side, not
+ * the authority; this server is always the authority). The first
+ * player's game mode picks the court; the physics world and its
+ * MatchHost (the rules) are built on the first join and dropped when
+ * the room is empty. A seat survives a disconnect for REJOIN_GRACE_MS.
+ * `tick()` advances exactly one fixed 1/TICK_HZ step; `start()` drives
+ * it from wall-clock time.
  */
 export class GameServer {
-  constructor(private readonly nowMs: () => number = () => performance.now()) {}
-
-  private players = new Map<ClientConnection, Player>();
+  private readonly nowMs: () => number;
+  private readonly log: ServerLog;
+  private seats: Seat[] = [];
   private world: PhysicsWorld | null = null;
+  private host: MatchHost | null = null;
   private worldPromise: Promise<PhysicsWorld> | null = null;
+  private lastMatch: ServerMessage | null = null;
   private tickCount = 0;
   private gameMode: Settings['gameMode'] = 'simple';
   private timer: ReturnType<typeof setInterval> | null = null;
+
+  constructor(options: GameServerOptions = {}) {
+    this.nowMs = options.nowMs ?? (() => performance.now());
+    this.log = options.log ?? appendServerLog;
+  }
 
   connect(connection: ClientConnection): ClientHandle {
     return {
@@ -71,12 +92,14 @@ export class GameServer {
     };
   }
 
-  /** One fixed physics step, plus a snapshot every SNAPSHOT_EVERY_TICKS. */
+  /** One fixed physics step, the rules, a snapshot every few ticks. */
   tick(): void {
-    if (!this.world) {
+    this.expireSeats();
+    if (!this.world || !this.host) {
       return;
     }
     this.world.step(1 / TICK_HZ);
+    this.host.tick(1 / TICK_HZ);
     this.tickCount += 1;
     if (this.tickCount % SNAPSHOT_EVERY_TICKS === 0) {
       this.broadcast({
@@ -128,25 +151,28 @@ export class GameServer {
     if (message.type === 'join') {
       return this.onJoin(connection, message);
     }
-    const player = this.players.get(connection);
-    if (!player || !this.world) {
-      return false; // only joined players act
+    const seat = this.seats.find((s) => s.connection === connection);
+    if (!seat || !this.host) {
+      return false; // only seated players act
     }
-    // MP5: only sticks are thrown (kubb tosses join with MP6's inkast);
-    // turn ownership is MP6's match rules.
-    if (!message.pieceId.startsWith('stick-') || !this.allowThrow(player)) {
+    if (message.type === 'reset') {
+      this.log('info', 'gate', 'reset pressed', { side: seat.side });
+      this.host.reset();
+      return true;
+    }
+    if (!this.allowThrow(seat)) {
       return false;
     }
-    return this.world.applyThrow(message);
+    return this.host.onThrow(seat.side, message);
   }
 
-  private allowThrow(player: Player): boolean {
+  private allowThrow(seat: Seat): boolean {
     const now = this.nowMs();
-    player.recentThrowsMs = player.recentThrowsMs.filter((t) => now - t < 1000);
-    if (player.recentThrowsMs.length >= MAX_THROWS_PER_SECOND) {
+    seat.recentThrowsMs = seat.recentThrowsMs.filter((t) => now - t < 1000);
+    if (seat.recentThrowsMs.length >= MAX_THROWS_PER_SECOND) {
       return false;
     }
-    player.recentThrowsMs.push(now);
+    seat.recentThrowsMs.push(now);
     return true;
   }
 
@@ -154,25 +180,44 @@ export class GameServer {
     connection: ClientConnection,
     message: Extract<ClientMessage, { type: 'join' }>,
   ): Promise<boolean> {
-    if (this.players.has(connection)) {
+    if (this.seats.some((s) => s.connection === connection)) {
       return false;
     }
-    const taken = new Set([...this.players.values()].map((p) => p.side));
-    const side = SIDES.find((s) => !taken.has(s));
-    if (!side) {
-      connection.send({ type: 'rejected', reason: 'full' });
-      connection.close();
-      return false;
+    this.expireSeats();
+    let seat = this.seats.find((s) => s.clientId === message.clientId);
+    if (seat) {
+      seat.connection?.close(); // a second tab of the same browser wins
+      seat.connection = connection;
+      seat.leftAtMs = null;
+    } else {
+      const taken = new Set(this.seats.map((s) => s.side));
+      const side = SIDES.find((s) => !taken.has(s));
+      if (!side) {
+        connection.send({ type: 'rejected', reason: 'full' });
+        connection.close();
+        return false;
+      }
+      seat = {
+        side,
+        clientId: message.clientId,
+        connection,
+        leftAtMs: null,
+        recentThrowsMs: [],
+      };
+      this.seats.push(seat);
     }
-    this.players.set(connection, { connection, side, recentThrowsMs: [] });
     await this.ensureWorld(message.gameMode);
     connection.send({
       type: 'welcome',
       protocol: SERVER_PROTOCOL_VERSION,
-      side,
+      side: seat.side,
       gameMode: this.gameMode,
     });
-    this.broadcast({ type: 'peers', count: this.players.size });
+    this.host?.setPlayers(this.seats.map((s) => s.side));
+    if (this.lastMatch) {
+      connection.send(this.lastMatch);
+    }
+    this.broadcastPeers();
     return true;
   }
 
@@ -185,27 +230,67 @@ export class GameServer {
     const world = await pending;
     // The room may have emptied (and a new world been started) while
     // this one was building — only the CURRENT promise may install.
-    if (this.worldPromise === pending) {
-      this.world = world;
+    if (this.worldPromise !== pending || this.world === world) {
+      return;
     }
+    this.world = world;
+    this.host = new MatchHost(world, this.gameMode, {
+      matchState: (state) => {
+        this.lastMatch = { type: 'match', state };
+        this.broadcast(this.lastMatch);
+      },
+      roundEnded: (report) => {
+        this.broadcast({ type: 'round', ...report });
+      },
+      gate: (gateMessage, data) => {
+        this.log('info', 'gate', gateMessage, data);
+      },
+    });
   }
 
   private onClose(connection: ClientConnection): void {
-    if (!this.players.delete(connection)) {
+    const seat = this.seats.find((s) => s.connection === connection);
+    if (!seat) {
       return;
     }
-    if (this.players.size === 0) {
+    seat.connection = null;
+    seat.leftAtMs = this.nowMs();
+    this.broadcastPeers();
+  }
+
+  /** Free the seats of players gone longer than the grace; drop the
+   * world once nobody is left. */
+  private expireSeats(): void {
+    const now = this.nowMs();
+    const before = this.seats.length;
+    this.seats = this.seats.filter(
+      (s) => s.leftAtMs === null || now - s.leftAtMs < REJOIN_GRACE_MS,
+    );
+    if (this.seats.length === before) {
+      return;
+    }
+    if (this.seats.length === 0) {
       this.world = null;
+      this.host = null;
       this.worldPromise = null;
+      this.lastMatch = null;
       this.tickCount = 0;
       return;
     }
-    this.broadcast({ type: 'peers', count: this.players.size });
+    this.host?.setPlayers(this.seats.map((s) => s.side));
+    this.broadcastPeers();
+  }
+
+  private broadcastPeers(): void {
+    this.broadcast({
+      type: 'peers',
+      count: this.seats.filter((s) => s.connection !== null).length,
+    });
   }
 
   private broadcast(message: ServerMessage): void {
-    for (const player of this.players.values()) {
-      player.connection.send(message);
+    for (const seat of this.seats) {
+      seat.connection?.send(message);
     }
   }
 }

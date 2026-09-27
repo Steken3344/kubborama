@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { matchStateSchema } from './matchSync.js';
 import { gameModeSchema } from './settings.js';
 
 /**
@@ -9,7 +10,8 @@ import { gameModeSchema } from './settings.js';
  * treats a malformed server message as a bug to drop, never a crash.
  * One JSON object per WebSocket message, discriminated by `type`.
  */
-export const SERVER_PROTOCOL_VERSION = 1;
+/** v2 (MP6): join carries a clientId; reset, match and round messages. */
+export const SERVER_PROTOCOL_VERSION = 2;
 /** The WebSocket path on the dev server (and later the cloud server). */
 export const SERVER_PATH = '/__kubb/game';
 
@@ -33,7 +35,12 @@ const clientMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('join'),
     protocol: z.literal(SERVER_PROTOCOL_VERSION),
     gameMode: gameModeSchema,
+    /** A per-browser id (localStorage) — a reloading headset rejoining
+     * within the grace gets its side back and the match continues. */
+    clientId: z.string().min(8).max(64),
   }),
+  /** "Ny runda". */
+  z.object({ type: z.literal('reset') }),
   /** A released stick (or kubb) — the throwRelay v2 shape. */
   z.object({
     type: z.literal('throw'),
@@ -69,6 +76,23 @@ const serverMessageSchema = z.discriminatedUnion('type', [
     pieces: z.array(pieceTransform).max(64),
   }),
   z.object({ type: z.literal('peers'), count: z.number().int().nonnegative() }),
+  /** The match (null = practice: fewer than two players). */
+  z.object({ type: z.literal('match'), state: matchStateSchema.nullable() }),
+  /** A finished round — the RoundEnded payload plus who threw it. */
+  z.object({
+    type: z.literal('round'),
+    side,
+    result: z.object({
+      roundNumber: z.number().int().positive(),
+      kubbsFelled: z.number().int().nonnegative(),
+      kingFelled: z.boolean(),
+      sticksThrownWhenKingFelled: z.number().int().nonnegative().nullable(),
+    }),
+    sticksThrownThisRound: z.number().int().nonnegative(),
+    longestThrowM: finite,
+    longestFellingThrowM: finite.nullable(),
+    roundDurationS: finite,
+  }),
   /** The room is full or the protocol does not match. */
   z.object({
     type: z.literal('rejected'),
