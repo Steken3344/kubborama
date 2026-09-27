@@ -5235,3 +5235,12 @@ advantage line, gh#16 stats on both, sync 0 incidents). Two findings:
   MultiplayerSystem ignores Trystero presence in server mode. Voice still
   uses Trystero — if it keeps failing, move it too (WebRTC via the server
   as signaler).
+
+## 2026-09-27 — MP7 headset gate PASSED (Erik: "godkänn")
+
+Erik approved on "kastet känns bra, avatar ok, godkänn" after the second
+server session (details in docs/MILESTONES.md MP6). Tagged `v0.8-mp7`
+(MP3a/MP3b/MP4/MP5/MP6 all done). gh#18 closed. Items not exercised
+live are covered by the rule tests and `npm run check:server`; the
+two-colour score row and voice were not answered — follow up if either
+misbehaves.

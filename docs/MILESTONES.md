@@ -493,7 +493,7 @@ headset gate. Tag on completion: v0.1-m0 ... v0.7-m6.
 - Review gate → tagged v0.7-m6 (2026-09-05) ✅ → **POC COMPLETE 🎉** — every
   M0-M6 milestone is tagged; MP1-MP3 multiplayer continues on top of it.
 
-## MP3a — Match rules `status: superseded by MP4 (sin-bin replaced by field kubbs); king/score/restart/reset items still gated`
+## MP3a — Match rules `status: DONE — superseded by MP4; king/score/restart verified live 2026-09-27`
 
 Spec: docs/superpowers/specs/2026-09-05-match-rules-design.md · Plan:
 docs/superpowers/plans/2026-09-05-match-rules.md · Log: docs/DECISIONS.md
@@ -537,7 +537,7 @@ docs/superpowers/plans/2026-09-05-match-rules.md · Log: docs/DECISIONS.md
   headless two-peer session: gh15-adopt, gh15-release, score/sync
   agreement, avatars on both, arm end at the mitten.
 
-## MP3b — Avatars `status: built + emulator-verified (asset renders, no errors); awaiting Erik's 2-headset gate`
+## MP3b — Avatars `status: DONE — avatars seen on both headsets 2026-09-27 (via the server), Erik: "avatar ok"`
 
 Spec: docs/superpowers/specs/2026-09-05-avatars-design.md · Plan:
 docs/superpowers/plans/2026-09-05-avatars.md · Log: docs/DECISIONS.md
@@ -562,7 +562,7 @@ docs/superpowers/plans/2026-09-05-avatars.md · Log: docs/DECISIONS.md
       rendered in solo). Tune `avatar.json` dims if proportions look
       off. 🎧 Not self-approvable.
 
-## MP6 — The match on the server `status: built + verified with two headless players; headset gate = MP7`
+## MP6 — The match on the server `status: DONE — headset gate PASSED 2026-09-27 (MP7), tagged v0.8-mp7`
 
 Spec: docs/superpowers/specs/2026-09-26-authoritative-server-design.md
 (MP6 section).
@@ -579,11 +579,19 @@ Spec: docs/superpowers/specs/2026-09-26-authoritative-server-design.md
 - [x] `npm run check:server`: A's full turn, round end with gh#16 stats
       semantics on both, B's inkast judged and raised by the server,
       B's stick accepted, identical stick positions.
-- [ ] **MP7 GATE (Erik, 2 headsets, `gate:report`)**: a full match with
-      field kubbs through the server; the toss feel (EYES). Sleeping
-      headsets no longer freeze anything.
+- [x] **MP7 GATE — PASSED 2026-09-27** on Erik's explicit approval
+      ("kastet känns bra, avatar ok, godkänn"). Live on two headsets
+      through the server: field-kubb flow (miss → rack, second miss
+      clamped, legal inkast raised, early baseline re-raised, advantage
+      line), king early with the 6th stick = loss, auto-restart at 10 s,
+      avatars on both (arm fit PASS), gh#16 stats, sync 0 incidents,
+      host asleep 47 s without freezing anything. Toss recalibrated to
+      ×1.4 and approved. Not exercised live (covered by the rule tests
+      and `npm run check:server`): king after all kubbs, Ny runda during
+      a match, own-side rebound, color change, mode adoption. Not
+      answered: two-colour score row, voice.
 
-## MP5 — Authoritative server skeleton `status: built + verified with two headless clients`
+## MP5 — Authoritative server skeleton `status: DONE — tagged v0.8-mp7`
 
 Spec: docs/superpowers/specs/2026-09-26-authoritative-server-design.md
 (MP5 section). Spike (Havok in Node) GO — docs/DECISIONS.md 2026-09-26.
@@ -602,7 +610,7 @@ Spec: docs/superpowers/specs/2026-09-26-authoritative-server-design.md
       in server mode. Server code changes need a dev-server restart
       (loaded once via ssrLoadModule).
 
-## MP4 — Field kubbs `status: built + verified with two headless peers; awaiting Erik's 2-headset gate`
+## MP4 — Field kubbs `status: DONE — headset gate PASSED 2026-09-27 via the server (MP7), tagged v0.8-mp7`
 
 Spec: docs/superpowers/specs/2026-09-26-field-kubbs-design.md · Plan:
 docs/superpowers/plans/2026-09-26-field-kubbs.md · gh#18 (with §3.4
