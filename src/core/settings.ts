@@ -42,9 +42,12 @@ const settingsSchema = z.object({
    * after one visit the bare LAN URL rejoins it. null = the public
    * lobby (config). `.default(null)` for migration. */
   roomId: roomIdSchema.nullable().default(null),
-  /** MP5: play through the authoritative game server (`?server=1`,
-   * `?server=0` to leave). `.default(false)` for migration. */
-  serverMode: z.boolean().default(false),
+  /** MP5: play through the authoritative game server? 'auto' = yes
+   * whenever the app runs where a game server exists (the dev server);
+   * `?server=1` / `?server=0` force it. A NEW key (not the first
+   * `serverMode` boolean, whose stored `false` would otherwise have
+   * silently kept Erik's headsets off the server). */
+  serverChoice: z.enum(['auto', 'on', 'off']).default('auto'),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -63,7 +66,7 @@ export function defaultSettings(): Settings {
     avatarColorIndex: 0,
     debugRelay: false,
     roomId: null,
-    serverMode: false,
+    serverChoice: 'auto',
   };
 }
 
@@ -89,14 +92,32 @@ export function decodeSettings(json: string): Settings {
 export function urlSettingOverrides(search: string): {
   roomId?: string;
   debugRelay?: true;
-  serverMode?: boolean;
+  serverChoice?: Settings['serverChoice'];
 } {
   const params = new URLSearchParams(search);
   const room = roomIdSchema.safeParse(params.get('room') ?? '');
   return {
     ...(room.success ? { roomId: room.data } : {}),
     ...(params.get('debug') === '1' ? { debugRelay: true as const } : {}),
-    ...(params.get('server') === '1' ? { serverMode: true } : {}),
-    ...(params.get('server') === '0' ? { serverMode: false } : {}),
+    ...serverParam(params.get('server')),
   };
+}
+
+function serverParam(value: string | null): {
+  serverChoice?: Settings['serverChoice'];
+} {
+  if (value === '1') return { serverChoice: 'on' };
+  if (value === '0') return { serverChoice: 'off' };
+  if (value === 'auto') return { serverChoice: 'auto' };
+  return {};
+}
+
+/** Whether this client plays through the game server. `serverExpected`
+ * is the environment's answer (true on the dev server, where the game
+ * server runs; false on the static GitHub Pages build until MP8). */
+export function serverModeActive(
+  choice: Settings['serverChoice'],
+  serverExpected: boolean,
+): boolean {
+  return choice === 'on' || (choice === 'auto' && serverExpected);
 }

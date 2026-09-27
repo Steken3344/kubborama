@@ -3,6 +3,7 @@ import {
   decodeSettings,
   defaultSettings,
   encodeSettings,
+  serverModeActive,
   urlSettingOverrides,
 } from './settings.js';
 
@@ -79,10 +80,27 @@ describe('urlSettingOverrides', () => {
   });
 });
 
-describe('serverMode override', () => {
-  it('?server=1 turns it on, ?server=0 off, absent leaves it', () => {
-    expect(urlSettingOverrides('?server=1')).toEqual({ serverMode: true });
-    expect(urlSettingOverrides('?server=0')).toEqual({ serverMode: false });
+describe('serverChoice (auto / on / off)', () => {
+  it('?server=1 → on, ?server=0 → off, ?server=auto → auto, absent leaves it', () => {
+    expect(urlSettingOverrides('?server=1')).toEqual({ serverChoice: 'on' });
+    expect(urlSettingOverrides('?server=0')).toEqual({ serverChoice: 'off' });
+    expect(urlSettingOverrides('?server=auto')).toEqual({
+      serverChoice: 'auto',
+    });
     expect(urlSettingOverrides('?room=x')).toEqual({ roomId: 'x' });
+  });
+  it('defaults to auto, and an old stored serverMode: false does not turn it off', () => {
+    const old = { ...defaultSettings(), serverMode: false } as Record<
+      string,
+      unknown
+    >;
+    delete old['serverChoice'];
+    expect(decodeSettings(JSON.stringify(old)).serverChoice).toBe('auto');
+  });
+  it('uses the server when on, or when auto and a game server is expected', () => {
+    expect(serverModeActive('on', false)).toBe(true);
+    expect(serverModeActive('off', true)).toBe(false);
+    expect(serverModeActive('auto', true)).toBe(true);
+    expect(serverModeActive('auto', false)).toBe(false);
   });
 });

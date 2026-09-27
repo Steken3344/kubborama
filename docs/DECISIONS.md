@@ -5179,3 +5179,14 @@ A/B are assigned by the server in join order.
 Gotcha: the server module is loaded once, so server-side edits need
 `npx iwsdk dev down && npx iwsdk dev up` (a stale server sent a v0
 `welcome` that the client correctly dropped as malformed).
+
+## 2026-09-27 — Dev defaults: server on, debug on, private room
+
+Erik: "gör att det alltid är en server om inget annat är satt, sen debug
+alltid är på när den körs lokalt" (long URLs are hard to type in the
+headset). From the dev server (`import.meta.env.DEV`): `serverChoice`
+'auto' uses the game server (`?server=0/1` force), the debug relay is
+always on, and the default room is `kubborama-dev` instead of the public
+lobby. The production build keeps Trystero (no server until MP8).
+`serverChoice` replaces the one-day-old `serverMode` boolean: its stored
+`false` on Erik's headsets would otherwise have kept 'auto' off.

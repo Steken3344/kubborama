@@ -73,6 +73,7 @@ import { STICKS_PER_ROUND } from '../core/scoring.js';
 import { log } from '../core/log.js';
 import { debugContext, STICK_BELOW_GROUND_Y } from '../debug/debugContext.js';
 import type { Settings } from '../core/settings.js';
+import { isServerModeOn } from '../serverMode.js';
 import { settingsState } from '../settingsState.js';
 import { activeCourtHalves, activeFarBaselineZ } from './activeCourt.js';
 import { localPoseOf } from './objectPose.js';
@@ -292,7 +293,7 @@ export class MultiplayerSystem extends createSystem({}) {
       );
     }
     this.settingsSystem = settingsSystem;
-    this.viaServer = settingsState.current.serverMode;
+    this.viaServer = isServerModeOn();
     for (const id of NETWORKED_PIECE_IDS) {
       const entity = this.world.requireSceneEntity(id);
       this.networkedPieces.set(id, entity);
@@ -1216,7 +1217,12 @@ export class MultiplayerSystem extends createSystem({}) {
 
   /** `?room=` is persisted by SettingsSystem at boot (registered first). */
   private roomId(): string {
-    return settingsState.current.roomId ?? multiplayer.defaultRoomId;
+    // Dev server: a private default room, so a bare LAN URL never lands
+    // a test session in the public lobby.
+    return (
+      settingsState.current.roomId ??
+      (import.meta.env.DEV ? multiplayer.devRoomId : multiplayer.defaultRoomId)
+    );
   }
 
   private sendPresence(): void {

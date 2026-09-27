@@ -40,7 +40,9 @@ let listenersInstalled = false;
  */
 export function installDebugRelay(): void {
   const params = new URLSearchParams(window.location.search);
-  if (params.get('debug') === '1') {
+  // Always on from the dev server (Erik, 2026-09-27: "debug alltid på
+  // när den körs lokalt"); `?debug=1` is kept for old bookmarks.
+  if (import.meta.env.DEV || params.get('debug') === '1') {
     enableDebugRelay();
   }
 }

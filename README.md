@@ -101,6 +101,12 @@ Every line carries the client id and its host/guest role, so two headsets
 posting to the same server interleave into one timeline. Debug mode also
 turns on a below-ground stick watchdog and per-second network counters.
 
+**From the dev server, no parameters are needed** (2026-09-27): debug
+mode is always on, the game server is used automatically (`?server=0`
+to fall back to the headset-hosted Trystero game, `?server=1` to force
+the server), and the default room is the private `kubborama-dev` — so
+the bare LAN URL `https://<LAN-IP>:<port>` is the whole setup.
+
 `?room=<name>` and `?debug=1` are **remembered** after one visit, so a
 bookmark of the bare LAN URL (`https://<LAN-IP>:<port>`) rejoins the same
 room with debug on. Use a room name without punctuation (the Quest

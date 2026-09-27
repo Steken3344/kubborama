@@ -14,6 +14,7 @@ import type { ClientMessage, ServerMessage } from '../core/serverProtocol.js';
 import type { MatchSide } from '../core/match.js';
 import { debugContext } from '../debug/debugContext.js';
 import { gateLog } from '../debug/gateLog.js';
+import { isServerModeOn } from '../serverMode.js';
 import { settingsState } from '../settingsState.js';
 import { activeFarBaselineZ } from './activeCourt.js';
 import { localPoseOf } from './objectPose.js';
@@ -28,7 +29,7 @@ const RECONNECT_DELAY_MS = 2000;
 /**
  * MP5 (docs/superpowers/specs/2026-09-26-authoritative-server-design.md):
  * this headset's link to the authoritative game server, on when
- * `settings.serverMode` is (`?server=1`). Joins with the local game
+ * `isServerModeOn()` (default on the dev server). Joins with the local game
  * mode, plays on the room's court (adopted like gh#15), stands at the
  * side the server assigns (B → far baseline), applies every snapshot to
  * the networked pieces (except one held in the local hand) and sends
@@ -46,7 +47,7 @@ export class ServerLinkSystem extends createSystem({}) {
   private stopped = false;
 
   init(): void {
-    if (!settingsState.current.serverMode) {
+    if (!isServerModeOn()) {
       return;
     }
     const physicsSystem = this.world.getSystem(PhysicsSystem);
