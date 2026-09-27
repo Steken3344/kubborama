@@ -2,6 +2,7 @@
 import HavokPhysics from '@babylonjs/havok';
 import type {
   HP_BodyId,
+  HP_ShapeId,
   HP_WorldId,
   HavokPhysicsWithBindings,
 } from '@babylonjs/havok';
@@ -96,6 +97,8 @@ export interface PhysicsWorld {
   applyThrow(input: ThrowInput): boolean;
   /** Linear and angular speed of a piece (rest detection). */
   speeds(id: string): [number, number] | null;
+  /** Release every Havok body, shape and the world (room emptied). */
+  dispose(): void;
 }
 
 const havokPromise: Promise<HavokPhysicsWithBindings> = (async () => {
@@ -166,6 +169,7 @@ export async function createPhysicsWorld(
   }
 
   const bodies = new Map<string, HP_BodyId>();
+  const shapes: HP_ShapeId[] = [];
   const homes = new Map<string, Pose>();
   for (const node of nodes) {
     const shapeDef = node.components?.PhysicsShape;
@@ -177,6 +181,7 @@ export async function createPhysicsWorld(
       shapeDef.shape === 'Cylinder'
         ? hk.HP_Shape_CreateCylinder([0, -d1 / 2, 0], [0, d1 / 2, 0], d0)[1]
         : hk.HP_Shape_CreateBox([0, 0, 0], [0, 0, 0, 1], [d0, d1, d2])[1];
+    shapes.push(shape);
     const friction = shapeDef.friction ?? DEFAULTS.friction;
     hk.HP_Shape_SetDensity(shape, shapeDef.density ?? DEFAULTS.density);
     hk.HP_Shape_SetMaterial(shape, [
@@ -243,7 +248,23 @@ export async function createPhysicsWorld(
     hk.HP_Body_SetAngularVelocity(body, [0, 0, 0]);
   };
 
+  let disposed = false;
   return {
+    dispose() {
+      if (disposed) {
+        return;
+      }
+      disposed = true;
+      for (const body of bodies.values()) {
+        hk.HP_World_RemoveBody(world, body);
+        hk.HP_Body_Release(body);
+      }
+      for (const shape of shapes) {
+        hk.HP_Shape_Release(shape);
+      }
+      hk.HP_World_Release(world);
+      bodies.clear();
+    },
     homePose(id) {
       const home = homes.get(id);
       return home

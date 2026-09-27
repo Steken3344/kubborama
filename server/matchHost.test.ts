@@ -203,6 +203,34 @@ describe('MatchHost — match (two players)', () => {
     expect(h.gates.map((g) => g.message)).toContain('match restart');
   });
 
+  it('a king felled by an inkast toss is an immediate-rule loss for the tosser', () => {
+    const h = host();
+    h.mh.setPlayers(['host', 'guest']);
+    h.run(1.2);
+    h.throwStick('host', 'stick-0');
+    h.world.land('kubb-0', [-1.2, 0.035, -6.1]);
+    h.world.land('stick-0', [0, 0.022, -5.8]);
+    h.run(0.8);
+    for (let i = 1; i < 6; i++) {
+      h.throwStick('host', `stick-${i}`);
+      h.world.land(`stick-${i}`, [i * 0.3, 0.022, -3.5]);
+      h.run(0.6);
+    }
+    h.run(1);
+    expect(h.last()?.phase).toBe('inkast');
+    h.mh.onThrow('guest', {
+      pieceId: 'kubb-0',
+      position: [0, 1, -6.4],
+      quaternion: UP,
+      linearVelocity: [0, 3, 5],
+      angularVelocity: [0, 0, 0],
+    });
+    h.world.land('king', [0, 0.045, -3.1]); // the toss hits the king
+    h.run(2.5);
+    expect(h.last()?.winner).toBe('host');
+    expect(h.last()?.endReason).toBe('kingFelledByInkast');
+  });
+
   it('a player leaving ends the match (practice again)', () => {
     const h = host();
     h.mh.setPlayers(['host', 'guest']);

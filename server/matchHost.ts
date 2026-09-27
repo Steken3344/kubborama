@@ -175,6 +175,8 @@ export class MatchHost {
   setPlayers(sides: Iterable<MatchSide>): void {
     this.players = new Set(sides);
     const both = this.players.has('host') && this.players.has('guest');
+    // Deliberate: a practice round in progress is dropped (not reported)
+    // when the second player arrives — the match starts from scratch.
     if (both && !this.matchActive) {
       this.matchActive = true;
       this.fullReset();

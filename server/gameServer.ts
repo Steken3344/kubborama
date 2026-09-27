@@ -230,7 +230,11 @@ export class GameServer {
     const world = await pending;
     // The room may have emptied (and a new world been started) while
     // this one was building — only the CURRENT promise may install.
-    if (this.worldPromise !== pending || this.world === world) {
+    if (this.world === world) {
+      return;
+    }
+    if (this.worldPromise !== pending) {
+      world.dispose(); // built for a room that emptied meanwhile
       return;
     }
     this.world = world;
@@ -270,6 +274,7 @@ export class GameServer {
       return;
     }
     if (this.seats.length === 0) {
+      this.world?.dispose();
       this.world = null;
       this.host = null;
       this.worldPromise = null;

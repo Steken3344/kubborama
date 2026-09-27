@@ -457,6 +457,11 @@ export class MenuSystem extends createSystem({
     for (const [entityIndex, pose] of homePoses) {
       this.homePoses.set(entityIndex, pose);
     }
+    // MP6: with the game server the court is laid out by the server;
+    // a local teleport would only race its first snapshot.
+    if (isServerModeOn()) {
+      return;
+    }
     this.resetAll('manual');
   }
 

@@ -45,3 +45,18 @@ describe('server physics world (MP5)', () => {
     expect(kubb5?.position[1]).toBeCloseTo(0.075, 2);
   });
 });
+
+describe('dispose (review, 2026-09-27)', () => {
+  it('releases the world once and is safe to call twice', async () => {
+    const world = await createPhysicsWorld('backyard');
+    world.dispose();
+    expect(() => world.dispose()).not.toThrow();
+  });
+  it('many build/dispose cycles do not break later worlds', async () => {
+    for (let i = 0; i < 5; i++) {
+      (await createPhysicsWorld('backyard')).dispose();
+    }
+    const fresh = await createPhysicsWorld('backyard');
+    expect(fresh.snapshot(['king'])[0]?.position[2]).toBeCloseTo(-3, 1);
+  });
+});
