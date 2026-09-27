@@ -88,3 +88,41 @@ docs/DECISIONS.md):
   stick lands in the expected range; two headless clients with
   `?server=1` get sides A and B, and after a throw from A both report
   the same stick position for the same server tick.
+
+## MP6 — the match on the server (detailed, 2026-09-27)
+
+On Erik's "kör MP6"; choices below are reversible and logged.
+
+- **`server/matchHost.ts`** owns everything that moved bodies or decided
+  outcomes on the headset host, built on the unchanged `src/core` rules:
+  stick flight/settle (rest or `maxFlightTimeS`), wind impulse and
+  ground angular damping on flying sticks (default tuning preset), kubb
+  and king topple (core/topple incl. leaning = felled in a match, re-arm
+  when upright), the round (core/scoring + quiet-court end), the match
+  (core/match v3: turns, inkast landing, raise / restore-home /
+  return-to-rack effects applied directly to the server's bodies, king
+  deferral, advantage-line rack, auto-restart) and "Ny runda".
+  Tested against a scripted fake world (rules) plus the real Havok world
+  (ranges).
+- **Turn enforcement**: a stick throw is accepted only from the side on
+  turn during `throwing`, each stick once per round; a kubb toss only
+  from the thrower, only for a queued kubb, during `inkast`.
+- **Practice vs match**: with one player the server runs practice (six
+  sticks, then everything resets to that player's rack); the match
+  starts fresh when the second player joins and ends (practice again)
+  when one leaves.
+- **Protocol v2**: client → `join` gains `clientId` (a per-browser id in
+  localStorage), `reset`; server → `match { state | null }`, `round`
+  (the RoundEnded payload + the side that threw). A reloading headset
+  gets its side back if it rejoins within 5 minutes (docs/QUESTIONS.md
+  option 1, decided autonomously — reversible).
+- **Clients in server mode**: ServerLinkSystem turns server messages into
+  the existing bus events (MatchStateChanged, RoundEnded with
+  `byOpponent`, MultiplayerPeerDisconnected), so HUD, stats, inkast
+  grabbability, advantage line and gate probes work unchanged. Local
+  RoundSystem, SimpleRules, the menu's round-end reset, MatchRules'
+  restart and InkastSystem's landing detection stand down; "Ny runda"
+  and kubb tosses go to the server.
+- **Gate report**: the server appends its own gate lines (king decision,
+  inkast landed, kubb raised, match restart) to the same NDJSON log with
+  role `server`; the checks accept `server` where they read the host.
