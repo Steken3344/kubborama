@@ -16,6 +16,7 @@ import { gateLog } from '../debug/gateLog.js';
 import { matchActivity } from '../matchActivityState.js';
 import { activeCourtHalves } from './activeCourt.js';
 import { MenuSystem } from './menu.js';
+import { isServerModeOn } from '../serverMode.js';
 
 const UPRIGHT: [number, number, number, number] = [0, 0, 0, 1];
 
@@ -111,7 +112,12 @@ export class MatchRulesSystem extends createSystem({
     this.syncRack(event.state.currentTurn, event.state.inkastQueue);
 
     if (isFinished(event.state)) {
-      if (event.mySide === 'host' && this.restartInS === null) {
+      // The game server restarts its own match (MP6).
+      if (
+        event.mySide === 'host' &&
+        this.restartInS === null &&
+        !isServerModeOn()
+      ) {
         this.restartInS = match.restartDelayS;
         log('info', 'match', 'match finished — restart countdown started', {
           winner: event.state.winner,

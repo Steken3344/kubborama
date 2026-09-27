@@ -10,6 +10,7 @@ import { gameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
 import { matchActivity } from '../matchActivityState.js';
 import { settingsState } from '../settingsState.js';
+import { isServerModeOn } from '../serverMode.js';
 
 const IDENTITY_QUATERNION: [number, number, number, number] = [0, 0, 0, 1];
 
@@ -60,6 +61,9 @@ export class SimpleRulesSystem extends createSystem({
   private unsubscribeReset?: () => void;
 
   init(): void {
+    if (isServerModeOn()) {
+      return; // MP6: the game server owns every piece
+    }
     const physicsSystem = this.world.getSystem(PhysicsSystem);
     if (!physicsSystem) {
       throw new Error(

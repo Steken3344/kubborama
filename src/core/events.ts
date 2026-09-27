@@ -160,6 +160,10 @@ export interface GameEvents {
    * MenuSystem, the one owner of resetAll(). Keeps the reset trigger on
    * the bus instead of three systems calling into MenuSystem. */
   ResetRequested: Record<string, never>;
+  /** MP6: "Ny runda" pressed while playing through the game server —
+   * ServerLinkSystem forwards it; the server resets and every client
+   * follows its snapshots. */
+  ServerResetRequested: Record<string, never>;
   /** MP3b: a validated presence message from a peer, forwarded by
    * MultiplayerSystem (which owns the network) so PeerAvatarSystem
    * (which owns the avatars) never touches Trystero — and HudSystem can

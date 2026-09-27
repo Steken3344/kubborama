@@ -19,6 +19,7 @@ import type { RoundState } from '../core/scoring.js';
 import { sub } from '../core/vec3.js';
 import type { Vec3 } from '../core/vec3.js';
 import { readBodySpeed } from './bodySpeed.js';
+import { isServerModeOn } from '../serverMode.js';
 
 interface PendingThrow {
   releasePosition: Vec3;
@@ -89,6 +90,12 @@ export class RoundSystem extends createSystem({
   private unsubs: Array<() => void> = [];
 
   init(): void {
+    if (isServerModeOn()) {
+      // MP6: the game server runs the round and sends RoundEnded
+      // (ServerLinkSystem); a local count of predicted flights would
+      // end rounds on its own.
+      return;
+    }
     this.unsubs.push(
       gameEvents.on('Thrown', (e) => {
         this.roundState = scoringReducer(this.roundState, {

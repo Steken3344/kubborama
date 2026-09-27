@@ -12,6 +12,8 @@ import {
 } from '../core/serverProtocol.js';
 import type { ClientMessage, ServerMessage } from '../core/serverProtocol.js';
 import type { MatchSide } from '../core/match.js';
+import type { Quat } from '../core/quat.js';
+import type { Vec3 } from '../core/vec3.js';
 import { debugContext } from '../debug/debugContext.js';
 import { gateLog } from '../debug/gateLog.js';
 import { isServerModeOn } from '../serverMode.js';
@@ -25,6 +27,23 @@ import { SettingsSystem } from './settings.js';
  * Keyed on the SERVER tick so every client samples the same ones. */
 const GATE_SAMPLE_EVERY_TICKS = 60;
 const RECONNECT_DELAY_MS = 2000;
+const CLIENT_ID_KEY = 'kubborama.clientId';
+
+/** A per-browser id so the server gives a reloading headset its side
+ * back (MP6). Falls back to a per-page id when storage is blocked. */
+function clientId(): string {
+  try {
+    const existing = localStorage.getItem(CLIENT_ID_KEY);
+    if (existing && existing.length >= 8) {
+      return existing;
+    }
+    const fresh = crypto.randomUUID();
+    localStorage.setItem(CLIENT_ID_KEY, fresh);
+    return fresh;
+  } catch {
+    return crypto.randomUUID();
+  }
+}
 
 /**
  * MP5 (docs/superpowers/specs/2026-09-26-authoritative-server-design.md):
@@ -45,6 +64,9 @@ export class ServerLinkSystem extends createSystem({}) {
   private pieceIdByIndex = new Map<number, string>();
   private side: MatchSide | null = null;
   private stopped = false;
+  /** Whether the last server `match` message carried a match. */
+  private inMatch = false;
+  private nowS = 0;
 
   init(): void {
     if (!isServerModeOn()) {
@@ -66,7 +88,10 @@ export class ServerLinkSystem extends createSystem({}) {
     }
     this.cleanupFuncs.push(
       gameEvents.on('Thrown', (e) => {
-        this.sendThrow(e);
+        this.sendStickThrow(e);
+      }),
+      gameEvents.on('ServerResetRequested', () => {
+        this.send({ type: 'reset' });
       }),
       () => {
         this.stopped = true;
@@ -104,6 +129,7 @@ export class ServerLinkSystem extends createSystem({}) {
         type: 'join',
         protocol: SERVER_PROTOCOL_VERSION,
         gameMode: settingsState.current.gameMode,
+        clientId: clientId(),
       });
     });
     socket.addEventListener('message', (event) => {
@@ -125,6 +151,7 @@ export class ServerLinkSystem extends createSystem({}) {
       this.socket = null;
       this.side = null;
       this.settingsSystem.releaseMatchGameMode();
+      this.leaveMatch();
       if (!this.stopped) {
         setTimeout(() => this.connect(), RECONNECT_DELAY_MS);
       }
@@ -161,6 +188,35 @@ export class ServerLinkSystem extends createSystem({}) {
       case 'peers':
         log('info', 'net', 'game server players', { count: message.count });
         return;
+      case 'match':
+        if (message.state === null) {
+          this.leaveMatch();
+          return;
+        }
+        if (this.side === null) {
+          return;
+        }
+        this.inMatch = true;
+        // The same bus event the Trystero host emits: HUD, MatchRules
+        // (rack, matchActivity), InkastSystem, AdvantageLine and the gate
+        // probes follow the server's match unchanged.
+        gameEvents.emit('MatchStateChanged', {
+          state: message.state,
+          mySide: this.side,
+        });
+        return;
+      case 'round':
+        gameEvents.emit('RoundEnded', {
+          // gh#16 semantics: the opponent's turn never lands in our stats.
+          byOpponent: this.side !== message.side,
+          result: message.result,
+          sticksThrownThisRound: message.sticksThrownThisRound,
+          longestThrowM: message.longestThrowM,
+          longestFellingThrowM: message.longestFellingThrowM,
+          roundDurationS: message.roundDurationS,
+          timeS: this.nowS,
+        });
+        return;
       case 'rejected':
         log('warn', 'net', 'game server rejected us', {
           reason: message.reason,
@@ -181,19 +237,53 @@ export class ServerLinkSystem extends createSystem({}) {
     this.player.quaternion.set(...pose.quaternion);
   }
 
-  private sendThrow(event: GameEvents['Thrown']): void {
+  update(_delta: number, timeS: number): void {
+    this.nowS = timeS;
+  }
+
+  /** The match ended for us (the other player left, or we dropped). */
+  private leaveMatch(): void {
+    if (!this.inMatch) {
+      return;
+    }
+    this.inMatch = false;
+    gameEvents.emit('MultiplayerPeerDisconnected', {});
+  }
+
+  private sendStickThrow(event: GameEvents['Thrown']): void {
     const pieceId = this.pieceIdByIndex.get(Number(event.stickId));
     const object3D = pieceId ? this.pieces.get(pieceId)?.object3D : undefined;
-    if (!pieceId || !object3D || this.side === null) {
+    if (!pieceId || !object3D) {
+      return;
+    }
+    this.sendThrow(
+      pieceId,
+      event.releasePosition,
+      localPoseOf(object3D).quaternion,
+      event.releaseVelocity,
+      event.angularVelocity,
+    );
+  }
+
+  /** A release — a stick (ThrowingSystem's Thrown) or an inkast kubb
+   * (InkastSystem calls this directly). The server decides if it counts. */
+  sendThrow(
+    pieceId: string,
+    position: Vec3,
+    quaternion: Quat,
+    linearVelocity: Vec3,
+    angularVelocity: Vec3,
+  ): void {
+    if (this.side === null) {
       return;
     }
     this.send({
       type: 'throw',
       pieceId,
-      position: event.releasePosition,
-      quaternion: localPoseOf(object3D).quaternion,
-      linearVelocity: event.releaseVelocity,
-      angularVelocity: event.angularVelocity,
+      position,
+      quaternion,
+      linearVelocity,
+      angularVelocity,
     });
   }
 

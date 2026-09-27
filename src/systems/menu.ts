@@ -25,6 +25,7 @@ import { playSfxVariant } from './playSfx.js';
 import { SettingsSystem } from './settings.js';
 import { StatsSystem } from './stats.js';
 import { gateLog } from '../debug/gateLog.js';
+import { isServerModeOn } from '../serverMode.js';
 
 export interface HomePose {
   position: Vec3;
@@ -132,6 +133,10 @@ export class MenuSystem extends createSystem({
 
     this.wireButton('reset-button', () => {
       gateLog('reset pressed', {});
+      if (isServerModeOn()) {
+        gameEvents.emit('ServerResetRequested', {});
+        return;
+      }
       this.resetAll('manual');
       this.setMenuOpen(false);
     });
@@ -234,7 +239,11 @@ export class MenuSystem extends createSystem({
     // implementation, two triggers.
     this.cleanupFuncs.push(
       gameEvents.on('RoundEnded', () => {
-        this.resetAll('roundEnd');
+        // MP6: with the game server the SERVER re-racks; a local reset
+        // would only fight its snapshots.
+        if (!isServerModeOn()) {
+          this.resetAll('roundEnd');
+        }
         this.refreshStats();
       }),
       gameEvents.on('LanguageChanged', () => {
@@ -243,7 +252,9 @@ export class MenuSystem extends createSystem({
       // MP3a: MatchRulesSystem (auto-restart, room emptied) and a
       // guest's relayed "Ny runda" all ask for a full reset here.
       gameEvents.on('ResetRequested', () => {
-        this.resetAll('manual');
+        if (!isServerModeOn()) {
+          this.resetAll('manual');
+        }
       }),
     );
   }

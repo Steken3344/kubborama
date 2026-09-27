@@ -278,7 +278,14 @@ function sameRoomCheck(entries) {
 
 export function runChecks(entries) {
   const summaries = gate(entries, 'round summary');
-  const kings = gate(entries, 'king decision').filter((e) => e.role === 'host');
+  // The authority's own lines: the game server's when it ran the match
+  // (MP6), otherwise the Trystero host's.
+  const authority = entries.some((e) => e.role === 'server')
+    ? 'server'
+    : 'host';
+  const kings = gate(entries, 'king decision').filter(
+    (e) => e.role === authority,
+  );
   const fits = gate(entries, 'avatar fit');
   const sync = syncPairs(entries);
   const scoreIncidents = sync.incidents.filter((i) => i.field === 'score');
@@ -377,7 +384,7 @@ export function runChecks(entries) {
     allOf(
       'mp3a-restart',
       'auto-restart after ~10 s, host starts',
-      gate(entries, 'match restart').filter((e) => e.role === 'host'),
+      gate(entries, 'match restart').filter((e) => e.role === authority),
       (r) =>
         r.data.secondsSinceFinished < THRESHOLDS.restartMinS ||
         r.data.secondsSinceFinished > THRESHOLDS.restartMaxS ||

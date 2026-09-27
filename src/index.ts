@@ -49,10 +49,16 @@ World.create(
   // importing their module URLs from a page breaks after an HMR update
   // (Vite adds ?t= to the app's imports, so the page gets a second copy).
   if (import.meta.env.DEV) {
-    (globalThis as unknown as Record<string, unknown>)['__kubbDev'] = {
+    const devHook: Record<string, unknown> = {
       gameEvents,
       debugContext,
+      serverLink: () => world.getSystem(ServerLinkSystem),
+      lastMatch: null,
     };
+    gameEvents.on('MatchStateChanged', (e) => {
+      devHook['lastMatch'] = e.state;
+    });
+    (globalThis as unknown as Record<string, unknown>)['__kubbDev'] = devHook;
   }
   // M4: SettingsSystem loads persisted settings + wires the i18n
   // translator before anything else reads settingsState/i18nState

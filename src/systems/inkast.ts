@@ -28,6 +28,8 @@ import { readBodySpeed } from './bodySpeed.js';
 import { MultiplayerSystem } from './multiplayer.js';
 import { localPoseOf } from './objectPose.js';
 import { PoseSampler, releaseWindowFrames } from './poseSampler.js';
+import { isServerModeOn } from '../serverMode.js';
+import { ServerLinkSystem } from './serverLink.js';
 
 /** The scene's own OneHandGrabbable config for sticks (main.iwsdk.scene.
  * json) — re-added after the inkast, and used for tossable kubbs. */
@@ -61,6 +63,8 @@ export class InkastSystem extends createSystem({
 }) {
   private grabSystem!: GrabSystem;
   private multiplayerSystem!: MultiplayerSystem;
+  /** Set when playing through the game server (MP6). */
+  private serverLink: ServerLinkSystem | null = null;
   private kubbEntities = new Map<string, Entity>();
   private kubbIdByIndex = new Map<number, string>();
   private poseSampler = new PoseSampler();
@@ -83,6 +87,9 @@ export class InkastSystem extends createSystem({
     }
     this.grabSystem = grabSystem;
     this.multiplayerSystem = multiplayerSystem;
+    this.serverLink = isServerModeOn()
+      ? (this.world.getSystem(ServerLinkSystem) ?? null)
+      : null;
     for (let i = 0; i < KUBB_COUNT * 2; i++) {
       const id = kubbId(i);
       const entity = this.world.requireSceneEntity(id);
@@ -204,7 +211,16 @@ export class InkastSystem extends createSystem({
     setGrabbable(entity, false);
     const hand = this.lastHand.get(entity.index) ?? 'right';
     log('info', 'throw', 'inkast toss', { kubbId: id, releaseSpeedMps, hand });
-    if (this.mySide === 'host') {
+    if (this.serverLink) {
+      // MP6: the game server owns the kubb and judges the landing.
+      this.serverLink.sendThrow(
+        id,
+        releasePosition,
+        localPoseOf(object3D).quaternion,
+        linearVelocity,
+        angularVelocity,
+      );
+    } else if (this.mySide === 'host') {
       gameEvents.emit('KubbTossed', { kubbId: id });
     } else {
       this.multiplayerSystem.relayToss(
