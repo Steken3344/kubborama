@@ -188,7 +188,7 @@ function serveStatic(root: string, path: string, res: ServerResponse): void {
   // Vite's hashed assets never change; the page itself always revalidates.
   res.setHeader(
     'cache-control',
-    target.endsWith('index.html') || !relative.startsWith('assets')
+    target.endsWith('index.html') || !/^assets[\\/]/u.test(relative)
       ? 'no-cache'
       : 'public, max-age=31536000, immutable',
   );

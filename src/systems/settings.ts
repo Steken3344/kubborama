@@ -5,6 +5,7 @@ import {
   decodeSettings,
   defaultSettings,
   encodeSettings,
+  nextGameMode,
   urlSettingOverrides,
 } from '../core/settings.js';
 import type { Settings } from '../core/settings.js';
@@ -144,9 +145,7 @@ export class SettingsSystem extends createSystem({}) {
   }
 
   toggleGameMode(): void {
-    this.setGameMode(
-      settingsState.current.gameMode === 'simple' ? 'advanced' : 'simple',
-    );
+    this.setGameMode(nextGameMode(settingsState.current.gameMode));
   }
 
   setHapticsEnabled(hapticsEnabled: boolean): void {

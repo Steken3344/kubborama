@@ -16,8 +16,9 @@ const port = Number(process.env['KUBB_PORT'] ?? 8443);
 // in dist-server/, the source in server/ — both one level below it.
 const repo = (path: string): string =>
   fileURLToPath(new URL(`../${path}`, import.meta.url));
-// Long-lived (825 days) so the headsets do not have to re-accept a
-// fresh certificate every month; the same file the dev server reuses.
+// The same certificate file the dev server uses (iwsdk creates it for a
+// year); when it is missing or expired we regenerate it for 825 days so
+// the headsets rarely have to accept a new one.
 const pem = await getCertificate(
   repo('.iwsdk/https'),
   undefined,

@@ -27,6 +27,7 @@ import { StatsSystem } from './stats.js';
 import { gateLog } from '../debug/gateLog.js';
 import { isServerModeOn } from '../serverMode.js';
 import { serverConfig } from '../serverConfig.js';
+import { nextGameMode } from '../core/settings.js';
 
 export interface HomePose {
   position: Vec3;
@@ -152,8 +153,7 @@ export class MenuSystem extends createSystem({
       if (isServerModeOn()) {
         // A room setting: the server switches the court for both.
         gameEvents.emit('ServerGameModeRequested', {
-          gameMode:
-            settingsState.current.gameMode === 'simple' ? 'advanced' : 'simple',
+          gameMode: nextGameMode(settingsState.current.gameMode),
         });
         return;
       }
@@ -256,6 +256,11 @@ export class MenuSystem extends createSystem({
         this.refreshStats();
       }),
       gameEvents.on('LanguageChanged', () => {
+        this.refreshLabels();
+      }),
+      // The court can change from outside (the server's `room`, a
+      // borrowed mode on joining) — keep the button's label true.
+      gameEvents.on('GameModeChanged', () => {
         this.refreshLabels();
       }),
       // MP3a: MatchRulesSystem (auto-restart, room emptied) and a

@@ -112,8 +112,10 @@ export class ServerLinkSystem extends createSystem({}) {
     // 2026-09-27: the managed editor browser loaded the app, joined
     // first and took side A from his headset). A plain browser tab never
     // takes a side. `?player=1` joins at once — for headless tests.
-    // Leaving XR (headset asleep) keeps the connection, so the side is
-    // kept too.
+    // Leaving XR keeps the connection; a SLEEPING headset stops answering
+    // the server's 10 s heartbeat and is dropped — its seat then waits out
+    // the 60 s rejoin grace, and on waking it reconnects and keeps its side
+    // if it is back in time (review, 2026-10-31).
     const joinNow =
       new URLSearchParams(window.location.search).get('player') === '1';
     if (joinNow) {
@@ -218,9 +220,7 @@ export class ServerLinkSystem extends createSystem({}) {
       case 'room':
         // The court changed for the whole room: relay it out locally,
         // then stand at our own baseline of the NEW court.
-        log('info', 'net', 'room court changed', {
-          gameMode: message.gameMode,
-        });
+        gateLog('room court changed', { gameMode: message.gameMode });
         this.settingsSystem.adoptMatchGameMode(message.gameMode);
         if (this.side) {
           this.standAtOwnBaseline(this.side);

@@ -266,6 +266,31 @@ export function syncPairs(entries) {
   return { pairs: pairs.length, incidents };
 }
 
+/** Server mode: a court switch must reach BOTH headsets with the same
+ * mode (2026-10-31). */
+function roomCourtCheck(entries) {
+  const id = 'room-court';
+  const label = 'a court switch reaches both headsets';
+  const changes = gate(entries, 'room game mode changed');
+  if (changes.length === 0) return verdict(id, label, 'NOT SEEN');
+  const bad = changes.find((c) => {
+    const adopted = (role) =>
+      within(
+        entries,
+        c,
+        (e) =>
+          e.channel === 'gate' &&
+          e.message === 'room court changed' &&
+          e.role === role &&
+          e.data.gameMode === c.data.gameMode,
+      );
+    return !(adopted('host') && adopted('guest'));
+  });
+  return bad
+    ? verdict(id, label, 'FAIL', fmt(bad))
+    : verdict(id, label, 'PASS', fmt(changes[0]));
+}
+
 function sameRoomCheck(entries) {
   const id = 'same-room';
   const label = 'every headset joined the same room';
@@ -366,6 +391,7 @@ export function runChecks(entries) {
       (e) => !e.data.statsRecorded,
     ),
     ...fieldKubbChecks(entries),
+    roomCourtCheck(entries),
     sync.pairs === 0
       ? verdict('mp3a-score', 'score agrees on both', 'NOT SEEN')
       : scoreIncidents.length > 0

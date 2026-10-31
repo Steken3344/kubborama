@@ -3,6 +3,7 @@ import {
   decodeSettings,
   defaultSettings,
   encodeSettings,
+  nextGameMode,
   serverModeActive,
   urlSettingOverrides,
 } from './settings.js';
@@ -102,5 +103,12 @@ describe('serverChoice (auto / on / off)', () => {
     expect(serverModeActive('off', true)).toBe(false);
     expect(serverModeActive('auto', true)).toBe(true);
     expect(serverModeActive('auto', false)).toBe(false);
+  });
+});
+
+describe('nextGameMode', () => {
+  it('flips between the two courts', () => {
+    expect(nextGameMode('simple')).toBe('advanced');
+    expect(nextGameMode('advanced')).toBe('simple');
   });
 });

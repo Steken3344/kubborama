@@ -337,3 +337,36 @@ describe('GameServer — room settings: the court (2026-10-31)', () => {
     ).toBe(false);
   });
 });
+
+describe('GameServer — court rebuild races (review, 2026-10-31)', () => {
+  it('a second court request while rebuilding is refused; one room message only', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const ha = server.connect(a.connection);
+    const hb = server.connect(b.connection);
+    await ha.receive(join('simple', 'race-A-1'));
+    await hb.receive(join('simple', 'race-B-1'));
+    const first = ha.receive({ type: 'setGameMode', gameMode: 'advanced' });
+    const second = hb.receive({ type: 'setGameMode', gameMode: 'advanced' });
+    expect(await first).toBe(true);
+    expect(await second).toBe(false);
+    expect(a.received.filter((m) => m.type === 'room')).toHaveLength(1);
+  });
+  it('a player joining during the rebuild is told the new court', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const ha = server.connect(a.connection);
+    await ha.receive(join('simple', 'rebuild-A-1'));
+    const rebuild = ha.receive({ type: 'setGameMode', gameMode: 'advanced' });
+    const joined = server
+      .connect(b.connection)
+      .receive(join('simple', 'rebuild-B-1'));
+    await rebuild;
+    await joined;
+    expect(b.received.find((m) => m.type === 'welcome')).toMatchObject({
+      gameMode: 'advanced',
+    });
+  });
+});

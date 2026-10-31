@@ -39,6 +39,8 @@ export class VoiceLinkSystem extends createSystem({}) {
   };
   /** The seat generation our current call was made for. */
   private callGeneration = -2;
+  /** Bumped by every incoming offer: only the newest one is answered. */
+  private offerSeq = 0;
   private destroyed = false;
 
   init(): void {
@@ -121,37 +123,80 @@ export class VoiceLinkSystem extends createSystem({}) {
     }
     this.hangUp();
     const pc = this.connection();
-    const offer = await pc.createOffer();
-    if (this.pc !== pc) {
-      return;
+    try {
+      const offer = await pc.createOffer();
+      if (this.pc !== pc) {
+        return;
+      }
+      await pc.setLocalDescription(offer);
+      if (this.pc !== pc) {
+        return;
+      }
+      this.send({ kind: 'offer', sdp: offer.sdp ?? '' });
+      log('info', 'net', 'voice offer sent', { generation });
+    } catch (error) {
+      this.signalingFailed(pc, 'offer', error);
     }
-    await pc.setLocalDescription(offer);
-    this.send({ kind: 'offer', sdp: offer.sdp ?? '' });
-    log('info', 'net', 'voice offer sent', { generation });
+  }
+
+  /** A WebRTC call failed mid-signaling — only worth a word if it is
+   * still the current call (an old one closing throws by design). */
+  private signalingFailed(
+    pc: RTCPeerConnection,
+    step: string,
+    error: unknown,
+  ): void {
+    if (this.pc === pc) {
+      log('warn', 'net', 'voice signaling failed', {
+        step,
+        error: String(error),
+      });
+    }
   }
 
   private async onSignal(data: VoiceSignal): Promise<void> {
     if (data.kind === 'offer') {
+      // Hang up FIRST: the ICE candidates that follow this offer then
+      // queue for the new call instead of being wiped after the mic wait
+      // (review, 2026-10-31). Only the newest offer is answered.
+      const seq = ++this.offerSeq;
+      this.hangUp();
       await this.micOrTimeout();
-      if (this.destroyed) {
+      if (this.destroyed || seq !== this.offerSeq) {
         return;
       }
-      this.hangUp(); // a fresh offer (A reconnected) replaces any old call
       const pc = this.connection();
-      await pc.setRemoteDescription({ type: 'offer', sdp: data.sdp });
-      await this.flushIce();
-      const answer = await pc.createAnswer();
-      if (this.pc !== pc) {
-        return; // replaced by an even newer offer meanwhile
+      try {
+        await pc.setRemoteDescription({ type: 'offer', sdp: data.sdp });
+        if (this.pc !== pc) {
+          return;
+        }
+        await this.flushIce();
+        const answer = await pc.createAnswer();
+        if (this.pc !== pc) {
+          return;
+        }
+        await pc.setLocalDescription(answer);
+        if (this.pc !== pc) {
+          return;
+        }
+        this.send({ kind: 'answer', sdp: answer.sdp ?? '' });
+      } catch (error) {
+        this.signalingFailed(pc, 'answer', error);
       }
-      await pc.setLocalDescription(answer);
-      this.send({ kind: 'answer', sdp: answer.sdp ?? '' });
       return;
     }
     if (data.kind === 'answer') {
-      if (this.pc && this.pc.signalingState === 'have-local-offer') {
-        await this.pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
+      const pc = this.pc;
+      if (!pc || pc.signalingState !== 'have-local-offer') {
+        return;
+      }
+      try {
+        await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
         await this.flushIce();
+      } catch (error) {
+        // An answer to an older offer — the next generation re-calls.
+        this.signalingFailed(pc, 'apply answer', error);
       }
       return;
     }

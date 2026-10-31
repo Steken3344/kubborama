@@ -260,3 +260,17 @@ describe('reset presses outside a match (MP7 session)', () => {
     expect(status([press], 'mp3a-reset-host')).toBe('NOT SEEN');
   });
 });
+
+describe('room-court (server mode)', () => {
+  it('PASS when both headsets adopt the switched court, FAIL when one does not', () => {
+    const change = g('server', 'room game mode changed', {
+      gameMode: 'advanced',
+      by: 'guest',
+    });
+    const host = g('host', 'room court changed', { gameMode: 'advanced' });
+    const guest = g('guest', 'room court changed', { gameMode: 'advanced' });
+    expect(status([change, host, guest], 'room-court')).toBe('PASS');
+    expect(status([change, host], 'room-court')).toBe('FAIL');
+    expect(status([], 'room-court')).toBe('NOT SEEN');
+  });
+});

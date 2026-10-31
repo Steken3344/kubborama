@@ -273,7 +273,19 @@ export class GameServer {
       this.worldPromise = createPhysicsWorld(courtPresetForMode(gameMode));
     }
     const pending = this.worldPromise;
-    const world = await pending;
+    let world: PhysicsWorld;
+    try {
+      world = await pending;
+    } catch (error) {
+      // A failed build must not brick the room: the next join retries.
+      if (this.worldPromise === pending) {
+        this.worldPromise = null;
+      }
+      this.log('warn', 'net', 'physics world build failed', {
+        error: String(error),
+      });
+      throw error;
+    }
     // The room may have emptied (and a new world been started) while
     // this one was building — only the CURRENT promise may install.
     if (this.world === world) {

@@ -5266,3 +5266,18 @@ Cloud parked (headsets are always at home).
   capped); no STUN on the LAN. Server mode no longer joins Trystero.
 - The `/__kubb` routes are one module (server/httpRoutes.ts) used by the
   standalone server and the Vite dev plugin.
+
+## 2026-10-31 — The court is a room setting; review fixes
+
+Through the game server the court (game mode) is shared: the button
+asks the server (`setGameMode`), which rebuilds the court on the new
+preset (size, wind) and **starts a fresh match** — like Ny runda, one
+press resets a running match (deliberate). Every client adopts it via
+`room` (borrowed, not persisted: on leaving, each player's own mode
+returns, consistent with gh#15). Review fixes: the menu label follows
+GameModeChanged (it went stale and invited a second press that flipped
+the court back); voice hangs up before the mic wait so the new offer's
+ICE candidates are not wiped, only the newest offer is answered, and
+signaling errors are caught; a failed world build no longer bricks the
+room. The 10 s heartbeat means a sleeping headset is dropped after
+≤20 s and keeps its side only within the 60 s rejoin grace.

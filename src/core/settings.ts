@@ -121,3 +121,9 @@ export function serverModeActive(
 ): boolean {
   return choice === 'on' || (choice === 'auto' && serverExpected);
 }
+
+/** The court button's other choice — one definition for the local
+ * toggle and the server-mode room request. */
+export function nextGameMode(mode: Settings['gameMode']): Settings['gameMode'] {
+  return mode === 'simple' ? 'advanced' : 'simple';
+}
