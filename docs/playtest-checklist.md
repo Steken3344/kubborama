@@ -35,5 +35,6 @@ and only where the look is the question.
 
 ## Session log
 
-| Date | Build | Found (fixed) | Ideas (→ IMPROVEMENTS.md) | Draw calls / tris |
-| ---- | ----- | ------------- | ------------------------- | ----------------- |
+| Date       | Build | Found (fixed)                                                                                                                                             | Ideas (→ IMPROVEMENTS.md)       | Draw calls / tris |
+| ---------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- | ----------------- |
+| 2026-10-31 | #200  | TV: HUD sign covered the over-the-shoulder shot; chase/crane cam inside the thrower (both fixed). Peach "boxes" at the far end are the cliffs, not a bug. | draw calls, TV scoreboard count | 200 / 29.9k       |
