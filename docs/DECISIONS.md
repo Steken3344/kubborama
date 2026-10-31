@@ -5339,3 +5339,24 @@ or alone in the room) there is no line, since a seated guest's side is
 not known without a match state; a court switch clears the line until
 the next match state, so the old court's baseline can never push anyone.
 Verified by unit tests only (the clamp needs a two-player match).
+
+## 2026-10-31 — Smooth pieces: snapshot interpolation
+
+Erik: "de ser väldigt hackigt ut när de snurrar i luften … har för mig
+att det inte var så från början". Root cause: since MP6 the pieces show
+the server's 20 Hz snapshots as they arrive, so a stick spinning
+~22 rad/s jumps ~60° every third frame; before, local physics ran at the
+frame rate. Fix: standard entity interpolation — the client renders
+`snapshotInterpolationDelayTicks` (6 ticks = 100 ms) behind the newest
+snapshot and interpolates between the bracketing two (lerp + slerp,
+`core/snapshotBuffer.ts`), with a render clock that drifts toward the
+target so jitter never stutters and a jump faster than 30 m/s snaps (a
+rack reset is never swept through the air). The local player's own
+throw keeps its local prediction until the render time reaches the
+first snapshot where the server has the throw, then blends onto the
+server pose over 0.25 s (`core/throwHandover.ts`); a refused throw hands
+back after 1 s. `TICK_HZ`/`SNAPSHOT_EVERY_TICKS` moved into
+`core/serverProtocol.ts` (shared). Measured in a headed Chromium at
+59.5 fps against a protocol bot's throw: the opponent's stick changed
+in 108 of 119 frames, ~20° per frame. The own-throw handover is covered
+by unit tests only.

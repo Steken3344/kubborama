@@ -2,5 +2,8 @@
   "appId": "kubborama-mp1",
   "defaultRoomId": "kubborama-lobby",
   "sendIntervalS": 0.05,
-  "devRoomId": "kubborama-dev"
+  "devRoomId": "kubborama-dev",
+  "snapshotInterpolationDelayTicks": 6,
+  "ownThrowBlendS": 0.25,
+  "ownThrowHandoverTimeoutS": 1.0
 }

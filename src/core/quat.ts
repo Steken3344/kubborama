@@ -139,3 +139,35 @@ export function fromEulerDegXYZ([xDeg, yDeg, zDeg]: Vec3): Quat {
     c1 * c2 * c3 - s1 * s2 * s3,
   ];
 }
+
+/** Spherical interpolation from `a` (t=0) to `b` (t=1), the short way
+ * round, written into `out` (no allocation — called per piece per
+ * frame by the snapshot interpolation). Standard slerp: with
+ * cosΩ = a·b (b negated if negative), the weights are
+ * sin((1−t)Ω)/sinΩ and sin(tΩ)/sinΩ; nearly equal rotations fall back
+ * to a normalized lerp, where sinΩ → 0 would divide badly. */
+export function slerpInto(a: Quat, b: Quat, t: number, out: Quat): void {
+  let cos = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+  const sign = cos < 0 ? -1 : 1;
+  cos *= sign;
+  let wa: number;
+  let wb: number;
+  if (cos > 0.9995) {
+    wa = 1 - t;
+    wb = t * sign;
+  } else {
+    const omega = Math.acos(cos);
+    const sinOmega = Math.sin(omega);
+    wa = Math.sin((1 - t) * omega) / sinOmega;
+    wb = (Math.sin(t * omega) / sinOmega) * sign;
+  }
+  const x = wa * a[0] + wb * b[0];
+  const y = wa * a[1] + wb * b[1];
+  const z = wa * a[2] + wb * b[2];
+  const w = wa * a[3] + wb * b[3];
+  const length = Math.hypot(x, y, z, w) || 1;
+  out[0] = x / length;
+  out[1] = y / length;
+  out[2] = z / length;
+  out[3] = w / length;
+}

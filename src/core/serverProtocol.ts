@@ -13,6 +13,11 @@ import { gameModeSchema } from './settings.js';
  */
 /** v2 (MP6): join carries a clientId; reset, match and round messages. */
 export const SERVER_PROTOCOL_VERSION = 2;
+/** The server's fixed simulation rate, and every how many ticks it
+ * sends a snapshot (→ 20 Hz). Shared: the client interpolates in ticks
+ * (core/snapshotBuffer.ts). */
+export const TICK_HZ = 60;
+export const SNAPSHOT_EVERY_TICKS = 3;
 /** The WebSocket path on the dev server (and later the cloud server). */
 export const SERVER_PATH = '/__kubb/game';
 

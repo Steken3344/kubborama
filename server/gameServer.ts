@@ -4,6 +4,8 @@ import { NETWORKED_PIECE_IDS } from '../src/core/pieceSync.js';
 import {
   parseClientMessage,
   SERVER_PROTOCOL_VERSION,
+  SNAPSHOT_EVERY_TICKS,
+  TICK_HZ,
 } from '../src/core/serverProtocol.js';
 import type {
   ClientMessage,
@@ -16,9 +18,6 @@ import type { PhysicsWorld } from './physicsWorld.js';
 import { appendServerLog } from './serverLog.js';
 import type { ServerLog } from './serverLog.js';
 
-/** Fixed simulation rate and the snapshot rate derived from it. */
-export const TICK_HZ = 60;
-export const SNAPSHOT_EVERY_TICKS = 3; // → 20 Hz, like the Trystero pieceSync
 /** At most this many throws per client per second — six sticks is a
  * whole turn; anything faster is a flood (review, 2026-09-26). */
 const MAX_THROWS_PER_SECOND = 6;
