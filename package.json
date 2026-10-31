@@ -12,6 +12,8 @@
     "reference:warmup": "iwsdk reference warmup",
     "typecheck": "tsc --noEmit",
     "build": "vite build",
+    "build:server": "node scripts/build-server.mjs",
+    "start": "vite build && node scripts/build-server.mjs && node dist-server/main.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -30,7 +32,8 @@
     "trystero": "^0.25.4",
     "tweakpane": "^4.0.5",
     "ws": "^8.21.3",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@vitejs/plugin-basic-ssl": "^2.3.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

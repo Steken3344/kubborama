@@ -6,12 +6,13 @@
  */
 
 import { execSync } from 'node:child_process';
-import { appendFileSync, mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { iwsdkDev } from '@iwsdk/vite-plugin-dev';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { createKubbRequestHandler } from './server/httpRoutes.js';
+import multiplayerConfig from './src/data/multiplayer.json' with { type: 'json' };
 
 /**
  * Debug-mode log relay (Erik, 2026-09-05). The app (src/debug/
@@ -22,49 +23,21 @@ import { VitePWA } from 'vite-plugin-pwa';
  * server only (`apply: 'serve'`) — the production build has no relay.
  */
 function kubbDebugRelay(): Plugin {
-  const logPath = resolve('.iwsdk/runtime/logs/kubb-debug.ndjson');
   return {
     name: 'kubb-debug-relay',
     apply: 'serve',
     configureServer(server) {
-      mkdirSync(dirname(logPath), { recursive: true });
-      // Prefix match, unbounded body, no auth — deliberately minimal for
-      // a dev-server-only tool on a trusted LAN (never in a build).
-      server.middlewares.use('/__kubb/log', (req, res) => {
-        if (req.method !== 'POST') {
-          res.statusCode = 405;
-          res.end();
-          return;
-        }
-        let body = '';
-        req.on('data', (chunk: Buffer) => {
-          body += chunk.toString('utf8');
-        });
-        req.on('end', () => {
-          try {
-            const entries = JSON.parse(body) as Array<Record<string, unknown>>;
-            const receivedAt = Date.now();
-            const lines = entries
-              .map((e) => JSON.stringify({ ...e, receivedAt }))
-              .join('\n');
-            appendFileSync(logPath, lines + '\n');
-            for (const e of entries) {
-              const t = new Date(Number(e['timeMs']))
-                .toISOString()
-                .slice(11, 23);
-              const data =
-                e['data'] === undefined ? '' : JSON.stringify(e['data']);
-              console.log(
-                `[kubb ${t} ${String(e['role'])}/${String(e['client'])}] ${String(e['level'])} [${String(e['channel'])}] ${String(e['message'])} ${data}`,
-              );
-            }
-            res.statusCode = 204;
-          } catch {
-            res.statusCode = 400;
-          }
-          res.end();
-        });
-      });
+      // The same /__kubb/config.json + /__kubb/log routes the standalone
+      // server answers (server/httpRoutes.ts) — the dev server serves the
+      // app itself, so no static dir here.
+      server.middlewares.use(
+        createKubbRequestHandler({
+          logPath: resolve('.iwsdk/runtime/logs/kubb-debug.ndjson'),
+          room: multiplayerConfig.devRoomId,
+          debug: true,
+          echoLog: true,
+        }),
+      );
     },
   };
 }
