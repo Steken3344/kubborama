@@ -25,6 +25,11 @@ const MAX_THROWS_PER_SECOND = 6;
  * rejoins with the same clientId and the match simply continues
  * (docs/QUESTIONS.md, option 1 — decided 2026-09-27). */
 export const REJOIN_GRACE_MS = 60_000;
+/** "Ny runda" and a court switch each act at most once per this long,
+ * room-wide: a repeated press (a bouncing ray, a quick double click, or
+ * both players at once) must not restart the match — or flip the court
+ * back — again and again (gh#27; 8 court flips in 2 s on 2026-10-31). */
+export const ROOM_ACTION_COOLDOWN_MS = 1000;
 
 /** What the transport (wsServer.ts, or a test) gives the game server. */
 export interface ClientConnection {
@@ -71,6 +76,7 @@ export interface GameServerOptions {
  */
 export class GameServer {
   private readonly nowMs: () => number;
+  private readonly lastRoomActionMs = new Map<'reset' | 'court', number>();
   private readonly log: ServerLog;
   private seats: Seat[] = [];
   private world: PhysicsWorld | null = null;
@@ -196,9 +202,15 @@ export class GameServer {
       return true;
     }
     if (message.type === 'setGameMode') {
+      if (!this.roomActionAllowed('court')) {
+        return false;
+      }
       return this.changeGameMode(message.gameMode, seat.side);
     }
     if (message.type === 'reset') {
+      if (!this.roomActionAllowed('reset')) {
+        return false;
+      }
       this.log('info', 'gate', 'reset pressed', { side: seat.side });
       this.host.reset();
       return true;
@@ -207,6 +219,18 @@ export class GameServer {
       return false;
     }
     return this.host.onThrow(seat.side, message);
+  }
+
+  /** ROOM_ACTION_COOLDOWN_MS per kind of room action. */
+  private roomActionAllowed(kind: 'reset' | 'court'): boolean {
+    const now = this.nowMs();
+    const last = this.lastRoomActionMs.get(kind);
+    if (last !== undefined && now - last < ROOM_ACTION_COOLDOWN_MS) {
+      this.log('info', 'gate', 'room action ignored (cooldown)', { kind });
+      return false;
+    }
+    this.lastRoomActionMs.set(kind, now);
+    return true;
   }
 
   private allowThrow(seat: Seat): boolean {

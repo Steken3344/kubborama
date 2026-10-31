@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { SERVER_PROTOCOL_VERSION } from '../src/core/serverProtocol.js';
 import type { ServerMessage } from '../src/core/serverProtocol.js';
-import { GameServer, REJOIN_GRACE_MS } from './gameServer.js';
+import {
+  GameServer,
+  REJOIN_GRACE_MS,
+  ROOM_ACTION_COOLDOWN_MS,
+} from './gameServer.js';
 import { noServerLog } from './serverLog.js';
 
 const clock = { now: 0 };
@@ -368,5 +372,34 @@ describe('GameServer — court rebuild races (review, 2026-10-31)', () => {
     expect(b.received.find((m) => m.type === 'welcome')).toMatchObject({
       gameMode: 'advanced',
     });
+  });
+});
+
+describe('GameServer — room action cooldown (gh#27)', () => {
+  it('a repeated Ny runda or court press within the cooldown is ignored', async () => {
+    const now = { ms: 10_000 };
+    const server = new GameServer({ log: noServerLog, nowMs: () => now.ms });
+    const a = fakeClient();
+    const b = fakeClient();
+    const ha = server.connect(a.connection);
+    const hb = server.connect(b.connection);
+    await ha.receive(join('simple', 'cool-A-1'));
+    await hb.receive(join('simple', 'cool-B-1'));
+
+    expect(await ha.receive({ type: 'reset' })).toBe(true);
+    now.ms += 200;
+    expect(await hb.receive({ type: 'reset' })).toBe(false); // either player
+    now.ms += ROOM_ACTION_COOLDOWN_MS;
+    expect(await ha.receive({ type: 'reset' })).toBe(true);
+
+    expect(
+      await ha.receive({ type: 'setGameMode', gameMode: 'advanced' }),
+    ).toBe(true);
+    now.ms += 200;
+    expect(await ha.receive({ type: 'setGameMode', gameMode: 'simple' })).toBe(
+      false,
+    ); // no flip back
+    const rooms = a.received.filter((m) => m.type === 'room');
+    expect(rooms).toEqual([{ type: 'room', gameMode: 'advanced' }]);
   });
 });

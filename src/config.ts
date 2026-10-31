@@ -24,6 +24,7 @@ import avatarData from './data/avatar.json' with { type: 'json' };
 import avatarPaletteData from './data/avatar-palette.json' with { type: 'json' };
 import roundData from './data/round.json' with { type: 'json' };
 import locomotionData from './data/locomotion.json' with { type: 'json' };
+import uiData from './data/ui.json' with { type: 'json' };
 
 export const courtPresets = courtPresetsData.presets;
 export type CourtPresetName = keyof typeof courtPresets;
@@ -64,6 +65,8 @@ export const walkArea = {
   minZ: locomotionData.walkAreaMinZ,
   maxZ: locomotionData.walkAreaMaxZ,
 };
+/** Menu buttons ignore a repeat click within this long (gh#27). */
+export const ui = uiData;
 /** How far past the throwing line the head may lean (core/walkArea.ts). */
 export const lineLeanAllowanceM = locomotionData.lineLeanAllowanceM;
 /** MP4 inkast tunables (docs/superpowers/specs/2026-09-26-field-kubbs-design.md). */

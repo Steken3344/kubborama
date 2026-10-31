@@ -8,7 +8,7 @@ import {
 import type { Entity } from '@iwsdk/core';
 import { Resettable } from '../components/resettable.js';
 import { StickPhase, StickState } from '../components/stick-state.js';
-import { audio, avatarPalette, avatarPaletteEntry } from '../config.js';
+import { audio, avatarPalette, avatarPaletteEntry, ui } from '../config.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { accuracy } from '../core/stats.js';
 import { gameEvents } from '../core/events.js';
@@ -278,9 +278,18 @@ export class MenuSystem extends createSystem({
    * docs/DECISIONS.md (M5) for why this fires on the right hand only
    * (a UIKitML click event carries no hand/pointer info to key off). */
   private wireButton(elementId: string, handler: () => void): void {
+    // gh#27: one press arrived as several clicks (3 on 2026-09-27, up to
+    // 14 in a second on 2026-10-31) — a repeat within the debounce is
+    // dropped. The server has its own room-wide cooldown too.
+    let lastClickMs = -Infinity;
     this.menuPanel
       .requireElementById(elementId)
       .addEventListener('click', () => {
+        const nowMs = performance.now();
+        if (nowMs - lastClickMs < ui.buttonDebounceMs) {
+          return;
+        }
+        lastClickMs = nowMs;
         pulseHaptic(this.input.xr.gamepads.right, uiTick);
         playSfxVariant(
           this.world,
