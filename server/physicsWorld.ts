@@ -16,6 +16,7 @@ import {
   farBaselineZ,
   STAKE_NODE_IDS,
 } from '../src/core/court-layout.js';
+import { GRAVITY_MPS2 } from '../src/core/aim.js';
 import { kubbId } from '../src/core/match.js';
 import { mirrorPoseToFarBaseline } from '../src/core/presence.js';
 import { fromEulerDegXYZ } from '../src/core/quat.js';
@@ -144,7 +145,7 @@ export async function createPhysicsWorld(
 ): Promise<PhysicsWorld> {
   const hk = await havokPromise;
   const world: HP_WorldId = hk.HP_World_Create()[1];
-  hk.HP_World_SetGravity(world, [0, -9.81, 0]);
+  hk.HP_World_SetGravity(world, [0, -GRAVITY_MPS2, 0]);
   const nodes = loadSceneNodes();
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const positions = presetPositions(presetName);
