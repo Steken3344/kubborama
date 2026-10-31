@@ -53,6 +53,8 @@ export class SpectatorSystem extends createSystem({}) {
   private serverLink: ServerLinkSystem | null = null;
   private readonly lastStickPos = new Map<string, Vector3>();
   private followSlowS = 0;
+  /** Sticks are re-racked when a turn changes: no "throws" until then. */
+  private ignoreThrowsUntilS = 0;
   private readonly tmpPos = new Vector3();
   private readonly tmpTarget = new Vector3();
   private readonly smoothFocus = new Vector3();
@@ -114,6 +116,15 @@ export class SpectatorSystem extends createSystem({}) {
     this.player.position.set(0, 0, 0);
     this.player.quaternion.set(0, 0, 0, 1);
     this.director = initialDirector();
+    // Start from where the sticks are now, or the first frame would see
+    // them all "fly" from the origin (review, 2026-10-31).
+    for (const id of STICK_IDS) {
+      const object3D = this.serverLink?.pieceObject(id);
+      if (object3D) {
+        this.lastStickPos.get(id)?.copy(object3D.position);
+      }
+    }
+    this.ignoreThrowsUntilS = this.nowS + spectator.ignoreThrowsAfterTurnS;
     this.buildOverlay();
     this.onMatchState(this.lastState);
     gateLog('spectator view', { on: true });
@@ -177,6 +188,7 @@ export class SpectatorSystem extends createSystem({}) {
       prev.phase !== state.phase ||
       this.director.turn === null
     ) {
+      this.ignoreThrowsUntilS = this.nowS + spectator.ignoreThrowsAfterTurnS;
       this.event({ type: 'turn', side: state.currentTurn, phase: state.phase });
     }
   }
@@ -235,7 +247,8 @@ export class SpectatorSystem extends createSystem({}) {
       }
       if (
         speed > spectator.throwSpeedMps &&
-        speed < 60 && // a teleport (rack reset) is not a throw
+        speed < spectator.maxThrowSpeedMps && // a teleport is not a throw
+        this.nowS >= this.ignoreThrowsUntilS &&
         object3D.position.y > spectator.throwMinHeightM &&
         this.lastState !== null
       ) {
@@ -346,8 +359,9 @@ export class SpectatorSystem extends createSystem({}) {
     const onButton = () => this.setFreeCamera(!this.freeCamera);
     button?.addEventListener('click', onButton);
     let dragging = false;
-    const onDown = () => {
-      dragging = true;
+    const onDown = (e: PointerEvent) => {
+      // A click on the button is a click, not the start of a drag.
+      dragging = e.target !== button;
     };
     const onUp = () => {
       dragging = false;

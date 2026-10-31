@@ -559,6 +559,44 @@ describe('GameServer — spectators (2026-10-31)', () => {
     expect(await htv.receive(join('simple', 'tv-sneaky-1'))).toBe(false);
   });
 
+  it('a seat in its rejoin grace shows as empty to spectators', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const tv = fakeClient();
+    const ha = server.connect(a.connection);
+    const hb = server.connect(b.connection);
+    await server.connect(tv.connection).receive(watch);
+    await ha.receive(join('simple', 'grace-player-A-1'));
+    await hb.receive(join('simple', 'grace-player-B-1'));
+    hb.close();
+    expect(
+      tv.received.filter((m) => m.type === 'players').at(-1),
+    ).toMatchObject({ type: 'players', guest: null });
+  });
+
+  it('a seated browser that reloads into watching, then enters VR, gets its seat back', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const ha = server.connect(a.connection);
+    const hb = server.connect(b.connection);
+    await ha.receive(join('simple', 'switch-player-A-1'));
+    await hb.receive(join('simple', 'switch-player-B-1'));
+    hb.close(); // B reloads the page…
+    const watching = fakeClient();
+    const hw = server.connect(watching.connection);
+    expect(await hw.receive(watch)).toBe(true); // …lands in the 2D page
+    hw.close(); // …and enters VR: the spectator socket closes
+    const back = fakeClient();
+    await server
+      .connect(back.connection)
+      .receive(join('simple', 'switch-player-B-1'));
+    expect(back.received).toContainEqual(
+      expect.objectContaining({ type: 'welcome', side: 'guest' }),
+    );
+  });
+
   it('caps the spectators', async () => {
     const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
     const tvs = Array.from({ length: MAX_SPECTATORS + 1 }, () => fakeClient());

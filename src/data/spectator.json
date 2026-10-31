@@ -8,5 +8,7 @@
   "followSmoothingS": 0.12,
   "freeCameraIdleS": 20,
   "freeCameraRadiusM": 9,
-  "bannerS": 3
+  "bannerS": 3,
+  "maxThrowSpeedMps": 25,
+  "ignoreThrowsAfterTurnS": 0.8
 }

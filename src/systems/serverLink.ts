@@ -85,6 +85,9 @@ export class ServerLinkSystem extends createSystem({}) {
   private spectating = false;
   /** Leaving the spectator connection to rejoin as a player. */
   private switching = false;
+  /** The pending reconnect — cleared by any connect(), so a reconnect
+   * timer and an XR entry can never open two sockets (review). */
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private physicsSystem!: PhysicsSystem;
   private settingsSystem!: SettingsSystem;
   private pieces = new Map<string, Entity>();
@@ -163,7 +166,15 @@ export class ServerLinkSystem extends createSystem({}) {
     const joinNow =
       new URLSearchParams(window.location.search).get('player') === '1';
     this.wantPlayer = joinNow;
-    this.connect();
+    // On the Vite dev server the managed IWSDK browser window would turn
+    // into a TV view (camera taken over, tools hidden) — there, watching
+    // is opt-in with `?watch=1` (review, 2026-10-31). `npm start` watches.
+    const watchAllowed =
+      !import.meta.env.DEV ||
+      new URLSearchParams(window.location.search).get('watch') === '1';
+    if (joinNow || watchAllowed) {
+      this.connect();
+    }
     if (joinNow) {
       return;
     }
@@ -184,10 +195,20 @@ export class ServerLinkSystem extends createSystem({}) {
   }
 
   private connect(): void {
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.socket) {
+      return; // one socket at a time
+    }
     const url = `wss://${window.location.host}${SERVER_PATH}`;
     const socket = new WebSocket(url);
     this.socket = socket;
     socket.addEventListener('open', () => {
+      if (this.socket !== socket) {
+        return; // a stale socket (review, 2026-10-31)
+      }
       log('info', 'net', 'connected to game server', {
         url,
         as: this.wantPlayer ? 'player' : 'spectator',
@@ -207,6 +228,9 @@ export class ServerLinkSystem extends createSystem({}) {
       });
     });
     socket.addEventListener('message', (event) => {
+      if (this.socket !== socket) {
+        return;
+      }
       let data: unknown;
       try {
         data = JSON.parse(String(event.data));
@@ -221,6 +245,9 @@ export class ServerLinkSystem extends createSystem({}) {
       this.onMessage(message);
     });
     socket.addEventListener('close', () => {
+      if (this.socket !== socket) {
+        return; // an old socket closing must not tear down the live one
+      }
       log('warn', 'net', 'game server connection closed', {});
       this.socket = null;
       serverShownColors.current = null;
@@ -242,7 +269,10 @@ export class ServerLinkSystem extends createSystem({}) {
       if (!this.stopped) {
         const delayMs = this.switching ? 0 : RECONNECT_DELAY_MS;
         this.switching = false;
-        setTimeout(() => this.connect(), delayMs);
+        this.reconnectTimer = setTimeout(() => {
+          this.reconnectTimer = null;
+          this.connect();
+        }, delayMs);
       }
     });
   }
@@ -312,7 +342,8 @@ export class ServerLinkSystem extends createSystem({}) {
         return;
       case 'peers':
         log('info', 'net', 'game server players', { count: message.count });
-        if (message.count < 2) {
+        // A spectator's two avatars follow `players` (per side) instead.
+        if (message.count < 2 && !this.spectating) {
           this.dropPeerAvatar();
         }
         gameEvents.emit('ServerPeers', {

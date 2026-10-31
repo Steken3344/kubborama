@@ -5420,3 +5420,16 @@ and banners (Övertramp, Kungen fälld, winner), dev panels hidden, a
 "Fri kamera" button / drag to orbit, back to the director after 20 s.
 Verified in a headed browser next to two headless players: intro tour,
 over-the-shoulder, follow cam, scoreboard counting down.
+
+Spectator review fixes (same day): ServerLinkSystem keeps one socket at
+a time — a pending reconnect is cleared by any connect and every socket
+listener ignores a stale socket (a reconnect timer racing an XR entry
+opened two sockets that kept kicking each other off). On the Vite dev
+server watching is opt-in with `?watch=1`, so the managed IWSDK browser
+window stays a normal dev view (its camera and tools untouched);
+`npm start` watches by default. A seat waiting out its rejoin grace is
+sent as empty in `players`, and a spectator's avatars follow `players`
+rather than `peers`. Stick positions are seeded when the view starts,
+throws are ignored for 0.8 s after a turn change (re-racking), the
+teleport cutoff is in `spectator.json`, and the free-camera button no
+longer toggles twice.

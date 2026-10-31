@@ -497,7 +497,9 @@ export class GameServer {
     // The spectators' scoreboard: names with those shown colours.
     const player = (side: MatchSide, colorIndex: number | null) => {
       const seat = this.seats.find((s) => s.side === side);
-      return seat && colorIndex !== null
+      // A seat waiting out its rejoin grace is shown as empty (its
+      // avatar would otherwise stand frozen on the spectators' screen).
+      return seat?.connection && colorIndex !== null
         ? {
             name: clientProfile(this.profiles, seat.profileKey).name,
             colorIndex,
@@ -636,6 +638,7 @@ export class GameServer {
     seat.connection = null;
     seat.leftAtMs = this.nowMs();
     this.broadcastPeers();
+    this.broadcastColors(); // the spectators' scoreboard and avatars
   }
 
   /** Free the seats of players gone longer than the grace; drop the
