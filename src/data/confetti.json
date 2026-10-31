@@ -1,5 +1,5 @@
 {
-  "count": 220,
+  "count": 320,
   "burstHeightM": 2.6,
   "burstSpeedMps": 5.5,
   "gravityMps2": 9.81,
@@ -8,7 +8,7 @@
   "flutterRadPerS": 7,
   "spinRadPerS": 9,
   "lifetimeS": 5.5,
-  "pieceWidthM": 0.045,
-  "pieceHeightM": 0.028,
+  "pieceWidthM": 0.07,
+  "pieceHeightM": 0.045,
   "extraColorsHex": ["#ffd23f", "#ffffff", "#ff5c8a", "#4fc3f7"]
 }

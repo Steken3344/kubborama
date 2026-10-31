@@ -427,13 +427,14 @@ export function shotCameraPose(
           { position: [0, 5.8, z - 1.2 * s], target },
         );
       }
-      // high orbit round the court, above every tree top
-      const r = 5.5;
+      // high orbit round the court, well above the tree tops (at 7.6 m
+      // and 5.5 m out the far-end canopies filled a third of the frame)
+      const r = 4.5;
       const angleRad = 0.5 - easeInOut(clamp(age / opts.maxShotS, 0, 1));
       return {
         position: [
           Math.sin(angleRad) * r,
-          7.6,
+          8.6,
           centreZ + Math.cos(angleRad) * r * s,
         ],
         target,

@@ -40,6 +40,9 @@ if (!Number.isFinite(SPREAD_M) || SPREAD_M < 0 || !Number.isInteger(SEED)) {
 /** The debug relay batches client lines: wait this long after a state
  * change before trusting the log has caught up. */
 const RELAY_LAG_MS = 1500;
+/** Legal inkast tosses land within this of the half's middle (m): well
+ * inside a 4–5 m wide, 3–4 m deep half. */
+const INKAST_SPREAD_M = 1.2;
 const OUT = arg('out', join(tmpdir(), 'kubb-botmatch', String(Date.now())));
 const STICKS = [
   'stick-0',
@@ -166,7 +169,15 @@ async function runScenario(
         continue;
       }
       tossed.add(tossKey);
-      const velocity = velocityFor(plan);
+      // Spread legal tosses over the half, as people do: aimed at one
+      // spot they landed on each other (96 "inkastHit" re-raises in 162
+      // tosses in the first real match).
+      const legal = scenario.legalInkast(side, next?.attempt ?? 1);
+      const velocity = velocityFor(
+        legal
+          ? { ...plan, target: jitter(plan.target, rng, INKAST_SPREAD_M) }
+          : plan,
+      );
       if (side === 'host') {
         await host.tossKubb(plan.pieceId, plan.from, velocity);
       } else {

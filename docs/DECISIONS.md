@@ -5538,3 +5538,14 @@ gate line. Bot match: `real-match` — both sides aim at each other's
 kubbs with the spread and play until someone wins (on request only, not
 in `all`, as it can take many minutes); `win` and `real-match` also
 require A's confetti line.
+
+Three real bot matches (seeds 11–13, about 20 minutes each, 30–54 rounds)
+ended three different ways: guest by the king on the 6th stick, host by
+the king on the 6th stick, and host because the guest's inkast felled
+the king — all rule paths the headset tests had never reached, all
+judged right, confetti on every win. From the screenshots: confetti
+pieces 4.5 → 7 cm and 220 → 320 (barely visible in the TV's wide shot),
+the TV's high orbit 7.6 → 8.6 m and 5.5 → 4.5 m out (far-end tree tops
+filled a third of the frame), and the bot spreads its legal inkast
+tosses over the half (aimed at one spot they landed on each other: 96
+"inkast hit" re-raises in 162 tosses).
