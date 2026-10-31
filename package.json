@@ -25,7 +25,8 @@
     "gate:report": "node scripts/gate-report.mjs",
     "gate:new": "node scripts/gate-new.mjs",
     "check:server": "node scripts/server-two-clients.mjs",
-    "botmatch": "tsx tools/botmatch/main.ts"
+    "botmatch": "tsx tools/botmatch/main.ts",
+    "botmatch:series": "tsx tools/botmatch/series.ts"
   },
   "dependencies": {
     "@iwsdk/core": "0.5.3",

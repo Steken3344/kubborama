@@ -1,8 +1,9 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { aimRelease, flightTimeFor } from '../../src/core/aim.js';
+import type { CourtHalves } from '../../src/core/inkast.js';
 import type { MatchSide } from '../../src/core/match.js';
 import type { Vec3 } from '../../src/core/vec3.js';
 import { BrowserPlayer } from './browserPlayer.js';
@@ -32,17 +33,54 @@ const WHICH = arg('scenario', 'all');
  * The default makes bot matches look like real ones — misses, near
  * hits — instead of a kubb per stick. */
 const SPREAD_M = Number(arg('spread', '0.3'));
+/** Each side's own aim spread — different skill per player. */
+const SPREAD_BY_SIDE: Record<MatchSide, number> = {
+  host: Number(arg('host-spread', String(SPREAD_M))),
+  guest: Number(arg('guest-spread', String(SPREAD_M))),
+};
 const SEED = Number(arg('seed', '1'));
-if (!Number.isFinite(SPREAD_M) || SPREAD_M < 0 || !Number.isInteger(SEED)) {
-  console.error('--spread takes metres (>= 0), --seed an integer');
+/** Play on this court (switched at the start), or whatever the room has. */
+const COURT = arg('court', '');
+const LANGUAGE = arg('language', 'sv');
+const BOT_COLOR = Number(arg('bot-color', '4'));
+/** Write a JSON summary of the run here (the series reads it). */
+const SUMMARY = arg('summary', '');
+/** Shorter pauses between sticks and tosses, for long series. */
+const FAST = process.argv.includes('--fast');
+if (
+  ![SPREAD_M, SPREAD_BY_SIDE.host, SPREAD_BY_SIDE.guest].every(
+    (v) => Number.isFinite(v) && v >= 0,
+  ) ||
+  !Number.isInteger(SEED) ||
+  !['', 'simple', 'advanced'].includes(COURT) ||
+  (LANGUAGE !== 'sv' && LANGUAGE !== 'en') ||
+  !Number.isInteger(BOT_COLOR)
+) {
+  console.error(
+    'spreads in metres (>= 0), --seed and --bot-color integers, --court simple|advanced, --language sv|en',
+  );
   process.exit(2);
 }
 /** The debug relay batches client lines: wait this long after a state
  * change before trusting the log has caught up. */
 const RELAY_LAG_MS = 1500;
-/** Legal inkast tosses land within this of the half's middle (m): well
- * inside a 4–5 m wide, 3–4 m deep half. */
-const INKAST_SPREAD_M = 1.2;
+/** Legal inkast tosses land within this of the half's middle (m) — at
+ * most, and never closer than half a metre to a line: the default
+ * backyard court's half is only 3 m wide and 3 m deep, and kubbs roll
+ * after landing (review, 2026-10-31). */
+const INKAST_SPREAD_MAX_M = 1.2;
+const INKAST_LINE_MARGIN_M = 0.5;
+function inkastSpreadM(halves: CourtHalves): number {
+  const halfDepthM = Math.abs(halves.centreZ - halves.nearBaselineZ);
+  return Math.max(
+    0,
+    Math.min(
+      INKAST_SPREAD_MAX_M,
+      halves.halfWidthM - INKAST_LINE_MARGIN_M,
+      halfDepthM / 2 - INKAST_LINE_MARGIN_M,
+    ),
+  );
+}
 const OUT = arg('out', join(tmpdir(), 'kubb-botmatch', String(Date.now())));
 const STICKS = [
   'stick-0',
@@ -52,8 +90,8 @@ const STICKS = [
   'stick-4',
   'stick-5',
 ];
-const BETWEEN_STICKS_MS = 1500;
-const AFTER_TOSS_MS = 4000;
+const BETWEEN_STICKS_MS = FAST ? 1000 : 1500;
+const AFTER_TOSS_MS = FAST ? 3000 : 4000;
 const ROOM_GAP_MS = 1200;
 
 /** Everything to tear down if the run dies half-way (no orphans). */
@@ -175,7 +213,10 @@ async function runScenario(
       const legal = scenario.legalInkast(side, next?.attempt ?? 1);
       const velocity = velocityFor(
         legal
-          ? { ...plan, target: jitter(plan.target, rng, INKAST_SPREAD_M) }
+          ? {
+              ...plan,
+              target: jitter(plan.target, rng, inkastSpreadM(bot.halves)),
+            }
           : plan,
       );
       if (side === 'host') {
@@ -202,7 +243,7 @@ async function runScenario(
     thrown.add(plan.pieceId);
     const aimed =
       intent === 'hit' || intent === 'king'
-        ? { ...plan, target: jitter(plan.target, rng, SPREAD_M) }
+        ? { ...plan, target: jitter(plan.target, rng, SPREAD_BY_SIDE[side]) }
         : plan;
     const velocity = velocityFor(aimed);
     if (side === 'host') {
@@ -303,10 +344,10 @@ async function main(): Promise<void> {
   cleanups.push(() => {
     spectator.kill('SIGINT');
   });
-  const host = await BrowserPlayer.open(BASE);
+  const host = await BrowserPlayer.open(BASE, LANGUAGE === 'en' ? 'en' : 'sv');
   cleanups.push(() => host.close());
   say('player A (browser) in');
-  const bot = await ProtocolBot.connect(BASE, 'botmatch-guest-0001');
+  const bot = await ProtocolBot.connect(BASE, 'botmatch-guest-0001', BOT_COLOR);
   cleanups.push(() => {
     bot.close();
   });
@@ -319,9 +360,22 @@ async function main(): Promise<void> {
     );
   }
   say('player B (bot) in, match on');
+  if (COURT !== '' && bot.gameMode !== COURT) {
+    await host.room({
+      kind: 'court',
+      gameMode: COURT === 'advanced' ? 'advanced' : 'simple',
+    });
+    for (let i = 0; i < 40 && bot.gameMode !== COURT; i += 1) {
+      await sleep(250);
+    }
+    say(`court ${bot.gameMode}`);
+    await sleep(1500); // the room cooldown before the scenario's reset
+  }
 
   const rng = createRng(SEED);
-  say(`aim spread ${String(SPREAD_M)} m, seed ${String(SEED)}`);
+  say(
+    `aim spread host ${String(SPREAD_BY_SIDE.host)} m, guest ${String(SPREAD_BY_SIDE.guest)} m, seed ${String(SEED)}`,
+  );
   const outcomes = new Map<
     string,
     { result: 'done' | 'timeout'; fromMs: number; toMs: number }
@@ -373,6 +427,27 @@ async function main(): Promise<void> {
     );
   }
   console.log(`screenshots: ${OUT}`);
+  if (SUMMARY !== '') {
+    writeFileSync(
+      SUMMARY,
+      JSON.stringify(
+        {
+          seed: SEED,
+          court: bot.gameMode,
+          spread: SPREAD_BY_SIDE,
+          language: LANGUAGE,
+          botColor: BOT_COLOR,
+          pageErrors: host.errors,
+          scenarios: chosen.map((sc) => ({
+            name: sc.name,
+            ...outcomes.get(sc.name),
+          })),
+        },
+        null,
+        2,
+      ),
+    );
+  }
   process.exit(failed ? 1 : 0);
 }
 

@@ -22,18 +22,22 @@ export type GameMode = Settings['gameMode'];
  * (main.ts) tells it to, and records what the server says — the bot
  * match reads the whole game through this socket.
  */
+/** Default avatar colour; a series can pick another (even A's, a clash). */
 const COLOR_INDEX = 4;
 const PRESENCE_EVERY_MS = 50;
 /** Behind the line, as a player stands. */
 const STAND_BEHIND_M = 0.4;
 
-export function joinMessage(clientId: string): ClientMessage {
+export function joinMessage(
+  clientId: string,
+  colorIndex = COLOR_INDEX,
+): ClientMessage {
   return {
     type: 'join',
     protocol: SERVER_PROTOCOL_VERSION,
     gameMode: 'simple',
     clientId,
-    colorIndex: COLOR_INDEX,
+    colorIndex,
     profileName: null,
   };
 }
@@ -57,7 +61,11 @@ export function throwMessage(plan: {
 /** A body standing behind `side`'s baseline, facing the court. Poses
  * are shared-world, as every headset sends them (no mirroring —
  * PeerAvatarSystem). */
-export function presenceFor(side: MatchSide, farZ: number): ClientMessage {
+export function presenceFor(
+  side: MatchSide,
+  farZ: number,
+  colorIndex = COLOR_INDEX,
+): ClientMessage {
   const guest = side === 'guest';
   const z = guest ? farZ - STAND_BEHIND_M : STAND_BEHIND_M;
   // The guest faces +z: half a turn about y.
@@ -73,7 +81,7 @@ export function presenceFor(side: MatchSide, farZ: number): ClientMessage {
       head: pose(0, 1.7),
       leftHand: pose(-0.3, 1),
       rightHand: pose(0.3, 1),
-      colorIndex: COLOR_INDEX,
+      colorIndex,
     }),
   };
 }
@@ -97,21 +105,28 @@ export class ProtocolBot {
   rejected: string | null = null;
   private presenceTimer: NodeJS.Timeout | null = null;
 
-  private constructor(private readonly socket: WebSocket) {}
+  private constructor(
+    private readonly socket: WebSocket,
+    private readonly colorIndex: number,
+  ) {}
 
-  static connect(baseUrl: string, clientId: string): Promise<ProtocolBot> {
+  static connect(
+    baseUrl: string,
+    clientId: string,
+    colorIndex = COLOR_INDEX,
+  ): Promise<ProtocolBot> {
     const url = new URL(SERVER_PATH, baseUrl);
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     // The server's certificate is self-signed (LAN / dev).
     const socket = new WebSocket(url, { rejectUnauthorized: false });
-    const bot = new ProtocolBot(socket);
+    const bot = new ProtocolBot(socket, colorIndex);
     return new Promise((resolve, reject) => {
       socket.once('error', reject);
       socket.on('message', (data: WebSocket.RawData) => {
         bot.onMessage(data.toString());
       });
       socket.once('open', () => {
-        bot.send(joinMessage(clientId));
+        bot.send(joinMessage(clientId, colorIndex));
         bot.presenceTimer = setInterval(() => {
           bot.sendPresence();
         }, PRESENCE_EVERY_MS);
@@ -137,7 +152,9 @@ export class ProtocolBot {
 
   private sendPresence(): void {
     if (this.side !== null) {
-      this.send(presenceFor(this.side, this.halves.farBaselineZ));
+      this.send(
+        presenceFor(this.side, this.halves.farBaselineZ, this.colorIndex),
+      );
     }
   }
 

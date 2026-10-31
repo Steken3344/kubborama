@@ -26,23 +26,24 @@ interface DevHook {
  * rejoin grace instead of finding the room full. */
 const CLIENT_ID = 'botmatch-host-0001';
 
-/** Quiet, muted, Swedish — what the checks expect (as check:server). */
-const SETTINGS = JSON.stringify({
-  version: 1,
-  language: 'sv',
-  gameMode: 'simple',
-  musicVolumePercent: 0,
-  sfxVolumePercent: 0,
-  hapticsEnabled: true,
-  hapticsIntensityPercent: 70,
-  courtLinesVisible: false,
-  profileName: null,
-  micMuted: true,
-  avatarColorIndex: 1,
-  debugRelay: true,
-  roomId: null,
-  serverChoice: 'auto',
-});
+/** Quiet and muted (as check:server); the language is the caller's. */
+const settingsFor = (language: 'sv' | 'en') =>
+  JSON.stringify({
+    version: 1,
+    language,
+    gameMode: 'simple',
+    musicVolumePercent: 0,
+    sfxVolumePercent: 0,
+    hapticsEnabled: true,
+    hapticsIntensityPercent: 70,
+    courtLinesVisible: false,
+    profileName: null,
+    micMuted: true,
+    avatarColorIndex: 1,
+    debugRelay: true,
+    roomId: null,
+    serverChoice: 'auto',
+  });
 
 /**
  * Player A of the bot match: the real app in a browser, joined at once
@@ -57,7 +58,10 @@ export class BrowserPlayer {
     readonly errors: string[],
   ) {}
 
-  static async open(baseUrl: string): Promise<BrowserPlayer> {
+  static async open(
+    baseUrl: string,
+    language: 'sv' | 'en' = 'sv',
+  ): Promise<BrowserPlayer> {
     const browser = await chromium.launch({
       // Headless Chromium renders this scene at a few frames a second.
       headless: !process.env['DISPLAY'],
@@ -76,7 +80,7 @@ export class BrowserPlayer {
         localStorage.setItem('kubborama.clientId', clientId);
         localStorage.setItem('kubborama.settings.v1', settings);
       },
-      { clientId: CLIENT_ID, settings: SETTINGS },
+      { clientId: CLIENT_ID, settings: settingsFor(language) },
     );
     const page = await ctx.newPage();
     const errors: string[] = [];
