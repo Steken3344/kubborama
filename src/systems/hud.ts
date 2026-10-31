@@ -3,7 +3,8 @@ import type { GameEvents } from '../core/events.js';
 import type { ThrowStyle } from '../core/underhandClassifier.js';
 import { gameEvents } from '../core/events.js';
 import { isFinished, standingKubbs } from '../core/match.js';
-import { avatarPaletteEntry } from '../config.js';
+import { avatarPalette, avatarPaletteEntry } from '../config.js';
+import { shownAvatarColors } from '../core/avatarColors.js';
 import { debugContext } from '../debug/debugContext.js';
 import { i18nState } from '../i18nState.js';
 import { settingsState } from '../settingsState.js';
@@ -168,13 +169,17 @@ export class HudSystem extends createSystem({}) {
     // Each number in its player's avatar color (MP3b): mine from
     // settings, the opponent's from its presence stream; white until the
     // opponent's first message arrives.
-    const myColor = avatarPaletteEntry(
-      settingsState.current.avatarColorIndex,
-    ).hex;
+    // A clash is resolved the same way the avatar resolves it
+    // (core/avatarColors.ts) so digit and body always match.
+    const shown = shownAvatarColors({
+      mine: settingsState.current.avatarColorIndex,
+      theirs: this.opponentColorIndex,
+      mySide,
+      paletteSize: avatarPalette.length,
+    });
+    const myColor = avatarPaletteEntry(shown.mine).hex;
     const theirColor =
-      this.opponentColorIndex === null
-        ? '#ffffff'
-        : avatarPaletteEntry(this.opponentColorIndex).hex;
+      shown.theirs === null ? '#ffffff' : avatarPaletteEntry(shown.theirs).hex;
     const hostColor = mySide === 'host' ? myColor : theirColor;
     const guestColor = mySide === 'guest' ? myColor : theirColor;
     this.hudPanel

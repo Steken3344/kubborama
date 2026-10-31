@@ -79,8 +79,13 @@ export function enableDebugRelay(): void {
       });
     });
     window.addEventListener('unhandledrejection', (event) => {
-      log('error', 'debug', 'unhandled promise rejection', {
-        reason: String(event.reason),
+      const reason = String(event.reason);
+      // Known and harmless rejections stay visible as warnings, so a
+      // real error stands out in the log (2026-10-31).
+      const harmless = HARMLESS_REJECTIONS.some((p) => p.test(reason));
+      log(harmless ? 'warn' : 'error', 'debug', 'unhandled promise rejection', {
+        reason,
+        ...(harmless ? { knownHarmless: true } : {}),
       });
     });
   }
@@ -90,6 +95,16 @@ export function enableDebugRelay(): void {
     userAgent: navigator.userAgent,
   });
 }
+
+/** Rejections seen on every headset load that change nothing:
+ * - the service worker cannot register over the home server's
+ *   self-signed certificate (the game itself loads fine);
+ * - IWSDK's own XR start calls navigator.xr.offerSession() again,
+ *   cancelling its previous offer (not our code). */
+const HARMLESS_REJECTIONS: readonly RegExp[] = [
+  /SecurityError: Failed to register a ServiceWorker.*SSL certificate error/u,
+  /InvalidStateError: OfferSession promise was cancelled/u,
+];
 
 export function disableDebugRelay(): void {
   if (!debugContext.enabled) {

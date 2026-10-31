@@ -1,6 +1,7 @@
 import { createSystem, MeshStandardMaterial, Object3D } from '@iwsdk/core';
 import type { Entity, Mesh } from '@iwsdk/core';
-import { avatar, avatarPaletteEntry } from '../config.js';
+import { avatar, avatarPalette, avatarPaletteEntry } from '../config.js';
+import { shownAvatarColors } from '../core/avatarColors.js';
 import {
   addFitSample,
   armEndToHandM,
@@ -18,13 +19,18 @@ import type { Pose } from '../core/presence.js';
 import { pitchFromQuaternion, yawFromQuaternion } from '../core/quat.js';
 import { debugContext } from '../debug/debugContext.js';
 import { gateLog } from '../debug/gateLog.js';
+import type { MatchSide } from '../core/match.js';
+import { settingsState } from '../settingsState.js';
 
 interface AvatarInstance {
   entity: Entity;
   root: Object3D;
   /** Per-instance clone so each peer can have its own color. */
   material: MeshStandardMaterial;
+  /** The color the peer CHOSE (its presence colorIndex)… */
   colorIndex: number;
+  /** …and the one shown, after a clash with mine is resolved. */
+  shownColorIndex: number;
   smoothedYawRad: number;
   lastMessageAtMs: number;
   /** Gate report: 1 Hz maxima of the avatar-fit numbers. */
@@ -45,7 +51,9 @@ interface AvatarInstance {
  * system has no frame loop of its own.
  *
  * Color: the sender's `colorIndex` (its settings) is clamped onto the
- * palette by config.ts's avatarPaletteEntry(); the prototype's shared
+ * palette by config.ts's avatarPaletteEntry() — and when it clashes
+ * with mine, the guest wears the next palette color (core/avatarColors.ts,
+ * the same rule the HUD digits use); the prototype's shared
  * material is replaced on every body mesh by one clone per instance
  * (the visor keeps its own dark material — see the scene asset).
  */
@@ -58,9 +66,20 @@ export class PeerAvatarSystem extends createSystem({}) {
    * broken manifest entry logs one error instead of retrying at 20 Hz
    * (second review, 2026-09-05). */
   private failed = new Set<string>();
+  /** My side, for resolving a color clash (core/avatarColors.ts). */
+  private mySide: MatchSide | null = null;
 
   init(): void {
     this.cleanupFuncs.push(
+      gameEvents.on('MatchStateChanged', ({ mySide }) => {
+        if (mySide !== this.mySide) {
+          this.mySide = mySide;
+          this.retintAll();
+        }
+      }),
+      gameEvents.on('AvatarColorChanged', () => {
+        this.retintAll(); // my new color may now clash, or stop clashing
+      }),
       gameEvents.on('PeerPresence', (event) => {
         this.onPeerPresence(event);
       }),
@@ -142,13 +161,15 @@ export class PeerAvatarSystem extends createSystem({}) {
       });
       return;
     }
-    const material = this.tintBodyMaterial(root, event.message.colorIndex);
+    const shownColorIndex = this.shownColor(event.message.colorIndex);
+    const material = this.tintBodyMaterial(root, shownColorIndex);
     const entity = this.world.createTransformEntity(root);
     const instance: AvatarInstance = {
       entity,
       root,
       material,
       colorIndex: event.message.colorIndex,
+      shownColorIndex,
       smoothedYawRad: yawFromQuaternion(event.message.head.quaternion),
       lastMessageAtMs: performance.now(),
       fit: emptyFitWindow(),
@@ -156,9 +177,36 @@ export class PeerAvatarSystem extends createSystem({}) {
     this.avatars.set(peerId, instance);
     log('info', 'net', 'peer avatar created', {
       peerId,
-      color: avatarPaletteEntry(event.message.colorIndex).id,
+      color: avatarPaletteEntry(shownColorIndex).id,
     });
     this.applyPresence(instance, event.message);
+  }
+
+  /** The peer's chosen color as shown here: on a clash with mine the
+   * guest wears the next palette color (core/avatarColors.ts). */
+  private shownColor(theirChoice: number): number {
+    return (
+      shownAvatarColors({
+        mine: settingsState.current.avatarColorIndex,
+        theirs: theirChoice,
+        mySide: this.mySide,
+        paletteSize: avatarPalette.length,
+      }).theirs ?? theirChoice
+    );
+  }
+
+  private retint(instance: AvatarInstance): void {
+    const shown = this.shownColor(instance.colorIndex);
+    if (shown !== instance.shownColorIndex) {
+      instance.shownColorIndex = shown;
+      instance.material.color.set(avatarPaletteEntry(shown).hex);
+    }
+  }
+
+  private retintAll(): void {
+    for (const instance of this.avatars.values()) {
+      this.retint(instance);
+    }
   }
 
   /** One material clone per instance; every body mesh (not the visor)
@@ -184,11 +232,11 @@ export class PeerAvatarSystem extends createSystem({}) {
   ): void {
     if (message.colorIndex !== instance.colorIndex) {
       instance.colorIndex = message.colorIndex;
-      instance.material.color.set(avatarPaletteEntry(message.colorIndex).hex);
       gateLog('avatar color', {
         event: 'received',
         colorIndex: message.colorIndex,
       });
+      this.retint(instance);
     }
 
     const nowMs = performance.now();
