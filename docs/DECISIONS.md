@@ -5299,3 +5299,23 @@ has already placed it).
 The drifting wind-indicator leaves are removed (Erik: "behöver inte
 de"); wind itself is unchanged. Avatar colors: on a clash side B is
 shown in the next palette color on both headsets (`core/avatarColors.ts`).
+
+## 2026-10-31 — Thumbstick locomotion
+
+Erik picked IWSDK's standard locomotion (alternative 1 of 3): slide on
+the left thumbstick, 45° snap turn on the right; jumping off
+(`iwsdk.config.json` `features.locomotion: { enableJumping: false }`).
+The ground gets `LocomotionEnvironment` at runtime (WalkAreaSystem), not
+in the scene JSON, so the editor and the game server's scene reader are
+untouched. The ground is 30 m and the locomotor lets a player fall off
+an edge, so WalkAreaSystem clamps the rig into a box inside the
+tree/cliff ring (`src/data/locomotion.json`, `core/walkArea.ts`) —
+the props' rough collision boxes (gh#7) never matter. The
+LocomotionSystem copies its own position onto the rig every frame, so
+every placement (baseline on join, guest reposition, advantage line)
+goes through `src/playerPlacement.ts`, which also teleports the
+locomotor. The advantage-line teleport now fires only when the line
+CHANGES, keeping thumbstick adjustments. IWSDK's parabolic teleport
+(right stick forward) comes with the locomotion system and stays.
+Verified in the emulator: the left stick slides the rig and stops at
+the walk-area edge, the right stick snap-turns 45°, console clean.

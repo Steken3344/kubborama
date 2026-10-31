@@ -6,6 +6,7 @@ import { installDebugRelay } from './debug/debugRelay.js';
 import { loadServerConfig, serverConfig } from './serverConfig.js';
 import { DebugWatchSystem } from './systems/debugWatch.js';
 import { AdvantageLineSystem } from './systems/advantageLine.js';
+import { WalkAreaSystem } from './systems/walkArea.js';
 import { CourtLayoutSystem } from './systems/courtLayout.js';
 import { CourtLinesSystem } from './systems/courtLines.js';
 import { GateProbeSystem } from './systems/gateProbe.js';
@@ -146,6 +147,8 @@ void loadServerConfig()
     world.registerSystem(InkastSystem);
     // MP4: the advantage line (shown, not enforced).
     world.registerSystem(AdvantageLineSystem);
+    // Thumbstick locomotion: walkable ground, kept inside the garden.
+    world.registerSystem(WalkAreaSystem);
     // MP3b: remote players' avatars, fed by PeerPresence/PeerLeft events
     // from MultiplayerSystem — event-driven only, order irrelevant.
     world.registerSystem(PeerAvatarSystem);

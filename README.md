@@ -97,6 +97,11 @@ internet. The first headset to **enter VR** is player A. `KUBB_PORT`
 changes the port. For development, `npm run dev` does the same on the
 Vite dev server (port 8081) with hot reload.
 
+**Moving around:** the left thumbstick slides you across the garden
+(kept inside the trees), the right thumbstick snap-turns 45°. When you
+throw from the advantage line you are teleported onto it, and back to
+your baseline when your turn ends.
+
 ## Debug mode (live logs from a headset)
 
 The Quest browser's console is unreachable from outside, so the app can

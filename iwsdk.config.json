@@ -36,7 +36,9 @@
       }
     },
     "features": {
-      "locomotion": false,
+      "locomotion": {
+        "enableJumping": false
+      },
       "grabbing": true,
       "physics": true,
       "sceneUnderstanding": false,

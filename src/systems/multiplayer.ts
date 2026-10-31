@@ -62,6 +62,7 @@ import {
   defaultPose,
   mirrorPoseToFarBaseline,
   parsePresenceMessage,
+  standingPose,
 } from '../core/presence.js';
 import type { Pose, PresenceMessage } from '../core/presence.js';
 import {
@@ -77,6 +78,7 @@ import { isServerModeOn } from '../serverMode.js';
 import { serverConfig } from '../serverConfig.js';
 import { settingsState } from '../settingsState.js';
 import { activeCourtHalves, activeFarBaselineZ } from './activeCourt.js';
+import { placePlayer } from '../playerPlacement.js';
 import { localPoseOf } from './objectPose.js';
 import { applyPieceTransforms } from './pieceApply.js';
 import { ServerLinkSystem } from './serverLink.js';
@@ -510,9 +512,7 @@ export class MultiplayerSystem extends createSystem({}) {
         this.pendingThrowRelay = null;
         this.kingFelledAtS = null;
         if (this.hasRepositionedAsGuest) {
-          const origin = defaultPose();
-          this.player.position.set(...origin.position);
-          this.player.quaternion.set(...origin.quaternion);
+          placePlayer(this.world, this.player, defaultPose());
           this.hasRepositionedAsGuest = false;
           log('info', 'net', 'returned to default origin — room empty', {});
         }
@@ -732,12 +732,11 @@ export class MultiplayerSystem extends createSystem({}) {
     }
     // The far baseline of the ACTIVE court, not the default preset's
     // (Advanced plays on the 8 m tournament court) — see activeCourt.ts.
-    const farOrigin = mirrorPoseToFarBaseline(
-      defaultPose(),
-      activeFarBaselineZ(),
+    placePlayer(
+      this.world,
+      this.player,
+      standingPose('guest', activeFarBaselineZ()),
     );
-    this.player.position.set(...farOrigin.position);
-    this.player.quaternion.set(...farOrigin.quaternion);
     this.hasRepositionedAsGuest = true;
     log('info', 'net', 'repositioned to far baseline as guest', {});
   }

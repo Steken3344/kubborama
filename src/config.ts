@@ -23,6 +23,7 @@ import matchData from './data/match.json' with { type: 'json' };
 import avatarData from './data/avatar.json' with { type: 'json' };
 import avatarPaletteData from './data/avatar-palette.json' with { type: 'json' };
 import roundData from './data/round.json' with { type: 'json' };
+import locomotionData from './data/locomotion.json' with { type: 'json' };
 
 export const courtPresets = courtPresetsData.presets;
 export type CourtPresetName = keyof typeof courtPresets;
@@ -57,6 +58,12 @@ export const defaultMaterial = pieces.defaultMaterial as MaterialName;
 
 export const cameraPoses = cameraPosesData;
 export const sinBin = sinBinData;
+/** Thumbstick locomotion's walk area (core/walkArea.ts). */
+export const walkArea = {
+  halfWidthM: locomotionData.walkAreaHalfWidthM,
+  minZ: locomotionData.walkAreaMinZ,
+  maxZ: locomotionData.walkAreaMaxZ,
+};
 /** MP4 inkast tunables (docs/superpowers/specs/2026-09-26-field-kubbs-design.md). */
 export const inkast = inkastData;
 export const stickRack = stickRackData;
