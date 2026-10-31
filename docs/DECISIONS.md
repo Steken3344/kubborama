@@ -5450,3 +5450,11 @@ the scene on both court sizes. Gate probe: in server mode the round
 summary no longer reads the local stats (the server's update arrives a
 moment later, so it lagged one round); a separate `profile stats` line
 logs the server's numbers when they arrive.
+
+Playtest spectator (same day, Erik: "anslut alltid in till matchen som
+åskådare och använd det för felsökning och förbättringsunderlag"):
+`scripts/spectate.mjs` opens the game as a spectator (debug relay on,
+so its camera-cut and player lines join the headsets' in the gate log),
+saves a small JPEG every 15 s outside the repo, reopens the page after a
+server restart, and runs headed when DISPLAY is set. Started before
+every playtest on the production server.
