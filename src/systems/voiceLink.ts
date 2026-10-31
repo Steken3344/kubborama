@@ -7,15 +7,21 @@ import { isServerModeOn } from '../serverMode.js';
 import { settingsState } from '../settingsState.js';
 import { ServerLinkSystem } from './serverLink.js';
 
+/** Don't let an unanswered mic prompt hold the call hostage: after this
+ * long the call goes ahead receive-only (review, 2026-10-31). */
+const MIC_WAIT_MS = 3000;
+
 /**
  * Voice between the two headsets when playing through the game server
  * (docs/superpowers/specs/2026-10-31-one-address-server-design.md): a
  * plain WebRTC audio connection, with the SERVER as the signaling
  * channel — it introduces the headsets, no Trystero/Nostr involved.
- * Side A makes the offer once both players are seated (the server's
- * `peers` count); side B answers. Home network only, so no STUN/TURN —
- * host candidates connect directly. The mute setting applies to the
- * mic track every frame, like MultiplayerSystem's Trystero voice.
+ * Side A offers whenever the server's seat `generation` changes with two
+ * players seated (a join, or B reconnecting into its seat) and when the
+ * connection fails; side B answers every offer, replacing any old call.
+ * Home network only, so no STUN/TURN — host candidates connect directly.
+ * The mute setting applies to the mic track every frame, like
+ * MultiplayerSystem's Trystero voice.
  */
 export class VoiceLinkSystem extends createSystem({}) {
   private serverLink: ServerLinkSystem | null = null;
@@ -25,6 +31,15 @@ export class VoiceLinkSystem extends createSystem({}) {
   private micReady: Promise<void> = Promise.resolve();
   private audio: HTMLAudioElement | null = null;
   private pendingIce: RTCIceCandidateInit[] = [];
+  /** The latest seat state from the server. */
+  private peers: GameEvents['ServerPeers'] = {
+    count: 0,
+    mySide: null,
+    generation: -1,
+  };
+  /** The seat generation our current call was made for. */
+  private callGeneration = -2;
+  private destroyed = false;
 
   init(): void {
     if (!isServerModeOn()) {
@@ -34,12 +49,14 @@ export class VoiceLinkSystem extends createSystem({}) {
     this.micReady = this.setUpMicrophone();
     this.cleanupFuncs.push(
       gameEvents.on('ServerPeers', (e) => {
-        void this.onPeers(e);
+        this.peers = e;
+        void this.maybeCall();
       }),
       gameEvents.on('VoiceSignal', (e) => {
         void this.onSignal(e.data);
       }),
       () => {
+        this.destroyed = true;
         this.hangUp();
         this.micTrack?.stop();
       },
@@ -58,10 +75,13 @@ export class VoiceLinkSystem extends createSystem({}) {
       return;
     }
     try {
-      this.micStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
-      this.micTrack = this.micStream.getAudioTracks()[0] ?? null;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (this.destroyed) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      this.micStream = stream;
+      this.micTrack = stream.getAudioTracks()[0] ?? null;
       if (this.micTrack) {
         this.micTrack.enabled = !settingsState.current.micMuted;
       }
@@ -73,30 +93,57 @@ export class VoiceLinkSystem extends createSystem({}) {
     }
   }
 
-  private async onPeers(e: GameEvents['ServerPeers']): Promise<void> {
-    if (e.count < 2) {
+  /** The mic, or a receive-only call after MIC_WAIT_MS. */
+  private async micOrTimeout(): Promise<void> {
+    await Promise.race([
+      this.micReady,
+      new Promise<void>((done) => setTimeout(done, MIC_WAIT_MS)),
+    ]);
+  }
+
+  /** Side A: (re)call when two players are seated and our call is for an
+   * older seat generation. Re-checked after every await, so overlapping
+   * seat updates can never start two calls. */
+  private async maybeCall(): Promise<void> {
+    const { count, mySide, generation } = this.peers;
+    if (count < 2) {
       this.hangUp();
+      this.callGeneration = -2;
       return;
     }
-    if (e.mySide !== 'host' || this.pc) {
-      return; // side B waits for A's offer
+    if (mySide !== 'host' || this.callGeneration === generation) {
+      return; // side B waits for A's offer; this generation is handled
     }
-    await this.micReady;
+    this.callGeneration = generation;
+    await this.micOrTimeout();
+    if (this.peers.generation !== generation || this.destroyed) {
+      return; // a newer seat change will make its own call
+    }
+    this.hangUp();
     const pc = this.connection();
     const offer = await pc.createOffer();
+    if (this.pc !== pc) {
+      return;
+    }
     await pc.setLocalDescription(offer);
     this.send({ kind: 'offer', sdp: offer.sdp ?? '' });
-    log('info', 'net', 'voice offer sent', {});
+    log('info', 'net', 'voice offer sent', { generation });
   }
 
   private async onSignal(data: VoiceSignal): Promise<void> {
     if (data.kind === 'offer') {
-      await this.micReady;
+      await this.micOrTimeout();
+      if (this.destroyed) {
+        return;
+      }
       this.hangUp(); // a fresh offer (A reconnected) replaces any old call
       const pc = this.connection();
       await pc.setRemoteDescription({ type: 'offer', sdp: data.sdp });
       await this.flushIce();
       const answer = await pc.createAnswer();
+      if (this.pc !== pc) {
+        return; // replaced by an even newer offer meanwhile
+      }
       await pc.setLocalDescription(answer);
       this.send({ kind: 'answer', sdp: answer.sdp ?? '' });
       return;
@@ -129,7 +176,7 @@ export class VoiceLinkSystem extends createSystem({}) {
       pc.addTransceiver('audio', { direction: 'recvonly' });
     }
     pc.onicecandidate = (event) => {
-      if (event.candidate) {
+      if (event.candidate && this.pc === pc) {
         this.send({
           kind: 'ice',
           candidate: event.candidate.candidate,
@@ -139,15 +186,32 @@ export class VoiceLinkSystem extends createSystem({}) {
       }
     };
     pc.ontrack = (event) => {
+      if (this.pc !== pc) {
+        return;
+      }
       const [stream] = event.streams;
       this.audio?.pause();
-      this.audio = new Audio();
-      this.audio.srcObject = stream ?? new MediaStream([event.track]);
-      this.audio.autoplay = true;
+      const audio = new Audio();
+      audio.srcObject = stream ?? new MediaStream([event.track]);
+      audio.autoplay = true;
+      // Autoplay can be refused before a user gesture (entering VR gives
+      // one); try explicitly and say so if it is still blocked.
+      void audio.play().catch((error: unknown) => {
+        log('warn', 'net', 'voice playback blocked', { error: String(error) });
+      });
+      this.audio = audio;
       log('info', 'net', 'peer voice connected', { via: 'game server' });
     };
     pc.onconnectionstatechange = () => {
+      if (this.pc !== pc) {
+        return; // an old call closing
+      }
       log('info', 'net', 'voice connection', { state: pc.connectionState });
+      if (pc.connectionState === 'failed' && this.peers.mySide === 'host') {
+        // Side A calls again (e.g. a blip broke ICE).
+        this.callGeneration = -2;
+        void this.maybeCall();
+      }
     };
     return pc;
   }

@@ -62,7 +62,9 @@ describe('GameServer (MP5)', () => {
     });
     expect(c.received).toContainEqual({ type: 'rejected', reason: 'full' });
     expect(c.closed).toBe(true);
-    expect(a.received).toContainEqual({ type: 'peers', count: 2 });
+    expect(a.received).toContainEqual(
+      expect.objectContaining({ type: 'peers', count: 2 }),
+    );
   });
 
   it('keeps a seat for the rejoin grace, then frees it', async () => {

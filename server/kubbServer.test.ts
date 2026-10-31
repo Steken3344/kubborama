@@ -169,3 +169,18 @@ describe('standalone KubbOrama server (one address)', () => {
     b.ws.close();
   });
 });
+
+describe('startup errors', () => {
+  it('rejects with EADDRINUSE when the port is taken', async () => {
+    await expect(
+      startKubbServer({
+        port: server.port,
+        host: '127.0.0.1',
+        staticDir: join(root, 'dist'),
+        logPath: join(root, 'kubb.ndjson'),
+        room: 'x',
+        game: { log: noServerLog },
+      }),
+    ).rejects.toMatchObject({ code: 'EADDRINUSE' });
+  });
+});

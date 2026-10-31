@@ -79,6 +79,7 @@ export class GameServer {
   private worldPromise: Promise<PhysicsWorld> | null = null;
   private lastMatch: ServerMessage | null = null;
   private tickCount = 0;
+  private peersGeneration = 0;
   private gameMode: Settings['gameMode'] = 'simple';
   private timer: ReturnType<typeof setInterval> | null = null;
 
@@ -329,9 +330,11 @@ export class GameServer {
   }
 
   private broadcastPeers(): void {
+    this.peersGeneration += 1;
     this.broadcast({
       type: 'peers',
       count: this.seats.filter((s) => s.connection !== null).length,
+      generation: this.peersGeneration,
     });
   }
 

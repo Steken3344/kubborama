@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { appendFileSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { appendFileSync, createReadStream, mkdirSync, statSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { dirname, extname, join, normalize, resolve, sep } from 'node:path';
 import { SERVER_PROTOCOL_VERSION } from '../src/core/serverProtocol.js';
@@ -185,7 +185,23 @@ function serveStatic(root: string, path: string, res: ServerResponse): void {
     'content-type',
     MIME[extname(target).toLowerCase()] ?? 'application/octet-stream',
   );
-  res.end(readFileSync(target));
+  // Vite's hashed assets never change; the page itself always revalidates.
+  res.setHeader(
+    'cache-control',
+    target.endsWith('index.html') || !relative.startsWith('assets')
+      ? 'no-cache'
+      : 'public, max-age=31536000, immutable',
+  );
+  // Streamed, so a multi-MB asset never stalls the game tick; a read
+  // error ends this response, never the server (review, 2026-10-31).
+  const stream = createReadStream(target);
+  stream.on('error', () => {
+    if (!res.headersSent) {
+      res.statusCode = 500;
+    }
+    res.end();
+  });
+  stream.pipe(res);
 }
 
 function isFile(path: string): boolean {

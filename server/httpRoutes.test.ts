@@ -97,3 +97,17 @@ describe('KubbOrama HTTP routes', () => {
     ).toBe(413);
   });
 });
+
+describe('caching (review, 2026-10-31)', () => {
+  it('the page always revalidates; hashed assets are immutable', async () => {
+    expect((await fetch(`${base}/`)).headers.get('cache-control')).toBe(
+      'no-cache',
+    );
+    expect(
+      (await fetch(`${base}/assets/app.js`)).headers.get('cache-control'),
+    ).toContain('immutable');
+    expect(
+      (await fetch(`${base}/__kubb/config.json`)).headers.get('cache-control'),
+    ).toBe('no-store');
+  });
+});

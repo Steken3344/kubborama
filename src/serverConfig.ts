@@ -3,7 +3,9 @@ import type { ClientConfig } from './core/clientConfig.js';
 
 /** Give up on the config after this long (a static host may hang). */
 const CONFIG_TIMEOUT_MS = 2000;
-const CONFIG_URL = '__kubb/config.json';
+// Absolute: the server answers at its root whatever page the headset
+// opened (a static sub-path host simply has no config → serverless).
+const CONFIG_URL = '/__kubb/config.json';
 
 /**
  * The server's answer to "is there a game server here?" — fetched once

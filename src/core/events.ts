@@ -170,6 +170,8 @@ export interface GameEvents {
   ServerPeers: {
     count: number;
     mySide: MatchSide | null;
+    /** Changes on every seat change — see serverProtocol `peers`. */
+    generation: number;
   };
   /** Voice signaling from the other player, via the game server. */
   VoiceSignal: {

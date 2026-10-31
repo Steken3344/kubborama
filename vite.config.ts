@@ -136,6 +136,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // The /__kubb/ routes are the server's, never the app shell's.
+        navigateFallbackDenylist: [/^\/__kubb\//u],
         // App-shell precache — everything needed to START the app
         // offline: JS/CSS/HTML, the physics wasm, the UIKitML panels
         // and the scene JSON (both fetch()-loaded at startup, small).
@@ -159,11 +161,15 @@ export default defineConfig({
             // them — match by extension, not destination (code review,
             // 2026-09-03: an 'audio' destination check never matched a
             // single .ogg).
+            // Never /__kubb/ (config, log, game socket): a cached config
+            // would ignore server changes for a month and fake a running
+            // server when it is down (review, 2026-10-31).
             urlPattern: ({ request }) =>
-              ['image', 'font'].includes(request.destination) ||
-              /\.(?:ogg|glb|gltf|ktx2|hdr|uikitml|json)$/u.test(
-                new URL(request.url).pathname,
-              ),
+              !new URL(request.url).pathname.startsWith('/__kubb/') &&
+              (['image', 'font'].includes(request.destination) ||
+                /\.(?:ogg|glb|gltf|ktx2|hdr|uikitml|json)$/u.test(
+                  new URL(request.url).pathname,
+                )),
             handler: 'CacheFirst',
             options: {
               cacheName: 'kubborama-assets',

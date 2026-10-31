@@ -94,7 +94,14 @@ const serverMessageSchema = z.discriminatedUnion('type', [
     tick: z.number().int().nonnegative(),
     pieces: z.array(pieceTransform).max(64),
   }),
-  z.object({ type: z.literal('peers'), count: z.number().int().nonnegative() }),
+  /** Seated, connected players. `generation` changes on EVERY seat
+   * change (join, leave, a reconnect taking a seat over) — so side A can
+   * tell "B came back" even when the count stays 2 (review, 2026-10-31). */
+  z.object({
+    type: z.literal('peers'),
+    count: z.number().int().nonnegative(),
+    generation: z.number().int().nonnegative(),
+  }),
   /** The other player's head + hands, for PeerAvatarSystem. */
   z.object({
     type: z.literal('presence'),

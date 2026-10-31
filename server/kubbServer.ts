@@ -50,8 +50,12 @@ export async function startKubbServer(
   const game = new GameServer(options.game);
   const wss = attachGameWebSocket(http, game);
   game.start();
-  await new Promise<void>((done) => {
-    http.listen(options.port, options.host ?? '0.0.0.0', () => done());
+  await new Promise<void>((done, fail) => {
+    http.once('error', fail); // e.g. EADDRINUSE — reported by the caller
+    http.listen(options.port, options.host ?? '0.0.0.0', () => {
+      http.off('error', fail);
+      done();
+    });
   });
   return {
     port: (http.address() as AddressInfo).port,

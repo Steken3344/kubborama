@@ -160,7 +160,11 @@ export class ServerLinkSystem extends createSystem({}) {
       this.settingsSystem.releaseMatchGameMode();
       this.leaveMatch();
       this.dropPeerAvatar();
-      gameEvents.emit('ServerPeers', { count: 0, mySide: null });
+      gameEvents.emit('ServerPeers', {
+        count: 0,
+        mySide: null,
+        generation: -1,
+      });
       if (!this.stopped) {
         setTimeout(() => this.connect(), RECONNECT_DELAY_MS);
       }
@@ -202,6 +206,7 @@ export class ServerLinkSystem extends createSystem({}) {
         gameEvents.emit('ServerPeers', {
           count: message.count,
           mySide: this.side,
+          generation: message.generation,
         });
         return;
       case 'signal':
