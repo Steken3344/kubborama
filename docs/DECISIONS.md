@@ -5244,3 +5244,25 @@ server session (details in docs/MILESTONES.md MP6). Tagged `v0.8-mp7`
 live are covered by the rule tests and `npm run check:server`; the
 two-colour score row and voice were not answered — follow up if either
 misbehaves.
+
+## 2026-10-31 — One address: a standalone home server
+
+Erik: one address on the home network should give the headsets the
+game, the configuration and the server; the server leads (turns etc.)
+and introduces the headsets; server unit tests before headset tests.
+Cloud parked (headsets are always at home).
+- `npm start` = vite build + esbuild bundle of `server/main.ts` + run.
+  One HTTPS server on 8443 serves `dist/`, `/__kubb/config.json`,
+  `/__kubb/log` and the game WebSocket. It reuses the dev server's
+  self-signed certificate (`.iwsdk/https`, @vitejs/plugin-basic-ssl's
+  `getCertificate`), now a declared dependency. The bundle keeps Havok,
+  ws and basic-ssl external — it runs from the repo, which is the point
+  of a home server.
+- The client fetches `/__kubb/config.json` before building the world;
+  its presence means "server here" (server mode, room, debug relay). The
+  static GitHub Pages build gets no config and stays serverless.
+- Voice: WebRTC between the headsets with the game server as signaling
+  (offer from side A when both are seated, answer from B, ICE relayed,
+  capped); no STUN on the LAN. Server mode no longer joins Trystero.
+- The `/__kubb` routes are one module (server/httpRoutes.ts) used by the
+  standalone server and the Vite dev plugin.

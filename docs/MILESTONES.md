@@ -562,6 +562,27 @@ docs/superpowers/plans/2026-09-05-avatars.md · Log: docs/DECISIONS.md
       rendered in solo). Tune `avatar.json` dims if proportions look
       off. 🎧 Not self-approvable.
 
+## MP8 — One address (standalone home server) `status: built + verified headless; headset check pending`
+
+Spec: docs/superpowers/specs/2026-10-31-one-address-server-design.md.
+(The cloud part of the old MP8 plan is parked — headsets are always at
+home, Erik 2026-10-31.)
+
+- [x] `npm start` → one HTTPS server (8443): the built game,
+      `/__kubb/config.json`, `/__kubb/log`, the game WebSocket
+      (server/kubbServer.ts, server/main.ts, bundled with esbuild).
+- [x] The client fetches the config at boot → server mode, room, debug
+      (replaces the dev-server guesses).
+- [x] Voice through the server: WebRTC with the server as signaling
+      (VoiceLinkSystem); no Trystero in server mode.
+- [x] Server tests: HTTP routes, the real server with ws players, seat
+      lifecycle, signaling relay, MatchHost stability scenarios (found
+      and fixed the 6th-stick king being logged with stick 0).
+- [x] `npm run check:server` against `npm start`: full turn, inkast,
+      avatars and voice connected on both, identical positions.
+- [ ] Headset check (Erik): open the printed address on both headsets;
+      voice, avatars and a match.
+
 ## MP6 — The match on the server `status: DONE — headset gate PASSED 2026-09-27 (MP7), tagged v0.8-mp7`
 
 Spec: docs/superpowers/specs/2026-09-26-authoritative-server-design.md

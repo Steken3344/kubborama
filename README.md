@@ -82,6 +82,21 @@ bar — the same experience as a native app. Updates to the deployed site
 are picked up automatically the next time it's launched, no
 reinstalling needed.
 
+## Playing at home — one address (2026-10-31)
+
+```bash
+npm start
+```
+
+builds the game and starts the KubbOrama server, then prints the address
+to open on both headsets, e.g. `https://192.168.1.147:8443` (accept the
+self-signed certificate once). Everything comes from that one server:
+the game, its configuration, the match (turns, rules, field kubbs), the
+other player's avatar and the voice connection — no URL parameters, no
+internet. The first headset to **enter VR** is player A. `KUBB_PORT`
+changes the port. For development, `npm run dev` does the same on the
+Vite dev server (port 8081) with hot reload.
+
 ## Debug mode (live logs from a headset)
 
 The Quest browser's console is unreachable from outside, so the app can
