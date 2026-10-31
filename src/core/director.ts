@@ -305,11 +305,12 @@ export function shotCameraPose(
             },
           );
         case 2: {
-          // crane up behind the thrower
+          // crane up behind the thrower — starting beside and above
+          // the head, never inside it
           const mid: Vec3 = [0, 0.2, (centreZ + otherZ(sd)) / 2];
           return rest(
-            { position: [0, 1.6, lowZ(own + 1.8 * b, 1.6)], target: mid },
-            { position: [0, 4.2, lowZ(own + 1.2 * b, 4.2)], target: mid },
+            { position: [0.9 * b, 2.3, lowZ(own + 1.8 * b, 2.3)], target: mid },
+            { position: [0.3 * b, 4.2, lowZ(own + 1.2 * b, 4.2)], target: mid },
           );
         }
         default: {
@@ -380,10 +381,11 @@ export function shotCameraPose(
           return { position: [-2.1, y, z], target: f };
         }
         case 1: {
-          // chase from behind, riding along with the stick
-          const y = Math.max(2.2, f[1] + 1.2);
+          // chase from behind, riding along with the stick — high and
+          // to one side, so the thrower never fills the frame
+          const y = Math.max(2.6, f[1] + 1.3);
           return {
-            position: [0.4 * b, y, lowZ(f[2] + 3.2 * b, y)],
+            position: [1.3 * b, y, lowZ(f[2] + 3.2 * b, y)],
             target: f,
           };
         }

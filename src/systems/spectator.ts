@@ -27,6 +27,9 @@ const STICK_IDS = [
   'stick-4',
   'stick-5',
 ];
+/** The player's scoreboard sign in the garden (scene nodes). */
+const PLAYER_SIGN_NODES = ['hud-panel', 'hud-frame', 'hud-sign-posts'];
+
 const DIRECTOR_OPTS = {
   minShotS: spectator.minShotS,
   closeUpS: spectator.closeUpS,
@@ -127,8 +130,18 @@ export class SpectatorSystem extends createSystem({}) {
     }
     this.ignoreThrowsUntilS = this.nowS + spectator.ignoreThrowsAfterTurnS;
     this.buildOverlay();
+    this.setPlayerSignVisible(false);
     this.onMatchState(this.lastState);
     gateLog('spectator view', { on: true });
+  }
+
+  /** The in-world HUD sign shows the PLAYER's own numbers and covered a
+   * third of the over-the-shoulder shot (bot match, 2026-10-31); the
+   * TV scoreboard replaces it for spectators. */
+  private setPlayerSignVisible(visible: boolean): void {
+    for (const id of PLAYER_SIGN_NODES) {
+      this.world.requireSceneObject(id).visible = visible;
+    }
   }
 
   private deactivate(): void {
@@ -143,6 +156,7 @@ export class SpectatorSystem extends createSystem({}) {
     }
     this.overlay?.remove();
     this.overlay = null;
+    this.setPlayerSignVisible(true);
     const camera = this.world.camera;
     camera.position.set(0, 1.7, 0);
     camera.quaternion.set(0, 0, 0, 1);

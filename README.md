@@ -117,6 +117,16 @@ nobody plays, then an automatic director cutting between angles and a
 scoreboard. "Fri kamera" (or dragging) lets you look around yourself.
 Spectators never take a seat.
 
+**Testing without headsets:** with the dev server up
+(`npx iwsdk dev up --no-open`), `npm run botmatch` plays scripted rule
+cases against its game server: player A is the real app in a browser,
+player B a protocol bot, and a spectator films (screenshots at every
+camera cut). Scenarios: `foot-fault`, `early-king`, `inkast-miss`,
+`advantage`, `win`, `room` (`-- --scenario <name>`, default all). Each
+row is PASS (it happened and the server's and player A's logs prove
+it), FAIL (it happened but a proof is missing) or NOT SEEN (physics
+didn't get there in the time box).
+
 **Which build is running:** the loading screen and the top-right corner
 of the page show the build, e.g. `#193 · 2026-10-31 20:40 · 0226a37`
 (build number = commit count, `+` for uncommitted changes, then build

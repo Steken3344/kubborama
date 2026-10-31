@@ -5468,3 +5468,22 @@ stays after loading, so it shows before any script runs) and defined as
 `__APP_VERSION__` for the settings menu (replacing `git describe`).
 `npm start` serves `dist/` as files, so a client-only change is live
 after `vite build` + a headset reload, without restarting the server.
+
+Bot match and play sessions (same day, Erik: "vill att du gör mer tester
+och förbättrar upplevelsen, enligt regelverket men också grafiska buggar";
+he chose the hybrid and "fix bugs at once, ideas need approval"):
+`npm run botmatch` (tools/botmatch, tsx) — player A is the real app in a
+browser driven through `__kubbDev` (so the client runs for real), player B
+a protocol bot speaking v3 with the shared zod schemas, and both sides'
+throws come from pure policies (`aimRelease` in core, targets per intent:
+hit / miss / king / foot fault, legal or outside inkast). Fixed client
+ids let a rerun reclaim the seats inside the 60 s rejoin grace. Each
+scenario is proven by server and player-A gate lines in its own time
+window, not by the gate report: the report's both-headsets checks cannot
+pass with a bot guest (listed for information only). One shared
+`GRAVITY_MPS2` for the server's Havok world and the aim. My emulator
+play sessions follow docs/playtest-checklist.md; look-and-feel ideas go
+to docs/IMPROVEMENTS.md for Erik's approval, bugs are fixed at once.
+First finding: the player's HUD sign covered a third of the TV's
+over-the-shoulder shot — hidden in the spectator view (the TV
+scoreboard replaces it).

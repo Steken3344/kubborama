@@ -234,6 +234,58 @@ describe('director — camera poses', () => {
   });
 });
 
+describe('director — camera never inside a player', () => {
+  // A player stands up to ~0.6 m behind the line, head at ~1.7 m: a
+  // cylinder of 0.6 m radius up to 2 m (the bot match's first run had
+  // the chase cam inside the guest's head).
+  for (const preset of [
+    { widthM: 5, lengthM: 8 },
+    { widthM: 4, lengthM: 6 },
+  ]) {
+    it(`keeps clear of both throwers (${preset.lengthM} m court)`, () => {
+      const halves = courtHalves(preset);
+      const players = [
+        { x: 0, z: halves.nearBaselineZ + 0.3 },
+        { x: 0, z: halves.farBaselineZ - 0.3 },
+      ];
+      for (const side of ['host', 'guest'] as const) {
+        const shots: Shot[] = [
+          ...[0, 1, 2, 3].map((variant) =>
+            at({ kind: 'overShoulder', side, variant }),
+          ),
+          ...[0, 1].map((variant) => at({ kind: 'inkastWide', side, variant })),
+          // A follow cam right after the release, and mid-flight.
+          ...[0, 1, 2].flatMap((variant) =>
+            [0.5, 3].map((t) => {
+              const own =
+                side === 'host' ? halves.nearBaselineZ : halves.farBaselineZ;
+              const z = own + (side === 'host' ? -t : t);
+              return at({
+                kind: 'follow',
+                side,
+                variant,
+                focus: [0.2, 1.5, z],
+              });
+            }),
+          ),
+        ];
+        for (const shot of shots) {
+          for (let t = 0; t <= opts.maxShotS; t += 0.5) {
+            const [x, y, z] = shotCameraPose(shot, halves, t, opts).position;
+            for (const p of players) {
+              const inside = Math.hypot(x - p.x, z - p.z) < 0.6 && y < 2;
+              expect(
+                inside,
+                `${shot.kind} ${side} v${shot.variant} t=${t} in a player (${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)})`,
+              ).toBe(false);
+            }
+          }
+        }
+      }
+    });
+  }
+});
+
 describe('director — camera never inside the scenery', () => {
   // Conservative cylinders around every tree, rock, cliff and the HUD
   // sign in the real scene: a camera must be outside each one or above it.
