@@ -3,6 +3,8 @@ import {
   claimProfile,
   clientProfile,
   emptyProfileStore,
+  isKnownDevice,
+  MAX_HEAD_TO_HEAD,
   parseProfileStore,
   profileKeyFor,
   recordMatchResult,
@@ -24,14 +26,34 @@ const round = {
 };
 
 describe('profile store', () => {
-  it('an unknown device gets an anonymous profile of its own', () => {
+  it('an unknown device plays anonymously; nothing is stored until it matters', () => {
     const { store, key } = profileKeyFor(emptyProfileStore(), 'dev-1');
     expect(key).toBe('device:dev-1');
+    expect(store).toEqual(emptyProfileStore());
+    expect(isKnownDevice(store, 'dev-1')).toBe(false);
     expect(clientProfile(store, key)).toMatchObject({
       name: null,
       colorIndex: 0,
     });
-    expect(profileKeyFor(store, 'dev-1').key).toBe(key); // remembered
+    const coloured = setProfileColor(store, key, 2);
+    expect(isKnownDevice(coloured, 'dev-1')).toBe(true);
+    expect(profileKeyFor(coloured, 'dev-1').key).toBe(key);
+  });
+
+  it('a match between two seats on the same profile records nothing', () => {
+    const store = claimProfile(emptyProfileStore(), 'a', 'Erik');
+    expect(recordMatchResult(store, 'name:Erik', 'name:Erik')).toBe(store);
+  });
+
+  it('sends at most MAX_HEAD_TO_HEAD rows, most played first', () => {
+    let store = claimProfile(emptyProfileStore(), 'a', 'Erik');
+    for (let i = 0; i < MAX_HEAD_TO_HEAD + 5; i++) {
+      store = recordMatchResult(store, 'name:Erik', `device:x${i}`);
+    }
+    store = recordMatchResult(store, 'device:x60', 'name:Erik');
+    const rows = clientProfile(store, 'name:Erik').headToHead;
+    expect(rows).toHaveLength(MAX_HEAD_TO_HEAD);
+    expect(rows[0]).toMatchObject({ won: 1, lost: 1 }); // x60: 2 games
   });
 
   it('choosing a name claims that profile; the device keeps it', () => {

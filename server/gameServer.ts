@@ -9,6 +9,7 @@ import { NETWORKED_PIECE_IDS } from '../src/core/pieceSync.js';
 import {
   claimProfile,
   clientProfile,
+  isKnownDevice,
   profileKeyFor,
   recordMatchResult,
   recordRoundFor,
@@ -47,6 +48,9 @@ export const REJOIN_GRACE_MS = 60_000;
  * both players at once) must not restart the match — or flip the court
  * back — again and again (gh#27; 8 court flips in 2 s on 2026-10-31). */
 export const ROOM_ACTION_COOLDOWN_MS = 1000;
+/** A player changes name or colour at most this often (each change
+ * rewrites the profile file — review, 2026-10-31). */
+const PROFILE_CHANGE_COOLDOWN_MS = 300;
 
 /** What the transport (wsServer.ts, or a test) gives the game server. */
 export interface ClientConnection {
@@ -82,6 +86,7 @@ interface Seat {
   recentThrowsMs: number[];
   lastPresenceMs: number;
   recentSignalsMs: number[];
+  lastProfileChangeMs: number;
 }
 
 const SIDES: readonly MatchSide[] = ['host', 'guest'];
@@ -249,6 +254,14 @@ export class GameServer {
       }
       return this.changeGameMode(message.gameMode, seat.side);
     }
+    if (message.type === 'setProfile' || message.type === 'setColor') {
+      // Each change writes the whole file: a click rate, not a flood.
+      const now = this.nowMs();
+      if (now - seat.lastProfileChangeMs < PROFILE_CHANGE_COOLDOWN_MS) {
+        return false;
+      }
+      seat.lastProfileChangeMs = now;
+    }
     if (message.type === 'setProfile') {
       if (message.name !== null && !profileNames.includes(message.name)) {
         return false; // only the menu's fixed names
@@ -318,15 +331,13 @@ export class GameServer {
     }
     this.expireSeats();
     const deviceId = this.deviceIds.get(connection) ?? message.clientId;
-    const found = profileKeyFor(this.profiles, deviceId);
-    this.updateProfiles(found.store);
     let seat = this.seats.find((s) => s.clientId === message.clientId);
     if (seat) {
       seat.connection?.close(); // a second tab of the same browser wins
       seat.connection = connection;
       seat.leftAtMs = null;
       seat.deviceId = deviceId;
-      seat.profileKey = found.key;
+      seat.profileKey = this.seatProfileKey(deviceId, message);
     } else {
       const taken = new Set(this.seats.map((s) => s.side));
       const side = SIDES.find((s) => !taken.has(s));
@@ -340,8 +351,9 @@ export class GameServer {
         clientId: message.clientId,
         connection,
         deviceId,
-        profileKey: found.key,
+        profileKey: this.seatProfileKey(deviceId, message),
         leftAtMs: null,
+        lastProfileChangeMs: -Infinity,
         recentThrowsMs: [],
         lastPresenceMs: -Infinity,
         recentSignalsMs: [],
@@ -366,6 +378,37 @@ export class GameServer {
   }
 
   // --- profiles ------------------------------------------------------------
+
+  /** A seated player's profile. Only a SEATED device gets one (a
+   * rejected join stores nothing), and the first time the server meets
+   * a device, the headset's own colour and name seed it. */
+  private seatProfileKey(
+    deviceId: string,
+    message: Extract<ClientMessage, { type: 'join' }>,
+  ): string {
+    if (!isKnownDevice(this.profiles, deviceId)) {
+      const name =
+        message.profileName && profileNames.includes(message.profileName)
+          ? message.profileName
+          : null;
+      let store = name
+        ? claimProfile(this.profiles, deviceId, name)
+        : this.profiles;
+      const key = profileKeyFor(store, deviceId).key;
+      // A named profile that already exists keeps its own colour; the
+      // default colour 0 needs nothing stored.
+      const keepsOwnColour = this.profiles.profiles[key] !== undefined;
+      if (
+        message.colorIndex !== undefined &&
+        message.colorIndex !== 0 &&
+        !keepsOwnColour
+      ) {
+        store = setProfileColor(store, key, message.colorIndex);
+      }
+      this.updateProfiles(store);
+    }
+    return profileKeyFor(this.profiles, deviceId).key;
+  }
 
   private updateProfiles(next: ProfileStore): void {
     if (next === this.profiles) {

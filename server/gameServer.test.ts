@@ -428,18 +428,23 @@ describe('GameServer — profiles (2026-10-31)', () => {
   });
 
   it('a chosen name and colour are kept for the device across reconnects', async () => {
+    const now = { ms: 50_000 };
     const repo = memoryProfileRepository();
     const server = new GameServer({
       log: noServerLog,
-      nowMs: () => clock.now,
+      nowMs: () => now.ms,
       profiles: repo,
     });
     const a = fakeClient();
     const ha = server.connect(a.connection, { deviceId: 'device-aaaa-0003' });
     await ha.receive(join('simple', 'prof-A-2'));
     expect(await ha.receive({ type: 'setProfile', name: 'Erik' })).toBe(true);
+    // Too soon after the last change: refused (each one writes the file).
+    expect(await ha.receive({ type: 'setColor', colorIndex: 2 })).toBe(false);
+    now.ms += 1000;
     expect(await ha.receive({ type: 'setColor', colorIndex: 2 })).toBe(true);
     expect(lastOf(a, 'profile')).toMatchObject({ name: 'Erik', colorIndex: 2 });
+    now.ms += 1000;
     // A name outside the menu's list is refused.
     expect(await ha.receive({ type: 'setProfile', name: 'Mallory' })).toBe(
       false,
@@ -447,7 +452,7 @@ describe('GameServer — profiles (2026-10-31)', () => {
     // A new server reading the same store: the device is still Erik.
     const server2 = new GameServer({
       log: noServerLog,
-      nowMs: () => clock.now,
+      nowMs: () => now.ms,
       profiles: memoryProfileRepository(repo.saved),
     });
     const a2 = fakeClient();
@@ -461,6 +466,32 @@ describe('GameServer — profiles (2026-10-31)', () => {
     });
   });
 
+  it('a new device is seeded from the headset; a rejected one stores nothing', async () => {
+    const repo = memoryProfileRepository();
+    const server = new GameServer({
+      log: noServerLog,
+      nowMs: () => clock.now,
+      profiles: repo,
+    });
+    const a = fakeClient();
+    const b = fakeClient();
+    const c = fakeClient();
+    const [ha, hb, hc] = [a, b, c].map((x, i) =>
+      server.connect(x.connection, { deviceId: `device-seed-000${i}` }),
+    );
+    await ha?.receive({ ...join('simple', 'seed-A-1'), colorIndex: 3 });
+    await hb?.receive({ ...join('simple', 'seed-B-1'), profileName: 'Gast' });
+    await hc?.receive({ ...join('simple', 'seed-C-1'), colorIndex: 4 });
+    expect(lastOf(a, 'profile')).toMatchObject({ colorIndex: 3 });
+    expect(lastOf(b, 'profile')).toMatchObject({ name: 'Gast' });
+    expect(c.received).toContainEqual({
+      type: 'rejected',
+      reason: 'full',
+    });
+    expect(repo.saved.profiles['device:device-seed-0002']).toBeUndefined();
+    expect(repo.saved.devices['device-seed-0002']).toBeUndefined();
+  });
+
   it('without a cookie the clientId keys the profile', async () => {
     const repo = memoryProfileRepository();
     const server = new GameServer({
@@ -470,9 +501,7 @@ describe('GameServer — profiles (2026-10-31)', () => {
     });
     const a = fakeClient();
     const ha = server.connect(a.connection);
-    await ha.receive(join('simple', 'only-a-clientid-1'));
-    expect(repo.saved.devices['only-a-clientid-1']).toBe(
-      'device:only-a-clientid-1',
-    );
+    await ha.receive({ ...join('simple', 'only-a-clientid-1'), colorIndex: 5 });
+    expect(repo.saved.profiles['device:only-a-clientid-1']?.colorIndex).toBe(5);
   });
 });

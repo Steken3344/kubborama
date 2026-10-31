@@ -12,6 +12,9 @@ import type { RoundStatsInput, Stats } from './stats.js';
  * uses. Pure data in/out: the server reads and writes the JSON file.
  */
 export const PROFILES_SCHEMA_VERSION = 1;
+/** At most this many head-to-head rows go to a headset (the protocol
+ * caps the array; the most-played opponents come first). */
+export const MAX_HEAD_TO_HEAD = 64;
 
 const headToHeadSchema = z.object({
   won: z.number().int().nonnegative(),
@@ -73,7 +76,10 @@ function withProfile(
   return { ...store, profiles: { ...store.profiles, [key]: profile } };
 }
 
-/** The device's profile key, creating its anonymous profile if new. */
+/** The device's profile key. Nothing is written: an unknown device
+ * plays as its anonymous profile, which is only stored once there is
+ * something to keep (a round, a colour, a name — review, 2026-10-31: a
+ * rejected or forged join must not grow the file). */
 export function profileKeyFor(
   store: ProfileStore,
   deviceId: string,
@@ -82,18 +88,15 @@ export function profileKeyFor(
   if (known !== undefined && store.profiles[known]) {
     return { store, key: known };
   }
-  const key = keyOf(deviceId, null);
-  const profiles = store.profiles[key]
-    ? store.profiles
-    : { ...store.profiles, [key]: newProfile(null) };
-  return {
-    store: {
-      ...store,
-      profiles,
-      devices: { ...store.devices, [deviceId]: key },
-    },
-    key,
-  };
+  return { store, key: keyOf(deviceId, null) };
+}
+
+/** Whether this device has anything stored yet. */
+export function isKnownDevice(store: ProfileStore, deviceId: string): boolean {
+  return (
+    store.devices[deviceId] !== undefined ||
+    store.profiles[keyOf(deviceId, null)] !== undefined
+  );
 }
 
 /** The device switches to the profile called `name` (null: its own
@@ -104,9 +107,16 @@ export function claimProfile(
   name: string | null,
 ): ProfileStore {
   const current = profileKeyFor(store, deviceId);
-  const currentColor = current.store.profiles[current.key]?.colorIndex ?? 0;
+  const currentColor = profileAt(store, current.key).colorIndex;
+  if (name === null) {
+    // Back to the anonymous profile: forget the claim.
+    const devices = Object.fromEntries(
+      Object.entries(store.devices).filter(([id]) => id !== deviceId),
+    );
+    return { ...store, devices };
+  }
   const key = keyOf(deviceId, name);
-  let next = current.store;
+  let next = store;
   if (!next.profiles[key]) {
     next = withProfile(next, key, newProfile(name, currentColor));
   }
@@ -150,6 +160,9 @@ export function recordMatchResult(
   winnerKey: string,
   loserKey: string,
 ): ProfileStore {
+  if (winnerKey === loserKey) {
+    return store; // both seats on one profile: no result against oneself
+  }
   const bump = (
     s: ProfileStore,
     key: string,
@@ -183,10 +196,13 @@ export function clientProfile(store: ProfileStore, key: string): ClientProfile {
     name: profile.name,
     colorIndex: profile.colorIndex,
     stats: profile.stats,
-    headToHead: Object.entries(profile.headToHead).map(([opponent, r]) => ({
-      opponentName: store.profiles[opponent]?.name ?? null,
-      won: r.won,
-      lost: r.lost,
-    })),
+    headToHead: Object.entries(profile.headToHead)
+      .sort(([, a], [, b]) => b.won + b.lost - (a.won + a.lost))
+      .slice(0, MAX_HEAD_TO_HEAD)
+      .map(([opponent, r]) => ({
+        opponentName: store.profiles[opponent]?.name ?? null,
+        won: r.won,
+        lost: r.lost,
+      })),
   };
 }

@@ -397,14 +397,27 @@ export function runChecks(entries) {
           (e) => !e.data.locked,
         ),
     // Server mode (2026-10-31): the server records each round into its
-    // thrower's profile and logs it — the headsets no longer count.
+    // thrower's profile and logs `round recorded {side}`. Check it was
+    // the right thrower: the headsets' own round summaries must agree
+    // whose turn it was (and the opponent must call it not theirs).
     ...(gate(entries, 'round recorded').length > 0
       ? [
           allOf(
             'gh16-host',
             "opponent's turn stays out of the host's stats",
-            gate(entries, 'round recorded'),
-            (e) => e.data.side !== 'host' && e.data.side !== 'guest',
+            gate(entries, 'round recorded').filter(
+              (e) => e.data.side === 'guest',
+            ),
+            (r) =>
+              !within(
+                entries,
+                r,
+                (e) =>
+                  e.message === 'round summary' &&
+                  e.role === 'host' &&
+                  e.data.byOpponent &&
+                  e.data.matchTurn === 'guest',
+              ),
           ),
           allOf(
             'gh16-guest',
@@ -412,7 +425,16 @@ export function runChecks(entries) {
             gate(entries, 'round recorded').filter(
               (e) => e.data.side === 'guest',
             ),
-            () => false,
+            (r) =>
+              !within(
+                entries,
+                r,
+                (e) =>
+                  e.message === 'round summary' &&
+                  e.role === 'guest' &&
+                  !e.data.byOpponent &&
+                  e.data.matchTurn === 'guest',
+              ),
           ),
         ]
       : [

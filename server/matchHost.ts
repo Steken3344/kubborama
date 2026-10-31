@@ -59,7 +59,7 @@ import {
   percentToReal,
   tuningParams,
 } from '../src/core/tuning.js';
-import { sinBinSlotPosition } from '../src/core/sinBin.js';
+import { stickSinBinSlotPosition } from '../src/core/sinBin.js';
 import { sub } from '../src/core/vec3.js';
 import { isFootFault } from '../src/core/walkArea.js';
 import type { Vec3 } from '../src/core/vec3.js';
@@ -270,9 +270,9 @@ export class MatchHost {
     this.roundState = scoringReducer(this.roundState, { type: 'StickThrown' });
     const home = this.world.homePose(id);
     this.world.setPose(id, {
-      position: sinBinSlotPosition(
+      position: stickSinBinSlotPosition(
         this.footFaults,
-        pieces.kubb.heightM,
+        pieces.stick.radiusM,
         sinBin,
       ),
       quaternion: home?.quaternion ?? [0, 0, 0, 1],

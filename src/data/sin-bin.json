@@ -1,5 +1,7 @@
 {
   "xM": 3.3,
   "startZM": -0.3,
-  "spacingM": 0.14
+  "spacingM": 0.14,
+  "stickXM": 3.7,
+  "stickSpacingM": 0.4
 }

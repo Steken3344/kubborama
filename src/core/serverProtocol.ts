@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { matchStateSchema } from './matchSync.js';
 import { MAX_COLOR_INDEX, presenceMessageSchema } from './presence.js';
+import { MAX_HEAD_TO_HEAD } from './profiles.js';
 import { gameModeSchema } from './settings.js';
 import { statsSchema } from './stats.js';
 
@@ -65,6 +66,11 @@ const clientMessageSchema = z.discriminatedUnion('type', [
     /** A per-browser id (localStorage) — a reloading headset rejoining
      * within the grace gets its side back and the match continues. */
     clientId: z.string().min(8).max(64),
+    /** The headset's own colour and name (v3): they seed its profile
+     * the first time the server meets this device, so nothing chosen
+     * before is lost. */
+    colorIndex: colorIndex.optional(),
+    profileName: profileName.nullable().optional(),
   }),
   /** "Ny runda". */
   z.object({ type: z.literal('reset') }),
@@ -162,7 +168,7 @@ const serverMessageSchema = z.discriminatedUnion('type', [
           lost: z.number().int().nonnegative(),
         }),
       )
-      .max(64),
+      .max(MAX_HEAD_TO_HEAD),
   }),
   /** The colours the room SHOWS for each side — a clash already
    * resolved (core/avatarColors.ts); null for an empty seat. */

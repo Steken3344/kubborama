@@ -5388,3 +5388,15 @@ recorded`) and head-to-head results, and hands out the room's shown
 - `npm run check:server` now waits until both players are seated and
   the match is on before A throws (a slow headless page had A throw
   while still alone, in practice).
+
+Review fixes (same day): an anonymous profile is stored only once there
+is something to keep, and only for a SEATED device (a rejected or forged
+join no longer grows the file); a new device is seeded from the
+headset's own colour and name (join carries them), so nothing chosen
+before is lost; name/colour changes have a 300 ms per-player cooldown;
+the dev server keeps `.kubb-server/profiles-dev.json` (two servers on
+one file would overwrite each other) and temp files are per process;
+head-to-head rows are capped at 64 (most played first) and a match
+between two seats on one profile records nothing; foot-faulted sticks
+get their own sin-bin row a stick length apart; the gh16 gate checks
+compare the server's `round recorded` with the headsets' own summaries.

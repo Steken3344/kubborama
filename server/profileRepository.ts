@@ -4,8 +4,11 @@ import { dirname } from 'node:path';
 import { emptyProfileStore, parseProfileStore } from '../src/core/profiles.js';
 import type { ProfileStore } from '../src/core/profiles.js';
 
-/** Relative to the repo root; shared by `npm start` and the dev server. */
+/** Relative to the repo root. The dev server keeps its own file: two
+ * servers on one file would overwrite each other's changes (each holds
+ * the store in memory — review, 2026-10-31). */
 export const PROFILES_FILE = '.kubb-server/profiles.json';
+export const DEV_PROFILES_FILE = '.kubb-server/profiles-dev.json';
 
 /** Where the game server keeps its player profiles. */
 export interface ProfileRepository {
@@ -45,7 +48,7 @@ export function fileProfileRepository(path: string): ProfileRepository {
     },
     save: (store) => {
       mkdirSync(dirname(path), { recursive: true });
-      const temp = `${path}.tmp`;
+      const temp = `${path}.${process.pid}.tmp`;
       writeFileSync(temp, JSON.stringify(store, null, 1));
       renameSync(temp, path);
     },

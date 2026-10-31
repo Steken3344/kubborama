@@ -4,6 +4,10 @@ export interface SinBinConfig {
   xM: number;
   startZM: number;
   spacingM: number;
+  /** Foot-faulted sticks (2026-10-31): their own row, a stick length
+   * apart — a stick lies along z and would overlap at kubb spacing. */
+  stickXM: number;
+  stickSpacingM: number;
 }
 
 /**
@@ -20,4 +24,17 @@ export function sinBinSlotPosition(
   config: SinBinConfig,
 ): Vec3 {
   return [config.xM, kubbHeightM / 2, config.startZM - index * config.spacingM];
+}
+
+/** Where the `index`-th foot-faulted stick of a round lies. */
+export function stickSinBinSlotPosition(
+  index: number,
+  stickRadiusM: number,
+  config: SinBinConfig,
+): Vec3 {
+  return [
+    config.stickXM,
+    stickRadiusM,
+    config.startZM - index * config.stickSpacingM,
+  ];
 }

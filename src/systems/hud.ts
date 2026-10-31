@@ -33,6 +33,7 @@ export class HudSystem extends createSystem({}) {
   private unsubscribeLanguageChanged?: () => void;
   private unsubscribeMatchStateChanged?: () => void;
   private unsubscribeFootFault?: () => void;
+  private unsubscribeServerProfile?: () => void;
   private nowS = 0;
   private noticeUntilS: number | null = null;
   private unsubscribeMultiplayerPeerDisconnected?: () => void;
@@ -107,6 +108,11 @@ export class HudSystem extends createSystem({}) {
         this.updateMatchRow(); // my own digit — reads settingsState
       },
     );
+    // Server mode: the record digit comes from the server's profile,
+    // which arrives just after the round (review, 2026-10-31).
+    this.unsubscribeServerProfile = gameEvents.on('ServerProfile', () => {
+      this.updateBestFelled();
+    });
     // 2026-10-31: the server judged a foot fault — tell both players.
     this.unsubscribeFootFault = gameEvents.on('FootFault', (e) => {
       const t = i18nState.t;
@@ -137,6 +143,7 @@ export class HudSystem extends createSystem({}) {
 
   destroy(): void {
     this.unsubscribeFootFault?.();
+    this.unsubscribeServerProfile?.();
     this.unsubscribeRoundEnded?.();
     this.unsubscribeThrown?.();
     this.unsubscribeLanguageChanged?.();

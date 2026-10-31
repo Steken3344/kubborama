@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { sinBinSlotPosition } from './sinBin.js';
+import { sinBinSlotPosition, stickSinBinSlotPosition } from './sinBin.js';
 import type { SinBinConfig } from './sinBin.js';
 
-const config: SinBinConfig = { xM: 3.3, startZM: -0.3, spacingM: 0.14 };
+const config: SinBinConfig = {
+  xM: 3.3,
+  startZM: -0.3,
+  spacingM: 0.14,
+  stickXM: 3.7,
+  stickSpacingM: 0.4,
+};
 const kubbHeightM = 0.15;
 
 describe('sinBinSlotPosition', () => {
@@ -42,5 +48,14 @@ describe('sinBinSlotPosition', () => {
   it('extrapolates the same way for a negative index (still no clamp)', () => {
     const slotNeg1 = sinBinSlotPosition(-1, kubbHeightM, config);
     expect(slotNeg1).toEqual([3.3, 0.075, -0.3 + config.spacingM]);
+  });
+});
+
+describe('stickSinBinSlotPosition (foot faults)', () => {
+  it('lays sticks in their own row, a stick length apart, on the grass', () => {
+    const first = stickSinBinSlotPosition(0, 0.022, config);
+    const second = stickSinBinSlotPosition(1, 0.022, config);
+    expect(first).toEqual([3.7, 0.022, -0.3]);
+    expect(first[2] - second[2]).toBeGreaterThan(0.3); // stick length
   });
 });

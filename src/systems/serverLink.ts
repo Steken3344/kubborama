@@ -179,6 +179,9 @@ export class ServerLinkSystem extends createSystem({}) {
         protocol: SERVER_PROTOCOL_VERSION,
         gameMode: settingsState.current.gameMode,
         clientId: clientId(),
+        // Seeds the profile the first time the server meets this device.
+        colorIndex: settingsState.current.avatarColorIndex,
+        profileName: settingsState.current.profileName,
       });
     });
     socket.addEventListener('message', (event) => {
