@@ -1,0 +1,122 @@
+import type { CourtHalves } from '../../src/core/inkast.js';
+import { otherSide, standingLineZ } from '../../src/core/match.js';
+import type { MatchSide, MatchState } from '../../src/core/match.js';
+import type { Vec3 } from '../../src/core/vec3.js';
+
+/**
+ * The bot match's brain (docs/superpowers/specs/2026-10-31-bot-match-
+ * and-play-sessions-design.md): pure choices from the server's match
+ * state and the latest snapshot. No randomness — a scenario plays the
+ * same way every run; physics supplies the variation.
+ *
+ * Kubb as this game rules it: field kubbs in the opponent's half first,
+ * then the opponent's baseline kubbs, then the king.
+ */
+export type Intent = 'hit' | 'miss' | 'king' | 'footFault';
+
+export interface PolicyView {
+  state: MatchState;
+  halves: CourtHalves;
+  /** Latest snapshot position per piece id. */
+  positions: ReadonlyMap<string, Vec3>;
+  /** Stick ids still in the rack this turn, in throwing order. */
+  racked: readonly string[];
+}
+
+export interface ThrowPlan {
+  pieceId: string;
+  from: Vec3;
+  target: Vec3;
+  speedMps: number;
+}
+
+const RELEASE_HEIGHT_M = 1;
+/** Released this far behind the thrower's line… */
+const BEHIND_LINE_M = 0.3;
+/** …or this far past it: beyond the 0.9 m foot-fault reach. */
+const FOOT_FAULT_PAST_M = 1.3;
+const MISS_BESIDE_M = 1.5;
+const STICK_SPEED_MPS = 7;
+const INKAST_SPEED_MPS = 5;
+/** Aim at a kubb's lower half. */
+const KUBB_AIM_HEIGHT_M = 0.15;
+
+/** +1 when this side throws towards −z (the host), −1 for the guest. */
+const forward = (side: MatchSide): number => (side === 'host' ? 1 : -1);
+
+function firstStanding(view: PolicyView, ids: readonly string[]): Vec3 | null {
+  for (const id of ids) {
+    const p = view.positions.get(id);
+    if (p) return [p[0], KUBB_AIM_HEIGHT_M, p[2]];
+  }
+  return null;
+}
+
+export function chooseTarget(view: PolicyView, intent: Intent): Vec3 {
+  const other = otherSide(view.state.currentTurn);
+  const kingAt = view.positions.get('king');
+  const king: Vec3 = kingAt
+    ? [kingAt[0], KUBB_AIM_HEIGHT_M, kingAt[2]]
+    : [0, KUBB_AIM_HEIGHT_M, view.halves.centreZ];
+  if (intent === 'king') return king;
+  const fieldIds = view.state.fieldKubbs
+    .filter((k) => k.half === other)
+    .map((k) => k.kubbId);
+  const target =
+    firstStanding(view, fieldIds) ??
+    firstStanding(view, view.state.baselineKubbs[other]) ??
+    king;
+  if (intent === 'miss') {
+    return [
+      view.halves.halfWidthM + MISS_BESIDE_M,
+      KUBB_AIM_HEIGHT_M,
+      target[2],
+    ];
+  }
+  return target;
+}
+
+export function releasePoint(
+  view: PolicyView,
+  intent: Intent,
+  stickIndex: number,
+): Vec3 {
+  const side = view.state.currentTurn;
+  const lineZ = standingLineZ(view.state, side, view.halves);
+  const pastM = intent === 'footFault' ? FOOT_FAULT_PAST_M : -BEHIND_LINE_M;
+  return [
+    0.2 - stickIndex * 0.08,
+    RELEASE_HEIGHT_M,
+    lineZ - pastM * forward(side),
+  ];
+}
+
+export function planStick(view: PolicyView, intent: Intent): ThrowPlan | null {
+  const pieceId = view.racked[0];
+  if (pieceId === undefined) return null;
+  const index = Number(pieceId.replace('stick-', '')) || 0;
+  return {
+    pieceId,
+    from: releasePoint(view, intent, index),
+    target: chooseTarget(view, intent),
+    speedMps: STICK_SPEED_MPS,
+  };
+}
+
+export function planInkast(view: PolicyView, legal: boolean): ThrowPlan | null {
+  const next = view.state.inkastQueue[0];
+  if (!next) return null;
+  const side = view.state.currentTurn;
+  const { nearBaselineZ: nearZ, farBaselineZ: farZ, centreZ } = view.halves;
+  const ownZ = side === 'host' ? nearZ : farZ;
+  const otherZ = side === 'host' ? farZ : nearZ;
+  const halfMidZ = (otherZ + centreZ) / 2;
+  return {
+    pieceId: next.kubbId,
+    from: [0, RELEASE_HEIGHT_M, ownZ + BEHIND_LINE_M * forward(side)],
+    target: legal
+      ? [0, KUBB_AIM_HEIGHT_M, halfMidZ]
+      : [view.halves.halfWidthM + MISS_BESIDE_M, KUBB_AIM_HEIGHT_M, halfMidZ],
+    speedMps: INKAST_SPEED_MPS,
+  };
+}
