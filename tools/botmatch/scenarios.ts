@@ -32,6 +32,8 @@ export interface Scenario {
   roomActions?: RoomAction[];
   done(bot: ProtocolBot): boolean;
   evidence: Evidence[];
+  /** False: only on request (`--scenario <name>`), not in `all`. */
+  inAll?: boolean;
 }
 
 const hostHitsGuestMisses = (side: MatchSide): Intent =>
@@ -180,6 +182,34 @@ export const SCENARIOS: Scenario[] = [
         role: 'server',
         message: 'match restart',
       },
+      { label: 'confetti on A', role: 'host', message: 'confetti' },
+    ],
+  },
+  {
+    // A whole match as people play it: both sides aim at each other's
+    // kubbs (with the aim spread), toss legally, and play on until one
+    // wins — field kubbs, advantage lines, kings and all.
+    name: 'real-match',
+    timeBoxS: 1800,
+    inAll: false,
+    intent: () => 'hit',
+    legalInkast: () => true,
+    done: (bot) =>
+      bot.match?.winner !== null && bot.match?.winner !== undefined,
+    evidence: [
+      {
+        label: 'server decided the king',
+        role: 'server',
+        message: 'king decision',
+        test: (d) => d['winner'] === 'host' || d['winner'] === 'guest',
+      },
+      {
+        label: 'A saw the result',
+        role: 'host',
+        message: 'match state',
+        test: (d) => d['winner'] === 'host' || d['winner'] === 'guest',
+      },
+      { label: 'confetti on A', role: 'host', message: 'confetti' },
     ],
   },
   {

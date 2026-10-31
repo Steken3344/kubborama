@@ -5523,3 +5523,18 @@ back for the HOST to toss (same id, attempt 1) was never thrown — tosses
 are now remembered per turn, and a `host-inkast` scenario covers it.
 The gate probe no longer logs the first server profile as a change, and
 the build label's git calls are silent without git.
+
+Victory confetti and real bot matches (same day, Erik: "simulera en
+riktig match där man fäller varandras kubbar … när man vinner får det
+gärna bli lite konfetti"): `ConfettiSystem` bursts 220 paper pieces
+1.5 m in front of the winner's baseline when a match is won (winner's
+avatar colour plus gold, white, pink, blue — `src/data/confetti.json`),
+simulated by pure `core/confetti.ts` (seeded burst, gravity with strong
+linear drag for a paper-like terminal speed, sine flutter, tumble,
+pieces settle on the grass) and drawn as ONE instanced mesh with no
+per-frame allocation; it follows both the server broadcast (players and
+spectators) and the serverless MatchStateChanged, and logs a `confetti`
+gate line. Bot match: `real-match` — both sides aim at each other's
+kubbs with the spread and play until someone wins (on request only, not
+in `all`, as it can take many minutes); `win` and `real-match` also
+require A's confetti line.

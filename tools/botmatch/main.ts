@@ -264,7 +264,9 @@ function gateFails(sinceHHMM: string): string[] {
 
 async function main(): Promise<void> {
   const chosen =
-    WHICH === 'all' ? SCENARIOS : SCENARIOS.filter((s) => s.name === WHICH);
+    WHICH === 'all'
+      ? SCENARIOS.filter((s) => s.inAll !== false)
+      : SCENARIOS.filter((s) => s.name === WHICH);
   if (chosen.length === 0) {
     console.error(
       `unknown scenario ${WHICH}: ${SCENARIOS.map((s) => s.name).join(', ')}`,
