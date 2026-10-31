@@ -120,3 +120,16 @@ export function planInkast(view: PolicyView, legal: boolean): ThrowPlan | null {
     speedMps: INKAST_SPEED_MPS,
   };
 }
+
+/** A human-ish aim: the target moved by up to `spreadM` along the
+ * ground, uniform over the disc (√r keeps it from bunching in the
+ * middle). Seeded, so a run can be replayed exactly. */
+export function jitter(target: Vec3, rng: () => number, spreadM: number): Vec3 {
+  const r = spreadM * Math.sqrt(rng());
+  const angleRad = 2 * Math.PI * rng();
+  return [
+    target[0] + r * Math.cos(angleRad),
+    target[1],
+    target[2] + r * Math.sin(angleRad),
+  ];
+}

@@ -6,7 +6,8 @@ import { aimRelease, flightTimeFor } from '../../src/core/aim.js';
 import type { MatchSide } from '../../src/core/match.js';
 import type { Vec3 } from '../../src/core/vec3.js';
 import { BrowserPlayer } from './browserPlayer.js';
-import { planInkast, planStick } from './policy.js';
+import { jitter, planInkast, planStick } from './policy.js';
+import { createRng } from '../../src/core/rng.js';
 import type { PolicyView, ThrowPlan } from './policy.js';
 import { ProtocolBot, throwMessage } from './protocolBot.js';
 import { SCENARIOS } from './scenarios.js';
@@ -18,6 +19,7 @@ import type { Evidence, Scenario } from './scenarios.js';
  * protocol bot, a spectator filming — scripted rule cases against the
  * dev game server, then a report. Usage:
  *   npm run botmatch -- [--scenario <name>|all] [--url <base>] [--out <dir>]
+ *                       [--spread 0.3] [--seed 1]
  */
 const arg = (name: string, fallback: string): string => {
   const i = process.argv.indexOf(`--${name}`);
@@ -26,6 +28,11 @@ const arg = (name: string, fallback: string): string => {
 };
 const BASE = arg('url', 'https://localhost:8081/');
 const WHICH = arg('scenario', 'all');
+/** Aim spread for aimed sticks (m) and its seed: 0 aims perfectly.
+ * The default makes bot matches look like real ones — misses, near
+ * hits — instead of a kubb per stick. */
+const SPREAD_M = Number(arg('spread', '0.3'));
+const SEED = Number(arg('seed', '1'));
 const OUT = arg('out', join(tmpdir(), 'kubb-botmatch', String(Date.now())));
 const STICKS = [
   'stick-0',
@@ -72,6 +79,7 @@ async function runScenario(
   scenario: Scenario,
   host: BrowserPlayer,
   bot: ProtocolBot,
+  rng: () => number,
 ): Promise<'done' | 'timeout'> {
   say(`scenario ${scenario.name}`);
   await host.room({ kind: 'reset' });
@@ -157,7 +165,11 @@ async function runScenario(
       continue;
     }
     thrown.add(plan.pieceId);
-    const velocity = velocityFor(plan);
+    const aimed =
+      intent === 'hit' || intent === 'king'
+        ? { ...plan, target: jitter(plan.target, rng, SPREAD_M) }
+        : plan;
+    const velocity = velocityFor(aimed);
     if (side === 'host') {
       await host.throwStick(plan.pieceId, plan.from, velocity, spinFor(side));
     } else {
@@ -271,13 +283,15 @@ async function main(): Promise<void> {
   }
   say('player B (bot) in, match on');
 
+  const rng = createRng(SEED);
+  say(`aim spread ${String(SPREAD_M)} m, seed ${String(SEED)}`);
   const outcomes = new Map<
     string,
     { result: 'done' | 'timeout'; fromMs: number; toMs: number }
   >();
   for (const scenario of chosen) {
     const fromMs = Date.now();
-    const result = await runScenario(scenario, host, bot);
+    const result = await runScenario(scenario, host, bot, rng);
     // Lines can trail the event (the restart comes ~10 s after a win).
     await sleep(scenario.name === 'win' && result === 'done' ? 13000 : 2000);
     outcomes.set(scenario.name, { result, fromMs, toMs: Date.now() });

@@ -441,7 +441,7 @@ export class SpectatorSystem extends createSystem({}) {
       return `<div style="display:flex;align-items:center;gap:10px;padding:4px 0;${active ? 'font-weight:800' : 'opacity:.85'}">
         <span style="width:14px;height:14px;border-radius:50%;background:${color};flex:none"></span>
         <span style="flex:1">${escapeHtml(this.nameOf(side))}${state}</span>
-        <span>${t('scoreStanding', { value: s.standing })}</span>
+        <span>${s.toFell > 0 ? t('scoreToFell', { value: s.toFell }) : t('scoreKingNext')}</span>
       </div>`;
     };
     const boardEl = root.querySelector<HTMLElement>('[data-kubb="board"]');

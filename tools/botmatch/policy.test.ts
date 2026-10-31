@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { courtHalves } from '../../src/core/inkast.js';
 import { initialMatchState } from '../../src/core/match.js';
 import type { Vec3 } from '../../src/core/vec3.js';
-import { chooseTarget, planInkast, planStick, releasePoint } from './policy.js';
+import {
+  chooseTarget,
+  jitter,
+  planInkast,
+  planStick,
+  releasePoint,
+} from './policy.js';
+import { createRng } from '../../src/core/rng.js';
 import type { PolicyView } from './policy.js';
 
 const halves = courtHalves({ widthM: 5, lengthM: 8 });
@@ -86,5 +93,22 @@ describe('policy', () => {
     expect(legal?.target[2]).toBeGreaterThan(halves.centreZ);
     expect(legal?.target[2]).toBeLessThan(halves.nearBaselineZ);
     expect(Math.abs(out?.target[0] ?? 0)).toBeGreaterThan(halves.halfWidthM);
+  });
+
+  it('spreads the aim within the given radius, the same way for a seed', () => {
+    const target: Vec3 = [0, 0.15, -8];
+    const a = createRng(7);
+    const b = createRng(7);
+    let moved = 0;
+    for (let i = 0; i < 50; i += 1) {
+      const p = jitter(target, a, 0.3);
+      expect(p).toEqual(jitter(target, b, 0.3));
+      expect(
+        Math.hypot(p[0] - target[0], p[2] - target[2]),
+      ).toBeLessThanOrEqual(0.3 + 1e-9);
+      expect(p[1]).toBe(target[1]);
+      moved += Math.hypot(p[0], p[2] + 8) > 0.05 ? 1 : 0;
+    }
+    expect(moved).toBeGreaterThan(40);
   });
 });
