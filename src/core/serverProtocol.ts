@@ -69,6 +69,8 @@ const clientMessageSchema = z.discriminatedUnion('type', [
     angularVelocity: angularVec,
   }),
   z.object({ type: z.literal('signal'), data: voiceSignal }),
+  /** A room setting both players share: the court (game mode). */
+  z.object({ type: z.literal('setGameMode'), gameMode: gameModeSchema }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
 
@@ -108,6 +110,9 @@ const serverMessageSchema = z.discriminatedUnion('type', [
     side,
     message: presenceMessageSchema,
   }),
+  /** The room's shared settings changed (a player switched the court);
+   * every client adopts it — a fresh match on the new court follows. */
+  z.object({ type: z.literal('room'), gameMode: gameModeSchema }),
   /** The other player's voice signaling (offer / answer / ICE). */
   z.object({ type: z.literal('signal'), side, data: voiceSignal }),
   /** The match (null = practice: fewer than two players). */

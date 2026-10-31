@@ -335,12 +335,21 @@ export function runChecks(entries) {
         return !adopted || e.data.restoredMode === adopted.data.ownMode;
       },
     ),
-    allOf(
-      'gh15-lock',
-      'mode button locked while connected',
-      gate(entries, 'mode button pressed').filter((e) => e.role !== 'solo'),
-      (e) => !e.data.locked,
-    ),
+    // Through the game server the court is a ROOM setting the server
+    // switches for both (2026-10-31) — the button is never locked there.
+    authority === 'server'
+      ? verdict(
+          'gh15-lock',
+          'mode button locked while connected',
+          'NOT SEEN',
+          'server mode: the court is a room setting the server switches for both',
+        )
+      : allOf(
+          'gh15-lock',
+          'mode button locked while connected',
+          gate(entries, 'mode button pressed').filter((e) => e.role !== 'solo'),
+          (e) => !e.data.locked,
+        ),
     allOf(
       'gh16-host',
       "opponent's turn stays out of the host's stats",

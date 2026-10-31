@@ -149,6 +149,14 @@ export class MenuSystem extends createSystem({
         locked: this.isGameModeLocked(),
         gameMode: settingsState.current.gameMode,
       });
+      if (isServerModeOn()) {
+        // A room setting: the server switches the court for both.
+        gameEvents.emit('ServerGameModeRequested', {
+          gameMode:
+            settingsState.current.gameMode === 'simple' ? 'advanced' : 'simple',
+        });
+        return;
+      }
       if (this.isGameModeLocked()) {
         return; // MP3a: a court relayout mid-match is undefined; locked
       }
@@ -434,6 +442,9 @@ export class MenuSystem extends createSystem({
   /** During a match, and while a guest plays on the host's borrowed
    * mode (gh#15) — the latter starts before matchActivity does. */
   private isGameModeLocked(): boolean {
+    if (isServerModeOn()) {
+      return false; // the server owns the court — the button asks it
+    }
     return (
       matchActivity.current.active || this.settingsSystem.isGameModeBorrowed()
     );

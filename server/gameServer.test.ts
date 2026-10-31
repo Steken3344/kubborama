@@ -304,3 +304,36 @@ describe('GameServer — seat lifecycle (2026-10-31)', () => {
     });
   });
 });
+
+describe('GameServer — room settings: the court (2026-10-31)', () => {
+  it('a player switching the game mode rebuilds the court for both and starts afresh', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const ha = server.connect(a.connection);
+    const hb = server.connect(b.connection);
+    await ha.receive(join('simple', 'court-A-1'));
+    await hb.receive(join('simple', 'court-B-1'));
+    const kubbZ = (c: ReturnType<typeof fakeClient>) => {
+      const snap = c.received.filter((m) => m.type === 'snapshot').at(-1);
+      return snap?.type === 'snapshot'
+        ? snap.pieces.find((p) => p.id === 'kubb-0')?.position[2]
+        : undefined;
+    };
+    for (let i = 0; i < 3; i++) server.tick();
+    expect(kubbZ(b)).toBeCloseTo(-6, 1); // backyard 6 m
+    expect(
+      await hb.receive({ type: 'setGameMode', gameMode: 'advanced' }),
+    ).toBe(true);
+    expect(a.received).toContainEqual({ type: 'room', gameMode: 'advanced' });
+    expect(b.received).toContainEqual({ type: 'room', gameMode: 'advanced' });
+    for (let i = 0; i < 3; i++) server.tick();
+    expect(kubbZ(a)).toBeCloseTo(-8, 1); // tournament 8 m
+    const match = a.received.filter((m) => m.type === 'match').at(-1);
+    expect(match?.type === 'match' && match.state?.currentTurn).toBe('host');
+    // The same mode again changes nothing.
+    expect(
+      await ha.receive({ type: 'setGameMode', gameMode: 'advanced' }),
+    ).toBe(false);
+  });
+});

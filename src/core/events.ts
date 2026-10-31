@@ -165,6 +165,12 @@ export interface GameEvents {
    * ServerLinkSystem forwards it; the server resets and every client
    * follows its snapshots. */
   ServerResetRequested: Record<string, never>;
+  /** The court button pressed while playing through the game server —
+   * a ROOM setting: ServerLinkSystem asks the server, which switches
+   * the court for both players (2026-10-31). */
+  ServerGameModeRequested: {
+    gameMode: Settings['gameMode'];
+  };
   /** How many players the game server has seated, and our side
    * (ServerLinkSystem) — VoiceLinkSystem starts or ends the call on it. */
   ServerPeers: {

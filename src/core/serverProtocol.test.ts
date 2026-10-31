@@ -155,3 +155,18 @@ describe('serverProtocol — voice signaling', () => {
     ).toBeNull();
   });
 });
+
+describe('serverProtocol — room settings', () => {
+  it('setGameMode from a client, room from the server', () => {
+    expect(
+      parseClientMessage({ type: 'setGameMode', gameMode: 'advanced' })?.type,
+    ).toBe('setGameMode');
+    expect(
+      parseClientMessage({ type: 'setGameMode', gameMode: 'huge' }),
+    ).toBeNull();
+    expect(parseServerMessage({ type: 'room', gameMode: 'simple' })).toEqual({
+      type: 'room',
+      gameMode: 'simple',
+    });
+  });
+});

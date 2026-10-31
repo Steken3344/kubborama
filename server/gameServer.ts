@@ -196,6 +196,9 @@ export class GameServer {
       }
       return true;
     }
+    if (message.type === 'setGameMode') {
+      return this.changeGameMode(message.gameMode, seat.side);
+    }
     if (message.type === 'reset') {
       this.log('info', 'gate', 'reset pressed', { side: seat.side });
       this.host.reset();
@@ -293,6 +296,29 @@ export class GameServer {
         this.log('info', 'gate', gateMessage, data);
       },
     });
+  }
+
+  /** A room setting: the court. Rebuild the world on the new preset and
+   * start afresh — both players get `room` and then the new match. */
+  private async changeGameMode(
+    gameMode: Settings['gameMode'],
+    by: MatchSide,
+  ): Promise<boolean> {
+    if (gameMode === this.gameMode || !this.world) {
+      return false;
+    }
+    this.log('info', 'gate', 'room game mode changed', { gameMode, by });
+    this.world.dispose();
+    this.world = null;
+    this.host = null;
+    this.worldPromise = null;
+    this.lastMatch = null;
+    this.broadcast({ type: 'room', gameMode });
+    await this.ensureWorld(gameMode);
+    // Re-read after the await (TS still narrows it to the null set above).
+    const host = this.host as MatchHost | null;
+    host?.setPlayers(this.seats.map((s) => s.side));
+    return true;
   }
 
   private onClose(connection: ClientConnection): void {

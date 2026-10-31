@@ -100,6 +100,9 @@ export class ServerLinkSystem extends createSystem({}) {
       gameEvents.on('ServerResetRequested', () => {
         this.send({ type: 'reset' });
       }),
+      gameEvents.on('ServerGameModeRequested', (e) => {
+        this.send({ type: 'setGameMode', gameMode: e.gameMode });
+      }),
       () => {
         this.stopped = true;
         this.socket?.close();
@@ -211,6 +214,17 @@ export class ServerLinkSystem extends createSystem({}) {
         return;
       case 'signal':
         gameEvents.emit('VoiceSignal', { data: message.data });
+        return;
+      case 'room':
+        // The court changed for the whole room: relay it out locally,
+        // then stand at our own baseline of the NEW court.
+        log('info', 'net', 'room court changed', {
+          gameMode: message.gameMode,
+        });
+        this.settingsSystem.adoptMatchGameMode(message.gameMode);
+        if (this.side) {
+          this.standAtOwnBaseline(this.side);
+        }
         return;
       case 'presence':
         this.peerAvatarId = `server-${message.side}`;
