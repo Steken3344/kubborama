@@ -117,6 +117,11 @@ nobody plays, then an automatic director cutting between angles and a
 scoreboard. "Fri kamera" (or dragging) lets you look around yourself.
 Spectators never take a seat.
 
+**Which build is running:** the loading screen and the top-right corner
+of the page show the build, e.g. `#193 · 2026-10-31 20:40 · 0226a37`
+(build number = commit count, `+` for uncommitted changes, then build
+time and commit). The settings menu in VR shows the same.
+
 ## Debug mode (live logs from a headset)
 
 The Quest browser's console is unreachable from outside, so the app can

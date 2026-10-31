@@ -35,6 +35,26 @@
         color: #f2ead9;
         font-size: clamp(1.5rem, 4vw, 2.5rem);
       }
+      #splash p,
+      #build-tag {
+        font-family: system-ui, sans-serif;
+        color: #f2ead9;
+        opacity: 0.75;
+      }
+      #splash p {
+        margin: 0.4rem 0 0;
+        font-size: clamp(0.9rem, 2vw, 1.1rem);
+      }
+      /* Stays on the 2D page after the splash: which build is running. */
+      #build-tag {
+        position: fixed;
+        top: 6px;
+        right: 10px;
+        z-index: 9000;
+        font-size: 12px;
+        text-shadow: 0 1px 2px #000;
+        pointer-events: none;
+      }
       #splash.splash-hidden {
         opacity: 0;
         pointer-events: none;
@@ -46,7 +66,9 @@
     <div id="splash">
       <img src="/icons/icon-192.png" alt="" />
       <h1>KubbOrama</h1>
+      <p>%KUBB_BUILD%</p>
     </div>
+    <div id="build-tag">%KUBB_BUILD%</div>
     <script type="module" src="/src/index.ts"></script>
   </body>
 </html>

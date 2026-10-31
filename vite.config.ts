@@ -76,24 +76,43 @@ function kubbGameServer(): Plugin {
   };
 }
 
-// Shown in the settings menu (src/systems/menu.ts) so Erik knows which
-// build he's testing — a milestone tag plus commits-since/hash reads
-// far better than package.json's rarely-bumped "0.1.0". Falls back to
-// "dev" rather than failing the build if git isn't available (e.g. a
-// source tarball with no .git directory).
-function appVersion(): string {
+// Shown on the splash, in a corner of the 2D page and in the settings
+// menu (src/systems/menu.ts) so Erik can tell at a glance that a headset
+// runs the build he just restarted (2026-10-31): the build number is the
+// commit count ("+" when the tree had uncommitted changes), then when it
+// was built (Swedish local time) and the short hash. Word-free, so the
+// one string serves both languages. Falls back to "dev" rather than
+// failing the build if git isn't available (e.g. a source tarball).
+function buildLabel(): string {
+  const builtAt = new Date().toLocaleString('sv-SE', {
+    timeZone: 'Europe/Stockholm',
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
   try {
-    return execSync('git describe --tags --always --dirty', {
-      encoding: 'utf-8',
-    }).trim();
+    const git = (args: string) =>
+      execSync(`git ${args}`, { encoding: 'utf-8' }).trim();
+    const dirty = git('status --porcelain') === '' ? '' : '+';
+    return `#${git('rev-list --count HEAD')}${dirty} · ${builtAt} · ${git('rev-parse --short HEAD')}`;
   } catch {
-    return 'dev';
+    return `dev · ${builtAt}`;
   }
+}
+const BUILD_LABEL = buildLabel();
+
+/** Writes the build label into index.html's `%KUBB_BUILD%` slots, so it
+ * shows on the splash before any script has loaded. */
+function kubbBuildLabel(): Plugin {
+  return {
+    name: 'kubb-build-label',
+    transformIndexHtml: (html) => html.replaceAll('%KUBB_BUILD%', BUILD_LABEL),
+  };
 }
 
 export default defineConfig({
   plugins: [
     iwsdkDev(),
+    kubbBuildLabel(),
     kubbDebugRelay(),
     kubbGameServer(),
     // M6 (docs/PLAN.md §12, pre-approved): installable from the
@@ -180,7 +199,7 @@ export default defineConfig({
       },
     }),
   ],
-  define: { __APP_VERSION__: JSON.stringify(appVersion()) },
+  define: { __APP_VERSION__: JSON.stringify(BUILD_LABEL) },
   server: { host: '0.0.0.0', port: 8081, open: false },
   build: {
     outDir: 'dist',

@@ -5458,3 +5458,13 @@ so its camera-cut and player lines join the headsets' in the gate log),
 saves a small JPEG every 15 s outside the repo, reopens the page after a
 server restart, and runs headed when DISPLAY is set. Started before
 every playtest on the production server.
+
+Build label (same day, Erik: "visa vilket byggnummer och när det senast
+byggdes så vi ser att man har rätt version igång"): vite.config.ts makes
+one word-free label — commit count (`+` when the tree is dirty), build
+time in Swedish local time, short hash — written into index.html at
+build time (splash, and a small fixed tag top-right of the 2D page that
+stays after loading, so it shows before any script runs) and defined as
+`__APP_VERSION__` for the settings menu (replacing `git describe`).
+`npm start` serves `dist/` as files, so a client-only change is live
+after `vite build` + a headset reload, without restarting the server.
