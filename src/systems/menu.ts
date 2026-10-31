@@ -26,6 +26,7 @@ import { SettingsSystem } from './settings.js';
 import { StatsSystem } from './stats.js';
 import { gateLog } from '../debug/gateLog.js';
 import { isServerModeOn } from '../serverMode.js';
+import { serverConfig } from '../serverConfig.js';
 
 export interface HomePose {
   position: Vec3;
@@ -223,8 +224,8 @@ export class MenuSystem extends createSystem({
       this.settingsSystem.setDebugRelay(!settingsState.current.debugRelay);
       this.refreshLabels();
     });
-    if (!import.meta.env.DEV) {
-      // The relay only exists on the dev server — in the deployed build
+    if (serverConfig.current === null) {
+      // The relay only exists on a KubbOrama server — in the static build
       // the button would toggle a label with no effect, so hide it.
       this.menuPanel
         .requireElementById('debug-button')

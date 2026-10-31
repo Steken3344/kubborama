@@ -1,5 +1,6 @@
 import { log, setLogSink } from '../core/log.js';
 import type { LogEntry } from '../core/log.js';
+import { serverConfig } from '../serverConfig.js';
 import { debugContext } from './debugContext.js';
 
 /** Where the dev server's kubbDebugRelay plugin (vite.config.ts) listens. */
@@ -42,13 +43,15 @@ export function installDebugRelay(): void {
   const params = new URLSearchParams(window.location.search);
   // Always on from the dev server (Erik, 2026-09-27: "debug alltid på
   // när den körs lokalt"); `?debug=1` is kept for old bookmarks.
-  if (import.meta.env.DEV || params.get('debug') === '1') {
+  if (serverConfig.current?.debug === true || params.get('debug') === '1') {
     enableDebugRelay();
   }
 }
 
 export function enableDebugRelay(): void {
-  if (!import.meta.env.DEV || debugContext.enabled) {
+  // Only where a relay endpoint exists: a KubbOrama server (dev or
+  // standalone). The static GitHub Pages build has none.
+  if (serverConfig.current === null || debugContext.enabled) {
     return;
   }
   debugContext.enabled = true;

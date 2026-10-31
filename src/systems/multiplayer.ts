@@ -74,6 +74,7 @@ import { log } from '../core/log.js';
 import { debugContext, STICK_BELOW_GROUND_Y } from '../debug/debugContext.js';
 import type { Settings } from '../core/settings.js';
 import { isServerModeOn } from '../serverMode.js';
+import { serverConfig } from '../serverConfig.js';
 import { settingsState } from '../settingsState.js';
 import { activeCourtHalves, activeFarBaselineZ } from './activeCourt.js';
 import { localPoseOf } from './objectPose.js';
@@ -1228,7 +1229,8 @@ export class MultiplayerSystem extends createSystem({}) {
     // a test session in the public lobby.
     return (
       settingsState.current.roomId ??
-      (import.meta.env.DEV ? multiplayer.devRoomId : multiplayer.defaultRoomId)
+      serverConfig.current?.room ??
+      multiplayer.defaultRoomId
     );
   }
 
