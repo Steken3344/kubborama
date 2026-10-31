@@ -288,19 +288,23 @@ export function shotCameraPose(
       const own = ownZ(sd);
       const down: Vec3 = [0, 0.3, otherZ(sd)];
       switch (pick(current.variant, 4)) {
-        case 0: // push in over the right shoulder
+        case 0: // push in over the right shoulder — above head height,
+          // as at the far end it can't stand far behind (cliff, tree)
           return rest(
-            { position: [0.9 * b, 2, lowZ(own + 1.6 * b, 2)], target: down },
-            { position: [0.55 * b, 1.9, lowZ(own + 1 * b, 1.9)], target: down },
+            {
+              position: [0.9 * b, 2.3, lowZ(own + 1.6 * b, 2.3)],
+              target: down,
+            },
+            { position: [0.55 * b, 2.1, lowZ(own + 1 * b, 2.1)], target: down },
           );
         case 1: // slide in over the left shoulder
           return rest(
             {
-              position: [-1.1 * b, 1.6, lowZ(own + 1.2 * b, 1.6)],
+              position: [-1.4 * b, 1.7, lowZ(own + 1.2 * b, 1.7)],
               target: down,
             },
             {
-              position: [-0.4 * b, 2.1, lowZ(own + 1.3 * b, 2.1)],
+              position: [-0.9 * b, 2.2, lowZ(own + 1.3 * b, 2.2)],
               target: down,
             },
           );
@@ -344,28 +348,36 @@ export function shotCameraPose(
     }
     case 'closeUp': {
       const f = current.focus ?? [0, 0.1, centreZ];
-      // Stay on the court side of the piece, never out among the trees,
-      // and above the low rocks by the corners.
+      // Stay on the court side of the piece: never out among the trees,
+      // never behind a baseline where the thrower stands (review,
+      // 2026-10-31), and above the low rocks by the corners.
       const dx = f[0] > 0.5 ? -1 : 1;
+      const dz = f[2] > centreZ ? -1 : 1;
       const target: Vec3 = [f[0], 0.1, f[2]];
       if (pick(current.variant, 2) === 0) {
-        // dolly in from the near side
+        // dolly in low from the court
         return move(
           {
-            position: [f[0] + dx * 1.3, 1.15, lowZ(f[2] + 1.2, 1.15)],
+            position: [f[0] + dx * 1.3, 1.15, lowZ(f[2] + dz * 1.2, 1.15)],
             target,
           },
           {
-            position: [f[0] + dx * 0.9, 0.95, lowZ(f[2] + 0.8, 0.95)],
+            position: [f[0] + dx * 0.9, 0.95, lowZ(f[2] + dz * 0.8, 0.95)],
             target,
           },
           opts.closeUpS,
         );
       }
-      // drop down from above on the far side
+      // drop down from above, from the side
       return move(
-        { position: [f[0] + dx * 0.6, 1.4, lowZ(f[2] - 1.1, 1.4)], target },
-        { position: [f[0] + dx * 1, 0.95, lowZ(f[2] - 0.9, 0.95)], target },
+        {
+          position: [f[0] + dx * 1, 1.6, lowZ(f[2] + dz * 1.1, 1.6)],
+          target,
+        },
+        {
+          position: [f[0] + dx * 1.3, 1, lowZ(f[2] + dz * 0.7, 1)],
+          target,
+        },
         opts.closeUpS,
       );
     }

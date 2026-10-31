@@ -90,6 +90,10 @@ export class ProtocolBot {
   readonly notices: Array<{ kind: 'footFault'; side: MatchSide }> = [];
   readonly rooms: GameMode[] = [];
   rounds = 0;
+  /** `match` messages received — a fresh one is newer than a count. */
+  matchMessages = 0;
+  /** Every turn/phase the match went through (`host/inkast`, …). */
+  readonly phases: string[] = [];
   rejected: string | null = null;
   private presenceTimer: NodeJS.Timeout | null = null;
 
@@ -156,6 +160,13 @@ export class ProtocolBot {
         return;
       case 'match':
         this.match = message.state;
+        this.matchMessages += 1;
+        if (message.state) {
+          const key = `${message.state.currentTurn}/${message.state.phase}`;
+          if (this.phases[this.phases.length - 1] !== key) {
+            this.phases.push(key);
+          }
+        }
         return;
       case 'notice':
         this.notices.push({ kind: message.kind, side: message.side });

@@ -40,6 +40,7 @@ export class GateProbeSystem extends createSystem({
   private sticksThisRound = 0;
   private roundsPlayedSeen = 0;
   private viaServer = false;
+  private serverProfileSeen = false;
   private snapshotTimerS = 0;
 
   init(): void {
@@ -97,7 +98,11 @@ export class GateProbeSystem extends createSystem({
       }),
       gameEvents.on('ServerProfile', (p) => {
         const after = p.stats.lifetimeTotals.roundsPlayed;
-        if (debugContext.enabled && after !== this.roundsPlayedSeen) {
+        // The first profile only seeds the count: the local one it
+        // replaces is not "before" anything (review, 2026-10-31).
+        const first = !this.serverProfileSeen;
+        this.serverProfileSeen = true;
+        if (debugContext.enabled && !first && after !== this.roundsPlayedSeen) {
           gateLog('profile stats', {
             mySide: this.mySide ?? 'solo',
             roundsPlayedBefore: this.roundsPlayedSeen,

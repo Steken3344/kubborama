@@ -4,6 +4,7 @@ import { initialMatchState } from '../../src/core/match.js';
 import type { Vec3 } from '../../src/core/vec3.js';
 import {
   chooseTarget,
+  isFreshMatch,
   jitter,
   planInkast,
   planStick,
@@ -110,5 +111,16 @@ describe('policy', () => {
       moved += Math.hypot(p[0], p[2] + 8) > 0.05 ? 1 : 0;
     }
     expect(moved).toBeGreaterThan(40);
+  });
+
+  it('knows a fresh match from one in play', () => {
+    expect(isFreshMatch(initialMatchState())).toBe(true);
+    expect(isFreshMatch(null)).toBe(false);
+    expect(isFreshMatch({ ...initialMatchState(), currentTurn: 'guest' })).toBe(
+      false,
+    );
+    expect(
+      isFreshMatch({ ...initialMatchState(), felledThisTurn: ['kubb-0'] }),
+    ).toBe(false);
   });
 });

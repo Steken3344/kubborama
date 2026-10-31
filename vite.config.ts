@@ -81,7 +81,8 @@ function kubbGameServer(): Plugin {
 // runs the build he just restarted (2026-10-31): the build number is the
 // commit count ("+" when the tree had uncommitted changes), then when it
 // was built (Swedish local time) and the short hash. Word-free, so the
-// one string serves both languages. Falls back to "dev" rather than
+// one string serves both languages. A shallow CI checkout counts only
+// its own commits (deploys are built locally). Falls back to "dev" rather than
 // failing the build if git isn't available (e.g. a source tarball).
 function buildLabel(): string {
   const builtAt = new Date().toLocaleString('sv-SE', {
@@ -91,7 +92,11 @@ function buildLabel(): string {
   });
   try {
     const git = (args: string) =>
-      execSync(`git ${args}`, { encoding: 'utf-8' }).trim();
+      execSync(`git ${args}`, {
+        encoding: 'utf-8',
+        // No git: fall back quietly instead of printing its error.
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim();
     const dirty = git('status --porcelain') === '' ? '' : '+';
     return `#${git('rev-list --count HEAD')}${dirty} · ${builtAt} · ${git('rev-parse --short HEAD')}`;
   } catch {

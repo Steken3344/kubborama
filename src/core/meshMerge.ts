@@ -69,3 +69,37 @@ export function mergeMeshParts(parts: readonly MeshPart[]): MergedMesh {
   }
   return { position, normal, uv, index };
 }
+
+/** What makes two materials render the same, as plain fields. The
+ * static batch draws a group with its FIRST member's material, so
+ * everything visible belongs in the key (review, 2026-10-31). */
+export interface MaterialLook {
+  type: string;
+  name: string;
+  colorHex: string;
+  emissiveHex: string;
+  /** The texture's identity, '' for none. */
+  mapId: string;
+  vertexColors: boolean;
+  flatShading: boolean;
+  transparent: boolean;
+  opacity: number;
+  alphaTest: number;
+  side: number;
+}
+
+export function materialLookKey(look: MaterialLook): string {
+  return [
+    look.type,
+    look.name,
+    look.colorHex,
+    look.emissiveHex,
+    look.mapId,
+    look.vertexColors,
+    look.flatShading,
+    look.transparent,
+    look.opacity,
+    look.alphaTest,
+    look.side,
+  ].join('|');
+}

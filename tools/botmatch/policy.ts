@@ -6,8 +6,9 @@ import type { Vec3 } from '../../src/core/vec3.js';
 /**
  * The bot match's brain (docs/superpowers/specs/2026-10-31-bot-match-
  * and-play-sessions-design.md): pure choices from the server's match
- * state and the latest snapshot. No randomness — a scenario plays the
- * same way every run; physics supplies the variation.
+ * state and the latest snapshot. The only randomness is the seeded aim
+ * spread (`jitter`): the aim sequence repeats for a seed, though timing
+ * and physics make whole runs differ.
  *
  * Kubb as this game rules it: field kubbs in the opponent's half first,
  * then the opponent's baseline kubbs, then the king.
@@ -123,7 +124,7 @@ export function planInkast(view: PolicyView, legal: boolean): ThrowPlan | null {
 
 /** A human-ish aim: the target moved by up to `spreadM` along the
  * ground, uniform over the disc (√r keeps it from bunching in the
- * middle). Seeded, so a run can be replayed exactly. */
+ * middle). Seeded: the same seed gives the same aim sequence. */
 export function jitter(target: Vec3, rng: () => number, spreadM: number): Vec3 {
   const r = spreadM * Math.sqrt(rng());
   const angleRad = 2 * Math.PI * rng();
@@ -132,4 +133,19 @@ export function jitter(target: Vec3, rng: () => number, spreadM: number): Vec3 {
     target[1],
     target[2] + r * Math.sin(angleRad),
   ];
+}
+
+/** A match as "Ny runda" leaves it: host to throw, nothing felled,
+ * every kubb home. Scenarios start only once the server says so. */
+export function isFreshMatch(state: MatchState | null): boolean {
+  return (
+    state !== null &&
+    state.winner === null &&
+    state.currentTurn === 'host' &&
+    state.phase === 'throwing' &&
+    state.felledThisTurn.length === 0 &&
+    state.inkastQueue.length === 0 &&
+    state.fieldKubbs.length === 0 &&
+    state.baselineKubbs.host.length === state.baselineKubbs.guest.length
+  );
 }

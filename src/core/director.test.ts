@@ -244,16 +244,32 @@ describe('director — camera never inside a player', () => {
   ]) {
     it(`keeps clear of both throwers (${preset.lengthM} m court)`, () => {
       const halves = courtHalves(preset);
-      const players = [
-        { x: 0, z: halves.nearBaselineZ + 0.3 },
-        { x: 0, z: halves.farBaselineZ - 0.3 },
-      ];
+      // Throwers stand anywhere up to half a metre either side of centre.
+      const players = [-0.5, 0, 0.5].flatMap((x) => [
+        { x, z: halves.nearBaselineZ + 0.3 },
+        { x, z: halves.farBaselineZ - 0.3 },
+      ]);
       for (const side of ['host', 'guest'] as const) {
         const shots: Shot[] = [
           ...[0, 1, 2, 3].map((variant) =>
             at({ kind: 'overShoulder', side, variant }),
           ),
           ...[0, 1].map((variant) => at({ kind: 'inkastWide', side, variant })),
+          ...[0, 1].map((variant) => at({ kind: 'wide', side, variant })),
+          // Close-ups on kubbs at the thrower's own baseline.
+          ...[-2, -1.3, 0, 1.3, 2].flatMap((x) =>
+            [0, 1].map((variant) =>
+              at({
+                kind: 'closeUp',
+                variant,
+                focus: [
+                  x,
+                  0.1,
+                  side === 'host' ? halves.nearBaselineZ : halves.farBaselineZ,
+                ],
+              }),
+            ),
+          ),
           // A follow cam right after the release, and mid-flight.
           ...[0, 1, 2].flatMap((variant) =>
             [0.5, 3].map((t) => {

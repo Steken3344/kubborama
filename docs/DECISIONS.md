@@ -5502,3 +5502,24 @@ Erik approved all three ideas from the first play session (same day):
 2. TV scoreboard rows count what each player still has to knock down
    (standing in the opponent's half), then "kungen".
 3. Bot match aim spread (seeded, default 0.3 m).
+
+Review fixes for the bot match, director and batching (same day):
+StaticBatchSystem now keys groups on everything visible in a material
+(texture, emissive, vertex colours, opacity, alpha test — pure
+`materialLookKey`), skips instanced/skinned/morphed meshes, interleaved
+or normalised attributes, multi-group geometry and anything hidden by an
+ancestor, and cancels its parent's transform (vertices are world space).
+Close-ups always come from the court side (one stood behind the
+thrower's baseline, inside the player — the widened clearance test
+caught it); the shoulder cams at the far end, which can't stand further
+back than the cliff allows, ride above head height. The bot match waits
+for the server to confirm a fresh match before a scenario, opens the
+evidence window after the setup reset (so `room` is proven by the
+server's own `reset pressed` lines for host AND guest), caps each window
+at the next scenario's start, cleans up on SIGTERM/SIGINT and validates
+--spread/--seed. A stall found by seed 2: the bot remembered inkast
+tosses as kubb:attempt for the whole scenario, so a field kubb coming
+back for the HOST to toss (same id, attempt 1) was never thrown — tosses
+are now remembered per turn, and a `host-inkast` scenario covers it.
+The gate probe no longer logs the first server profile as a change, and
+the build label's git calls are silent without git.

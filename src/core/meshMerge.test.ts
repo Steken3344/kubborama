@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeMeshParts } from './meshMerge.js';
+import { materialLookKey, mergeMeshParts } from './meshMerge.js';
 import type { MeshPart } from './meshMerge.js';
 
 /** Column-major 4×4 (three.js `Matrix4.elements` order). */
@@ -64,5 +64,37 @@ describe('mergeMeshParts', () => {
     const merged = mergeMeshParts([]);
     expect(merged.position.length).toBe(0);
     expect(merged.index.length).toBe(0);
+  });
+});
+
+describe('materialLookKey', () => {
+  const grass = {
+    type: 'MeshBasicMaterial',
+    name: 'grass',
+    colorHex: '4caf50',
+    emissiveHex: '',
+    mapId: '',
+    vertexColors: false,
+    flatShading: false,
+    transparent: false,
+    opacity: 1,
+    alphaTest: 0,
+    side: 0,
+  };
+
+  it('groups identical looks together', () => {
+    expect(materialLookKey({ ...grass })).toBe(materialLookKey(grass));
+  });
+
+  it('keeps the same name with a different texture or opacity apart', () => {
+    expect(materialLookKey({ ...grass, mapId: 'tex-1' })).not.toBe(
+      materialLookKey(grass),
+    );
+    expect(materialLookKey({ ...grass, opacity: 0.5 })).not.toBe(
+      materialLookKey(grass),
+    );
+    expect(materialLookKey({ ...grass, colorHex: '000000' })).not.toBe(
+      materialLookKey(grass),
+    );
   });
 });

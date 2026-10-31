@@ -6,7 +6,7 @@ import { aimRelease, flightTimeFor } from '../../src/core/aim.js';
 import type { MatchSide } from '../../src/core/match.js';
 import type { Vec3 } from '../../src/core/vec3.js';
 import { BrowserPlayer } from './browserPlayer.js';
-import { jitter, planInkast, planStick } from './policy.js';
+import { isFreshMatch, jitter, planInkast, planStick } from './policy.js';
 import { createRng } from '../../src/core/rng.js';
 import type { PolicyView, ThrowPlan } from './policy.js';
 import { ProtocolBot, throwMessage } from './protocolBot.js';
@@ -33,6 +33,13 @@ const WHICH = arg('scenario', 'all');
  * hits — instead of a kubb per stick. */
 const SPREAD_M = Number(arg('spread', '0.3'));
 const SEED = Number(arg('seed', '1'));
+if (!Number.isFinite(SPREAD_M) || SPREAD_M < 0 || !Number.isInteger(SEED)) {
+  console.error('--spread takes metres (>= 0), --seed an integer');
+  process.exit(2);
+}
+/** The debug relay batches client lines: wait this long after a state
+ * change before trusting the log has caught up. */
+const RELAY_LAG_MS = 1500;
 const OUT = arg('out', join(tmpdir(), 'kubb-botmatch', String(Date.now())));
 const STICKS = [
   'stick-0',
@@ -80,20 +87,33 @@ async function runScenario(
   host: BrowserPlayer,
   bot: ProtocolBot,
   rng: () => number,
-): Promise<'done' | 'timeout'> {
+): Promise<{ result: 'done' | 'timeout'; fromMs: number }> {
   say(`scenario ${scenario.name}`);
+  // Start from a fresh match the SERVER confirms, not after a guessed
+  // sleep, and open the evidence window only after the setup reset's own
+  // lines have landed (review, 2026-10-31).
+  const before = bot.matchMessages;
   await host.room({ kind: 'reset' });
-  await sleep(2500);
+  for (
+    let i = 0;
+    i < 40 && !(bot.matchMessages > before && isFreshMatch(bot.match));
+    i += 1
+  ) {
+    await sleep(250);
+  }
+  await sleep(RELAY_LAG_MS);
   bot.notices.length = 0;
   bot.rooms.length = 0;
-  const startedMs = Date.now();
+  bot.phases.length = 0;
+  const fromMs = Date.now();
+  const startedMs = fromMs;
   let turnKey = '';
   let turnIndex = -1;
   const thrown = new Set<string>();
   const tossed = new Set<string>();
   const roomActions = [...(scenario.roomActions ?? [])];
   while (Date.now() - startedMs < scenario.timeBoxS * 1000) {
-    if (scenario.done(bot)) return 'done';
+    if (scenario.done(bot)) return { result: 'done', fromMs };
     const state = bot.match;
     if (!state || state.winner !== null) {
       await sleep(250);
@@ -104,6 +124,10 @@ async function runScenario(
       turnKey = key;
       turnIndex += 1;
       thrown.clear();
+      // The same kubb can come back to be tossed by the other side with
+      // the same attempt number (a felled field kubb): remember tosses per
+      // turn only — a run once waited forever on the host's inkast.
+      tossed.clear();
       await sleep(1200); // the server re-racks the sticks
       continue;
     }
@@ -184,7 +208,7 @@ async function runScenario(
     }
     await sleep(BETWEEN_STICKS_MS);
   }
-  return scenario.done(bot) ? 'done' : 'timeout';
+  return { result: scenario.done(bot) ? 'done' : 'timeout', fromMs };
 }
 
 const LOG_PATH = '.iwsdk/runtime/logs/kubb-debug.ndjson';
@@ -290,8 +314,7 @@ async function main(): Promise<void> {
     { result: 'done' | 'timeout'; fromMs: number; toMs: number }
   >();
   for (const scenario of chosen) {
-    const fromMs = Date.now();
-    const result = await runScenario(scenario, host, bot, rng);
+    const { result, fromMs } = await runScenario(scenario, host, bot, rng);
     // Lines can trail the event (the restart comes ~10 s after a win).
     await sleep(scenario.name === 'win' && result === 'done' ? 13000 : 2000);
     outcomes.set(scenario.name, { result, fromMs, toMs: Date.now() });
@@ -302,10 +325,16 @@ async function main(): Promise<void> {
 
   let failed = false;
   console.log('\nbot match report');
-  for (const scenario of chosen) {
+  for (const [i, scenario] of chosen.entries()) {
     const outcome = outcomes.get(scenario.name);
     if (!outcome) continue;
-    const lines = logLines(outcome.fromMs, outcome.toMs + 5000);
+    // Trailing lines count, but never past where the next scenario began.
+    const next = chosen[i + 1];
+    const nextFromMs = next ? outcomes.get(next.name)?.fromMs : undefined;
+    const lines = logLines(
+      outcome.fromMs,
+      Math.min(outcome.toMs + 5000, nextFromMs ?? Infinity),
+    );
     const missing = scenario.evidence.filter((ev) => !found(lines, ev));
     // Seen but not proven by the logs is a game (or logging) bug.
     const row =
@@ -333,6 +362,14 @@ async function main(): Promise<void> {
   console.log(`screenshots: ${OUT}`);
   process.exit(failed ? 1 : 0);
 }
+
+// A plain `kill` must not orphan the spectator or the browsers either.
+process.on('SIGTERM', () => {
+  void cleanUp().finally(() => process.exit(143));
+});
+process.on('SIGINT', () => {
+  void cleanUp().finally(() => process.exit(130));
+});
 
 main().catch(async (error: unknown) => {
   console.error(error);

@@ -136,6 +136,26 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    // The host tossing kubbs back (bot match, 2026-10-31: a match stalled
+    // the first time the host had to inkast): the host fells, the guest
+    // tosses in and then fells the field kubbs, so the host must inkast.
+    name: 'host-inkast',
+    timeBoxS: 420,
+    intent: () => 'hit',
+    legalInkast: () => true,
+    done: (bot) => {
+      const i = bot.phases.lastIndexOf('host/inkast');
+      return i >= 0 && bot.phases.slice(i + 1).includes('host/throwing');
+    },
+    evidence: [
+      {
+        label: 'host toss landed',
+        role: 'server',
+        message: 'inkast landed',
+      },
+    ],
+  },
+  {
     name: 'win',
     timeBoxS: 900,
     intent: hostHitsGuestMisses,
@@ -174,11 +194,19 @@ export const SCENARIOS: Scenario[] = [
     ],
     done: (bot) => bot.rooms.length > 0,
     evidence: [
+      // The window opens after the setup reset, so these are the
+      // scenario's own presses (review, 2026-10-31).
       {
-        label: 'A got a fresh match',
-        role: 'host',
-        message: 'match state',
-        test: (d) => d['fresh'] === true,
+        label: 'host pressed Ny runda',
+        role: 'server',
+        message: 'reset pressed',
+        test: (d) => d['side'] === 'host',
+      },
+      {
+        label: 'guest pressed Ny runda',
+        role: 'server',
+        message: 'reset pressed',
+        test: (d) => d['side'] === 'guest',
       },
       {
         label: 'court switch reached A',
