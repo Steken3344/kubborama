@@ -5281,3 +5281,21 @@ ICE candidates are not wiped, only the newest offer is answered, and
 signaling errors are caught; a failed world build no longer bricks the
 room. The 10 s heartbeat means a sleeping headset is dropped after
 ≤20 s and keeps its side only within the 60 s rejoin grace.
+
+## 2026-10-31 — Teleport onto the advantage line; leaves removed; distinct avatar colors
+
+Erik after the court-switch playtest: "när baslinjen ändras … att man
+blir teleporterad till den nya baslinjen. Ibland är det trångt i rummet."
+The thrower is teleported onto its advantage line when its **throwing**
+phase starts with field kubbs on its own half, and back to its baseline
+when the turn ends (`core/match.ts` `standingLineZ`, applied by
+AdvantageLineSystem). The inkast is still tossed from the baseline
+(real kubb rule), so the teleport waits for the throwing phase. Baseline
+placement stays with ServerLinkSystem/MultiplayerSystem; the line
+system only moves the rig onto a line and back, and steps back only if
+the rig still stands on that line (a court switch or an emptied room
+has already placed it).
+
+The drifting wind-indicator leaves are removed (Erik: "behöver inte
+de"); wind itself is unchanged. Avatar colors: on a clash side B is
+shown in the next palette color on both headsets (`core/avatarColors.ts`).

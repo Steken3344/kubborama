@@ -31,7 +31,6 @@ import { ThrowingSystem } from './systems/throwing.js';
 import { ToppleSystem } from './systems/topple.js';
 import { TriggerGrabSystem } from './systems/triggerGrab.js';
 import { TuningLabSystem } from './systems/tuningLab.js';
-import { WindIndicatorSystem } from './systems/windIndicator.js';
 import { VoiceLinkSystem } from './systems/voiceLink.js';
 import { WindSystem } from './systems/wind.js';
 
@@ -90,9 +89,6 @@ void loadServerConfig()
     world.registerSystem(StickGroundDampingSystem);
     world.registerSystem(ImpactSystem);
     world.registerSystem(WindSystem);
-    // Purely visual — reads the same per-mode wind vector as WindSystem
-    // but never touches physics; order relative to it doesn't matter.
-    world.registerSystem(WindIndicatorSystem);
     // M5: sound + the kubbFelled/kingFelled/roundCleared haptic sequences
     // core/haptics.ts defined back in M3/M4 but nothing fired until now.
     world.registerSystem(SfxSystem);

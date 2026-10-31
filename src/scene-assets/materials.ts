@@ -4,7 +4,6 @@
  * Evaluated in both the runtime and editor realms — no World/DOM access.
  */
 import {
-  DoubleSide,
   MeshStandardMaterial,
   RepeatWrapping,
   SRGBColorSpace,
@@ -77,17 +76,4 @@ export const courtLineMaterial = new MeshStandardMaterial({
 export const avatarMaterial = new MeshStandardMaterial({
   color: '#4a90d9',
   roughness: 0.5,
-});
-
-/** Wind-indicator leaves (docs/PLAN.md §13's "cheapest possible" flourish
- * — direction/strength readable at a glance). Warm autumn gold rather
- * than green — matches the garden's existing autumn tree/bush dressing
- * AND reads far better against the grass than green-on-green did (a
- * first attempt confirmed live: nearly invisible at normal viewing
- * distance). Double-sided: a thin flat shape tumbling in the air is
- * seen edge-on and face-on alike. */
-export const leafMaterial = new MeshStandardMaterial({
-  color: '#d1892f',
-  roughness: 0.7,
-  side: DoubleSide,
 });

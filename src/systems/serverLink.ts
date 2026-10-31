@@ -4,7 +4,7 @@ import { gameEvents } from '../core/events.js';
 import type { GameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
 import { NETWORKED_PIECE_IDS } from '../core/pieceSync.js';
-import { defaultPose, mirrorPoseToFarBaseline } from '../core/presence.js';
+import { standingPose } from '../core/presence.js';
 import type { PresenceMessage } from '../core/presence.js';
 import {
   parseServerMessage,
@@ -274,10 +274,7 @@ export class ServerLinkSystem extends createSystem({}) {
   /** Side B plays from the far baseline — the same mirror as the
    * Trystero guest's own teleport. */
   private standAtOwnBaseline(side: MatchSide): void {
-    const pose =
-      side === 'guest'
-        ? mirrorPoseToFarBaseline(defaultPose(), activeFarBaselineZ())
-        : defaultPose();
+    const pose = standingPose(side, activeFarBaselineZ());
     this.player.position.set(...pose.position);
     this.player.quaternion.set(...pose.quaternion);
   }

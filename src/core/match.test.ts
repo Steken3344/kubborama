@@ -8,6 +8,7 @@ import {
   kubbSide,
   otherSide,
   standingKubbs,
+  standingLineZ,
   turnPassedTo,
   withInkastLanded,
   withKingFelled,
@@ -265,6 +266,36 @@ describe('advantageLineZ (rule 8)', () => {
     const s = withTurnAdvanced(guestWithTwoFieldKubbs()); // host's turn
     expect(advantageLineZ(s, 'host', halves)).toBe(-3);
     expect(advantageLineZ(s, 'guest', halves)).toBeNull();
+  });
+});
+
+describe('standingLineZ (where each player stands)', () => {
+  it('the thrower stands on its advantage line while throwing', () => {
+    const s = withTurnAdvanced(guestWithTwoFieldKubbs()); // host throws
+    expect(s.phase).toBe('throwing');
+    expect(standingLineZ(s, 'host', halves)).toBe(-3);
+    expect(standingLineZ(s, 'guest', halves)).toBe(halves.farBaselineZ);
+  });
+
+  it('the thrower stands on its baseline without field kubbs', () => {
+    const s = guestWithTwoFieldKubbs(); // guest throws, none on its half
+    expect(standingLineZ(s, 'guest', halves)).toBe(halves.farBaselineZ);
+    expect(standingLineZ(s, 'host', halves)).toBe(halves.nearBaselineZ);
+  });
+
+  it('the inkast is tossed from the baseline, even with field kubbs', () => {
+    let s = guestWithTwoFieldKubbs();
+    s = fell(s, 'kubb-0', -0.5, -2); // kubb-1 still stands at z -3
+    s = withTurnAdvanced(s); // host tosses kubb-0 back first
+    expect(s.phase).toBe('inkast');
+    expect(advantageLineZ(s, 'host', halves)).not.toBeNull();
+    expect(standingLineZ(s, 'host', halves)).toBe(halves.nearBaselineZ);
+  });
+
+  it('a finished match sends both back to their baselines', () => {
+    const s = withKingFelled(withTurnAdvanced(guestWithTwoFieldKubbs()));
+    expect(isFinished(s)).toBe(true);
+    expect(standingLineZ(s, 'host', halves)).toBe(halves.nearBaselineZ);
   });
 });
 

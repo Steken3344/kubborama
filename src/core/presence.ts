@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { quaternionSchema, vec3Schema } from './networkSchemas.js';
+import type { MatchSide } from './match.js';
 import type { Vec3 } from './vec3.js';
 
 /**
@@ -85,5 +86,27 @@ export function mirrorPoseToFarBaseline(pose: Pose, farZ: number): Pose {
     // `-0 || 0` avoids a real-but-meaningless negative zero at x=0.
     position: [-x || 0, y, farZ - z],
     quaternion: [qz, qw, -qx || 0, -qy || 0],
+  };
+}
+
+/** The local player's rig pose for `side`: side A at the near baseline
+ * facing -Z, side B mirrored onto the far baseline (above). `standZ`
+ * moves it along the court to another line — the advantage line
+ * (core/match.ts standingLineZ) — keeping the facing. */
+export function standingPose(
+  side: MatchSide,
+  farZ: number,
+  standZ?: number,
+): Pose {
+  const base =
+    side === 'guest'
+      ? mirrorPoseToFarBaseline(defaultPose(), farZ)
+      : defaultPose();
+  if (standZ === undefined) {
+    return base;
+  }
+  return {
+    position: [base.position[0], base.position[1], standZ],
+    quaternion: base.quaternion,
   };
 }

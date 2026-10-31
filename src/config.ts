@@ -15,7 +15,6 @@ import courtPresetsData from './data/court-presets.json' with { type: 'json' };
 import gameModesData from './data/game-modes.json' with { type: 'json' };
 import piecesData from './data/pieces.json' with { type: 'json' };
 import cameraPosesData from './data/camera-poses.json' with { type: 'json' };
-import windIndicatorData from './data/wind-indicator.json' with { type: 'json' };
 import inkastData from './data/inkast.json' with { type: 'json' };
 import sinBinData from './data/sin-bin.json' with { type: 'json' };
 import stickRackData from './data/stick-rack.json' with { type: 'json' };
@@ -57,7 +56,6 @@ export type MaterialName = keyof typeof pieces.materials;
 export const defaultMaterial = pieces.defaultMaterial as MaterialName;
 
 export const cameraPoses = cameraPosesData;
-export const windIndicator = windIndicatorData;
 export const sinBin = sinBinData;
 /** MP4 inkast tunables (docs/superpowers/specs/2026-09-26-field-kubbs-design.md). */
 export const inkast = inkastData;

@@ -5,6 +5,7 @@ import {
   mirrorPoseToFarBaseline,
   parsePresenceMessage,
   PRESENCE_SCHEMA_VERSION,
+  standingPose,
 } from './presence.js';
 import type { Pose } from './presence.js';
 
@@ -169,5 +170,27 @@ describe('defaultPose', () => {
 
   it('returns a fresh object each call (no shared-reference footgun)', () => {
     expect(defaultPose()).not.toBe(defaultPose());
+  });
+});
+
+describe('standingPose', () => {
+  const farZ = -8;
+
+  it('stands each side on its own baseline, facing the other', () => {
+    expect(standingPose('host', farZ)).toEqual(defaultPose());
+    expect(standingPose('guest', farZ)).toEqual(
+      mirrorPoseToFarBaseline(defaultPose(), farZ),
+    );
+  });
+
+  it('moves along the court to another line, keeping the facing', () => {
+    expect(standingPose('host', farZ, -3)).toEqual({
+      position: [0, 0, -3],
+      quaternion: [0, 0, 0, 1],
+    });
+    expect(standingPose('guest', farZ, -5)).toEqual({
+      position: [0, 0, -5],
+      quaternion: [0, 1, 0, 0],
+    });
   });
 });

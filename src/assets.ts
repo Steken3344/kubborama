@@ -4,7 +4,6 @@ import courtLineShort from './scene-assets/court-line-short.scene-asset.js';
 import ground from './scene-assets/ground.scene-asset.js';
 import king from './scene-assets/king.scene-asset.js';
 import kubb from './scene-assets/kubb.scene-asset.js';
-import leaf from './scene-assets/leaf.scene-asset.js';
 import stake from './scene-assets/stake.scene-asset.js';
 import stick from './scene-assets/stick.scene-asset.js';
 import stickRack from './scene-assets/stick-rack.scene-asset.js';
@@ -27,7 +26,6 @@ export default defineAssets({
   king,
   stick,
   stake,
-  leaf,
   'stick-rack': stickRack,
   'hud-sign-posts': hudSignPosts,
   'hud-frame': hudFrame,

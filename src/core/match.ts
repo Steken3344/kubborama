@@ -377,3 +377,25 @@ export function advantageLineZ(
   const { minZ, maxZ } = halfBounds(halves, side);
   return Math.min(maxZ, Math.max(minZ, best));
 }
+
+/** Where `side` stands (z): on its advantage line while it is throwing
+ * at field kubbs on its own half (rule 8), otherwise on its own
+ * baseline — the inkast is always tossed from the baseline. Erik,
+ * 2026-10-31: the player is teleported here, since a small room may
+ * not allow walking up to the line. */
+export function standingLineZ(
+  state: MatchState,
+  side: MatchSide,
+  halves: CourtHalves,
+): number {
+  const baselineZ =
+    side === 'host' ? halves.nearBaselineZ : halves.farBaselineZ;
+  if (
+    isFinished(state) ||
+    state.currentTurn !== side ||
+    state.phase !== 'throwing'
+  ) {
+    return baselineZ;
+  }
+  return advantageLineZ(state, side, halves) ?? baselineZ;
+}
