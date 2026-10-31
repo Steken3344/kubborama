@@ -1150,3 +1150,21 @@ session 2 passed legal inkast, king early with the 6th stick, restart,
 avatars. Erik: "kastet känns bra, avatar ok, godkänn". gh#18 and gh#19
 closed. Next candidates: MP8 (cloud server), gh#21 best-of-3, gh#20
 toss-up for the start, gh#27 Ny runda debounce, voice via the server.
+
+## 2026-10-31 — One address: a standalone home server
+
+Erik: one address should give the headsets everything; the server leads
+and introduces the headsets; server tests before headset tests; cloud
+parked (headsets are always at home). Built: `npm start` → one HTTPS
+server on 8443 (built game, `/__kubb/config.json`, `/__kubb/log`, game
+WebSocket); the client asks it for its config at boot; voice via WebRTC
+with the server as signaling (no Trystero in server mode); avatars via
+the server. Tests: HTTP routes, the real server with ws players, seat
+lifecycle, signaling, MatchHost stability scenarios (found the 6th-stick
+king logged with stick 0 — fixed). `check:server` against `npm start`:
+full turn, inkast, avatars and voice connected on both. Review: no
+Critical; service-worker config caching, voice re-call/races, heartbeat,
+streamed static files, long-lived certificate — all fixed.
+
+**Erik's next action**: `npm start`, open the printed address on both
+headsets, enter VR (A first), check voice + avatar + a match.
