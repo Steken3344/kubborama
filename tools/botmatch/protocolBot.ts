@@ -12,7 +12,6 @@ import {
 } from '../../src/core/serverProtocol.js';
 import type { ClientMessage } from '../../src/core/serverProtocol.js';
 import type { Settings } from '../../src/core/settings.js';
-
 import type { Vec3 } from '../../src/core/vec3.js';
 
 export type GameMode = Settings['gameMode'];

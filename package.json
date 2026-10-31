@@ -24,7 +24,8 @@
     "debug:tail": "node scripts/debug-tail.mjs",
     "gate:report": "node scripts/gate-report.mjs",
     "gate:new": "node scripts/gate-new.mjs",
-    "check:server": "node scripts/server-two-clients.mjs"
+    "check:server": "node scripts/server-two-clients.mjs",
+    "botmatch": "tsx tools/botmatch/main.ts"
   },
   "dependencies": {
     "@iwsdk/core": "0.5.3",

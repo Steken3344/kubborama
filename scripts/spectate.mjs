@@ -1,12 +1,12 @@
 // Watch a match as a spectator during a playtest, for debugging and for
 // judging the TV director. Usage:
 //   node scripts/spectate.mjs [--url https://192.168.1.147:8443/]
-//                             [--out <dir>] [--every 15]
+//                             [--out <dir>] [--every 15] [--on-cut]
 // Opens the game in a browser outside VR (it joins as a spectator, never
 // a seat), with the debug relay on so its lines (camera cuts, players,
 // scoreboard) land in the same log as the headsets'. Saves a small JPEG
 // every --every seconds to --out (keep it out of the repo) and prints
-// page errors. Runs headed when DISPLAY is set — headless Chromium
+// page errors; with --on-cut also one at every camera cut. Runs headed when DISPLAY is set — headless Chromium
 // renders the scene at a few frames per second. Stop with Ctrl+C.
 import { mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -21,6 +21,7 @@ const arg = (name, fallback) => {
 const base = arg('url', 'https://192.168.1.147:8443/');
 const out = arg('out', join(tmpdir(), 'kubb-spectate'));
 const everyS = Number(arg('every', '15'));
+const onCut = process.argv.includes('--on-cut');
 mkdirSync(out, { recursive: true });
 
 const url = new URL(base);
@@ -46,6 +47,19 @@ async function open() {
   page.on('pageerror', (e) => console.log(`${stamp()} pageerror ${String(e)}`));
   page.on('console', (m) => {
     if (m.type() === 'error') console.log(`${stamp()} console ${m.text()}`);
+    if (onCut && m.text().includes('camera cut')) {
+      shot += 1;
+      const file = join(
+        out,
+        `${stamp().replaceAll(':', '')}-${String(shot).padStart(4, '0')}-cut.jpg`,
+      );
+      // A moment later, so the new shot has rendered a frame or two.
+      setTimeout(() => {
+        page
+          ?.screenshot({ path: file, type: 'jpeg', quality: 60 })
+          .catch(() => {});
+      }, 400);
+    }
   });
   page.on('close', () => {
     page = null;
