@@ -9,6 +9,10 @@ import type { MatchSide } from './match.js';
  * avatar (PeerAvatarSystem) and the HUD score digits both go through it.
  * The menu still names the player's own CHOICE.
  *
+ * Relies on `mySide` being authoritative (the server's seat, or a
+ * resolved Trystero role): two headsets that both believe they are the
+ * guest would both shift.
+ *
  * Indices are clamped onto the palette first, so an out-of-range remote
  * index clashes exactly when its displayed color would.
  */

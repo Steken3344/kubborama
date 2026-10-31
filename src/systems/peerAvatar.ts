@@ -1,7 +1,7 @@
 import { createSystem, MeshStandardMaterial, Object3D } from '@iwsdk/core';
 import type { Entity, Mesh } from '@iwsdk/core';
-import { avatar, avatarPalette, avatarPaletteEntry } from '../config.js';
-import { shownAvatarColors } from '../core/avatarColors.js';
+import { avatar, avatarPaletteEntry } from '../config.js';
+import { shownColorsFor } from '../shownColors.js';
 import {
   addFitSample,
   armEndToHandM,
@@ -20,7 +20,6 @@ import { pitchFromQuaternion, yawFromQuaternion } from '../core/quat.js';
 import { debugContext } from '../debug/debugContext.js';
 import { gateLog } from '../debug/gateLog.js';
 import type { MatchSide } from '../core/match.js';
-import { settingsState } from '../settingsState.js';
 
 interface AvatarInstance {
   entity: Entity;
@@ -76,6 +75,11 @@ export class PeerAvatarSystem extends createSystem({}) {
           this.mySide = mySide;
           this.retintAll();
         }
+      }),
+      gameEvents.on('MultiplayerPeerDisconnected', () => {
+        // The room emptied: my side is unknown until the next match
+        // state, like HudSystem (review, 2026-10-31).
+        this.mySide = null;
       }),
       gameEvents.on('AvatarColorChanged', () => {
         this.retintAll(); // my new color may now clash, or stop clashing
@@ -185,14 +189,7 @@ export class PeerAvatarSystem extends createSystem({}) {
   /** The peer's chosen color as shown here: on a clash with mine the
    * guest wears the next palette color (core/avatarColors.ts). */
   private shownColor(theirChoice: number): number {
-    return (
-      shownAvatarColors({
-        mine: settingsState.current.avatarColorIndex,
-        theirs: theirChoice,
-        mySide: this.mySide,
-        paletteSize: avatarPalette.length,
-      }).theirs ?? theirChoice
-    );
+    return shownColorsFor(theirChoice, this.mySide).theirs ?? theirChoice;
   }
 
   private retint(instance: AvatarInstance): void {

@@ -3,8 +3,8 @@ import type { GameEvents } from '../core/events.js';
 import type { ThrowStyle } from '../core/underhandClassifier.js';
 import { gameEvents } from '../core/events.js';
 import { isFinished, standingKubbs } from '../core/match.js';
-import { avatarPalette, avatarPaletteEntry } from '../config.js';
-import { shownAvatarColors } from '../core/avatarColors.js';
+import { avatarPaletteEntry } from '../config.js';
+import { shownColorsFor } from '../shownColors.js';
 import { debugContext } from '../debug/debugContext.js';
 import { i18nState } from '../i18nState.js';
 import { settingsState } from '../settingsState.js';
@@ -35,8 +35,8 @@ export class HudSystem extends createSystem({}) {
    * message — colors their half of the score. null until one arrives. */
   private opponentColorIndex: number | null = null;
   /** Gate report: last tint logged per digit, so only changes log. */
-  private loggedMyColor: number | null = null;
-  private loggedTheirColor: number | null = null;
+  private loggedMyColor: string | null = null;
+  private loggedTheirColor: string | null = null;
 
   init(): void {
     const statsSystem = this.world.getSystem(StatsSystem);
@@ -171,12 +171,7 @@ export class HudSystem extends createSystem({}) {
     // opponent's first message arrives.
     // A clash is resolved the same way the avatar resolves it
     // (core/avatarColors.ts) so digit and body always match.
-    const shown = shownAvatarColors({
-      mine: settingsState.current.avatarColorIndex,
-      theirs: this.opponentColorIndex,
-      mySide,
-      paletteSize: avatarPalette.length,
-    });
+    const shown = shownColorsFor(this.opponentColorIndex, mySide);
     const myColor = avatarPaletteEntry(shown.mine).hex;
     const theirColor =
       shown.theirs === null ? '#ffffff' : avatarPaletteEntry(shown.theirs).hex;
@@ -189,7 +184,7 @@ export class HudSystem extends createSystem({}) {
       .requireElementById('match-score-b')
       .setProperties({ text: String(s.guest), color: guestColor });
     if (debugContext.enabled) {
-      this.logDigitTints();
+      this.logDigitTints(shown);
     }
     // Absolute "Spelare A/B" turn labels, not "din/motst. tur" (Erik,
     // 2026-09-02); once decided, the relative won/lost verdict.
@@ -256,23 +251,31 @@ export class HudSystem extends createSystem({}) {
       .setProperties({ text, color });
   }
 
-  private logDigitTints(): void {
+  /** `colorIndex` is the player's CHOICE (what mp3b-color matches
+   * across headsets); `shownColorIndex` is the digit's actual color,
+   * which differs on a clash (core/avatarColors.ts). */
+  private logDigitTints(shown: { mine: number; theirs: number | null }): void {
     const mine = settingsState.current.avatarColorIndex;
-    if (mine !== this.loggedMyColor) {
-      this.loggedMyColor = mine;
+    const myKey = `${mine}/${shown.mine}`;
+    if (myKey !== this.loggedMyColor) {
+      this.loggedMyColor = myKey;
       gateLog('avatar color', {
         event: 'tinted',
         who: 'mine',
         colorIndex: mine,
+        shownColorIndex: shown.mine,
       });
     }
-    if (this.opponentColorIndex !== this.loggedTheirColor) {
-      this.loggedTheirColor = this.opponentColorIndex;
-      if (this.opponentColorIndex !== null) {
+    const theirs = this.opponentColorIndex;
+    const theirKey = `${theirs}/${shown.theirs}`;
+    if (theirKey !== this.loggedTheirColor) {
+      this.loggedTheirColor = theirKey;
+      if (theirs !== null) {
         gateLog('avatar color', {
           event: 'tinted',
           who: 'opponent',
-          colorIndex: this.opponentColorIndex,
+          colorIndex: theirs,
+          shownColorIndex: shown.theirs,
         });
       }
     }
