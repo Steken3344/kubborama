@@ -3,7 +3,7 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'node_modules/**', '.iwsdk/**'] },
+  { ignores: ['dist/**', 'dist-server/**', 'node_modules/**', '.iwsdk/**'] },
   js.configs.recommended,
   ...tseslint.configs.strict,
   {
@@ -27,6 +27,11 @@ export default tseslint.config(
         process: 'readonly',
         document: 'readonly',
         window: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        localStorage: 'readonly',
+        sessionStorage: 'readonly',
       },
     },
   },
