@@ -29,6 +29,7 @@ export class VoiceLinkSystem extends createSystem({}) {
   private micTrack: MediaStreamTrack | null = null;
   private micStream: MediaStream | null = null;
   private micReady: Promise<void> = Promise.resolve();
+  private micRequested = false;
   private audio: HTMLAudioElement | null = null;
   private pendingIce: RTCIceCandidateInit[] = [];
   /** The latest seat state from the server. */
@@ -48,10 +49,15 @@ export class VoiceLinkSystem extends createSystem({}) {
       return;
     }
     this.serverLink = this.world.getSystem(ServerLinkSystem) ?? null;
-    this.micReady = this.setUpMicrophone();
     this.cleanupFuncs.push(
       gameEvents.on('ServerPeers', (e) => {
         this.peers = e;
+        // The microphone is asked for only once seated as a PLAYER — a
+        // spectator (the TV view) is never prompted (2026-10-31).
+        if (e.mySide !== null && !this.micRequested) {
+          this.micRequested = true;
+          this.micReady = this.setUpMicrophone();
+        }
         void this.maybeCall();
       }),
       gameEvents.on('VoiceSignal', (e) => {

@@ -60,5 +60,14 @@
   "hudFootFault": "Övertramp!",
   "statsHeadToHead": "Mot {name}: {won}-{lost}",
   "statsHeadToHeadEmpty": "Mot andra: inga matcher än",
-  "statsOpponentDefault": "Spelare"
+  "statsOpponentDefault": "Spelare",
+  "spectatorWaiting": "Väntar på spelare",
+  "spectatorFreeCam": "Fri kamera",
+  "spectatorDirector": "Bildproducent",
+  "scoreStanding": "{value} kvar",
+  "scoreThrowing": "kastar",
+  "scoreInkast": "inkast",
+  "bannerKingFelled": "Kungen fälld!",
+  "bannerWinner": "{name} vinner!",
+  "bannerFootFault": "Övertramp! {name}"
 }

@@ -7,6 +7,7 @@ import { loadServerConfig, serverConfig } from './serverConfig.js';
 import { DebugWatchSystem } from './systems/debugWatch.js';
 import { AdvantageLineSystem } from './systems/advantageLine.js';
 import { WalkAreaSystem } from './systems/walkArea.js';
+import { SpectatorSystem } from './systems/spectator.js';
 import { CourtLayoutSystem } from './systems/courtLayout.js';
 import { CourtLinesSystem } from './systems/courtLines.js';
 import { GateProbeSystem } from './systems/gateProbe.js';
@@ -149,6 +150,8 @@ void loadServerConfig()
     world.registerSystem(AdvantageLineSystem);
     // Thumbstick locomotion: walkable ground, kept inside the garden.
     world.registerSystem(WalkAreaSystem);
+    // The TV view for a browser that watches instead of playing.
+    world.registerSystem(SpectatorSystem);
     // MP3b: remote players' avatars, fed by PeerPresence/PeerLeft events
     // from MultiplayerSystem — event-driven only, order irrelevant.
     world.registerSystem(PeerAvatarSystem);

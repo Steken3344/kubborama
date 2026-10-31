@@ -1,0 +1,12 @@
+{
+  "minShotS": 2.5,
+  "closeUpS": 2,
+  "throwSpeedMps": 3,
+  "throwMinHeightM": 0.25,
+  "landedSpeedMps": 0.3,
+  "landedHoldS": 0.5,
+  "followSmoothingS": 0.12,
+  "freeCameraIdleS": 20,
+  "freeCameraRadiusM": 9,
+  "bannerS": 3
+}

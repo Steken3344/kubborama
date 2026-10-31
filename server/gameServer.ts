@@ -51,6 +51,8 @@ export const ROOM_ACTION_COOLDOWN_MS = 1000;
 /** A player changes name or colour at most this often (each change
  * rewrites the profile file — review, 2026-10-31). */
 const PROFILE_CHANGE_COOLDOWN_MS = 300;
+/** Browsers watching the room without a seat (the TV view). */
+export const MAX_SPECTATORS = 8;
 
 /** What the transport (wsServer.ts, or a test) gives the game server. */
 export interface ClientConnection {
@@ -113,6 +115,7 @@ export class GameServer {
   private readonly lastRoomActionMs = new Map<'reset' | 'court', number>();
   private readonly log: ServerLog;
   private seats: Seat[] = [];
+  private readonly spectators = new Set<ClientConnection>();
   private world: PhysicsWorld | null = null;
   private host: MatchHost | null = null;
   private worldPromise: Promise<PhysicsWorld> | null = null;
@@ -206,6 +209,9 @@ export class GameServer {
     if (message.type === 'join') {
       return this.onJoin(connection, message);
     }
+    if (message.type === 'watch') {
+      return this.onWatch(connection);
+    }
     const seat = this.seats.find((s) => s.connection === connection);
     if (!seat || !this.host) {
       return false; // only seated players act
@@ -217,14 +223,18 @@ export class GameServer {
         return false;
       }
       seat.lastPresenceMs = now;
+      const relay: ServerMessage = {
+        type: 'presence',
+        side: seat.side,
+        message: message.message,
+      };
       for (const other of this.seats) {
         if (other !== seat) {
-          other.connection?.send({
-            type: 'presence',
-            side: seat.side,
-            message: message.message,
-          });
+          other.connection?.send(relay);
         }
+      }
+      for (const spectator of this.spectators) {
+        spectator.send(relay); // both avatars, for the TV view
       }
       return true;
     }
@@ -322,11 +332,43 @@ export class GameServer {
     return true;
   }
 
+  /** A spectator: every broadcast, no seat, nothing it sends counts. */
+  private onWatch(connection: ClientConnection): boolean {
+    if (
+      this.spectators.has(connection) ||
+      this.seats.some((s) => s.connection === connection)
+    ) {
+      return false;
+    }
+    if (this.spectators.size >= MAX_SPECTATORS) {
+      connection.send({ type: 'rejected', reason: 'spectatorsFull' });
+      connection.close();
+      return false;
+    }
+    this.spectators.add(connection);
+    this.log('info', 'gate', 'spectator joined', {
+      spectators: this.spectators.size,
+    });
+    connection.send({
+      type: 'watching',
+      protocol: SERVER_PROTOCOL_VERSION,
+      gameMode: this.gameMode,
+    });
+    if (this.lastMatch) {
+      connection.send(this.lastMatch);
+    }
+    this.broadcastColors();
+    return true;
+  }
+
   private async onJoin(
     connection: ClientConnection,
     message: Extract<ClientMessage, { type: 'join' }>,
   ): Promise<boolean> {
-    if (this.seats.some((s) => s.connection === connection)) {
+    if (
+      this.seats.some((s) => s.connection === connection) ||
+      this.spectators.has(connection)
+    ) {
       return false;
     }
     this.expireSeats();
@@ -452,6 +494,21 @@ export class GameServer {
       shown = { host: fromHost.mine, guest: fromHost.theirs };
     }
     this.broadcast({ type: 'colors', ...shown });
+    // The spectators' scoreboard: names with those shown colours.
+    const player = (side: MatchSide, colorIndex: number | null) => {
+      const seat = this.seats.find((s) => s.side === side);
+      return seat && colorIndex !== null
+        ? {
+            name: clientProfile(this.profiles, seat.profileKey).name,
+            colorIndex,
+          }
+        : null;
+    };
+    this.broadcast({
+      type: 'players',
+      host: player('host', shown.host),
+      guest: player('guest', shown.guest),
+    });
   }
 
   /** gh#16 semantics on the server: a round counts for its thrower. */
@@ -569,6 +626,9 @@ export class GameServer {
   }
 
   private onClose(connection: ClientConnection): void {
+    if (this.spectators.delete(connection)) {
+      return;
+    }
     const seat = this.seats.find((s) => s.connection === connection);
     if (!seat) {
       return;
@@ -615,6 +675,9 @@ export class GameServer {
   private broadcast(message: ServerMessage): void {
     for (const seat of this.seats) {
       seat.connection?.send(message);
+    }
+    for (const spectator of this.spectators) {
+      spectator.send(message);
     }
   }
 }

@@ -4,7 +4,7 @@ import {
   PhysicsSystem,
   VisibilityState,
 } from '@iwsdk/core';
-import type { Entity } from '@iwsdk/core';
+import type { Entity, Object3D } from '@iwsdk/core';
 import { gameEvents } from '../core/events.js';
 import type { GameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
@@ -80,6 +80,11 @@ function clientId(): string {
  */
 export class ServerLinkSystem extends createSystem({}) {
   private socket: WebSocket | null = null;
+  /** Join as a player (in XR, or ?player=1) rather than watch. */
+  private wantPlayer = false;
+  private spectating = false;
+  /** Leaving the spectator connection to rejoin as a player. */
+  private switching = false;
   private physicsSystem!: PhysicsSystem;
   private settingsSystem!: SettingsSystem;
   private pieces = new Map<string, Entity>();
@@ -148,20 +153,30 @@ export class ServerLinkSystem extends createSystem({}) {
     // A client becomes a PLAYER only once it enters XR (Erik's test,
     // 2026-09-27: the managed editor browser loaded the app, joined
     // first and took side A from his headset). A plain browser tab never
-    // takes a side. `?player=1` joins at once — for headless tests.
+    // takes a side: it WATCHES (the TV view, 2026-10-31) until it enters
+    // VR, then rejoins as a player. `?player=1` joins at once — for
+    // headless tests.
     // Leaving XR keeps the connection; a SLEEPING headset stops answering
     // the server's 10 s heartbeat and is dropped — its seat then waits out
     // the 60 s rejoin grace, and on waking it reconnects and keeps its side
     // if it is back in time (review, 2026-10-31).
     const joinNow =
       new URLSearchParams(window.location.search).get('player') === '1';
+    this.wantPlayer = joinNow;
+    this.connect();
     if (joinNow) {
-      this.connect();
       return;
     }
     this.cleanupFuncs.push(
       this.world.visibilityState.subscribe((state) => {
-        if (state !== VisibilityState.NonImmersive && !this.socket) {
+        if (state === VisibilityState.NonImmersive || this.wantPlayer) {
+          return;
+        }
+        this.wantPlayer = true;
+        if (this.socket) {
+          this.switching = true;
+          this.socket.close(); // reconnects at once as a player
+        } else {
           this.connect();
         }
       }),
@@ -173,7 +188,14 @@ export class ServerLinkSystem extends createSystem({}) {
     const socket = new WebSocket(url);
     this.socket = socket;
     socket.addEventListener('open', () => {
-      log('info', 'net', 'connected to game server', { url });
+      log('info', 'net', 'connected to game server', {
+        url,
+        as: this.wantPlayer ? 'player' : 'spectator',
+      });
+      if (!this.wantPlayer) {
+        this.send({ type: 'watch', protocol: SERVER_PROTOCOL_VERSION });
+        return;
+      }
       this.send({
         type: 'join',
         protocol: SERVER_PROTOCOL_VERSION,
@@ -203,6 +225,12 @@ export class ServerLinkSystem extends createSystem({}) {
       this.socket = null;
       serverShownColors.current = null;
       this.side = null;
+      if (this.spectating) {
+        this.spectating = false;
+        gameEvents.emit('SpectatorMode', { on: false });
+        gameEvents.emit('PeerLeft', { peerId: 'server-host' });
+        gameEvents.emit('PeerLeft', { peerId: 'server-guest' });
+      }
       this.settingsSystem.releaseMatchGameMode();
       this.leaveMatch();
       this.dropPeerAvatar();
@@ -212,13 +240,38 @@ export class ServerLinkSystem extends createSystem({}) {
         generation: -1,
       });
       if (!this.stopped) {
-        setTimeout(() => this.connect(), RECONNECT_DELAY_MS);
+        const delayMs = this.switching ? 0 : RECONNECT_DELAY_MS;
+        this.switching = false;
+        setTimeout(() => this.connect(), delayMs);
       }
     });
   }
 
   private onMessage(message: ServerMessage): void {
     switch (message.type) {
+      case 'watching':
+        this.spectating = true;
+        log('info', 'net', 'watching as a spectator', {
+          gameMode: message.gameMode,
+        });
+        gateLog('spectating', { gameMode: message.gameMode });
+        this.settingsSystem.adoptMatchGameMode(message.gameMode);
+        this.buffer.reset();
+        this.clock.reset();
+        gameEvents.emit('SpectatorMode', { on: true });
+        return;
+      case 'players':
+        // A spectator shows both avatars; an emptied seat loses its own.
+        for (const side of ['host', 'guest'] as const) {
+          if (message[side] === null && this.spectating) {
+            gameEvents.emit('PeerLeft', { peerId: `server-${side}` });
+          }
+        }
+        gameEvents.emit('BroadcastPlayers', {
+          host: message.host,
+          guest: message.guest,
+        });
+        return;
       case 'welcome':
         this.side = message.side;
         debugContext.role = message.side;
@@ -288,6 +341,7 @@ export class ServerLinkSystem extends createSystem({}) {
         });
         return;
       case 'match':
+        gameEvents.emit('BroadcastMatchState', { state: message.state });
         if (message.state === null) {
           this.leaveMatch();
           return;
@@ -476,6 +530,11 @@ export class ServerLinkSystem extends createSystem({}) {
     }
   }
 
+  /** A networked piece's scene object (the spectator's follow cam). */
+  pieceObject(id: string): Object3D | undefined {
+    return this.pieces.get(id)?.object3D ?? undefined;
+  }
+
   /** VoiceLinkSystem's WebRTC signaling, via the server. */
   sendSignal(data: VoiceSignal): void {
     this.send({ type: 'signal', data });
@@ -483,6 +542,9 @@ export class ServerLinkSystem extends createSystem({}) {
 
   /** MultiplayerSystem's 20 Hz head + hands, routed through the server. */
   sendPresence(message: PresenceMessage): void {
+    if (this.spectating) {
+      return; // a spectator has no avatar
+    }
     this.send({ type: 'presence', message });
   }
 

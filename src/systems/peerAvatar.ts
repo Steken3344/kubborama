@@ -1,7 +1,7 @@
 import { createSystem, MeshStandardMaterial, Object3D } from '@iwsdk/core';
 import type { Entity, Mesh } from '@iwsdk/core';
 import { avatar, avatarPaletteEntry } from '../config.js';
-import { shownColorsFor } from '../shownColors.js';
+import { serverShownColors, shownColorsFor } from '../shownColors.js';
 import {
   addFitSample,
   armEndToHandM,
@@ -22,6 +22,7 @@ import { gateLog } from '../debug/gateLog.js';
 import type { MatchSide } from '../core/match.js';
 
 interface AvatarInstance {
+  peerId: string;
   entity: Entity;
   root: Object3D;
   /** Per-instance clone so each peer can have its own color. */
@@ -165,10 +166,11 @@ export class PeerAvatarSystem extends createSystem({}) {
       });
       return;
     }
-    const shownColorIndex = this.shownColor(event.message.colorIndex);
+    const shownColorIndex = this.shownColor(peerId, event.message.colorIndex);
     const material = this.tintBodyMaterial(root, shownColorIndex);
     const entity = this.world.createTransformEntity(root);
     const instance: AvatarInstance = {
+      peerId,
       entity,
       root,
       material,
@@ -188,12 +190,27 @@ export class PeerAvatarSystem extends createSystem({}) {
 
   /** The peer's chosen color as shown here: on a clash with mine the
    * guest wears the next palette color (core/avatarColors.ts). */
-  private shownColor(theirChoice: number): number {
+  private shownColor(peerId: string, theirChoice: number): number {
+    // A spectator has no side of its own: each avatar wears the colour
+    // the server assigned to ITS side (`server-host` / `server-guest`).
+    const assigned = serverShownColors.current;
+    if (this.mySide === null && assigned) {
+      const side =
+        peerId === 'server-host'
+          ? 'host'
+          : peerId === 'server-guest'
+            ? 'guest'
+            : null;
+      const color = side ? assigned[side] : null;
+      if (color !== null) {
+        return color;
+      }
+    }
     return shownColorsFor(theirChoice, this.mySide).theirs ?? theirChoice;
   }
 
   private retint(instance: AvatarInstance): void {
-    const shown = this.shownColor(instance.colorIndex);
+    const shown = this.shownColor(instance.peerId, instance.colorIndex);
     if (shown !== instance.shownColorIndex) {
       instance.shownColorIndex = shown;
       instance.material.color.set(avatarPaletteEntry(shown).hex);

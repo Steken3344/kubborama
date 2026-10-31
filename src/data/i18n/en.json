@@ -60,5 +60,14 @@
   "hudFootFault": "Foot fault!",
   "statsHeadToHead": "Vs {name}: {won}-{lost}",
   "statsHeadToHeadEmpty": "Vs others: no matches yet",
-  "statsOpponentDefault": "Player"
+  "statsOpponentDefault": "Player",
+  "spectatorWaiting": "Waiting for players",
+  "spectatorFreeCam": "Free camera",
+  "spectatorDirector": "Director",
+  "scoreStanding": "{value} left",
+  "scoreThrowing": "throwing",
+  "scoreInkast": "inkast",
+  "bannerKingFelled": "King down!",
+  "bannerWinner": "{name} wins!",
+  "bannerFootFault": "Foot fault! {name}"
 }

@@ -161,7 +161,12 @@ const voiceConnectedBy = new Set(
 );
 const avatarsSeenBy = new Set(
   entries
-    .filter((e) => e.message === 'peer avatar created')
+    // Players only: a spectator page watching alongside sees both too.
+    .filter(
+      (e) =>
+        e.message === 'peer avatar created' &&
+        (e.role === 'host' || e.role === 'guest'),
+    )
     .map((e) => e.client),
 );
 const ok =

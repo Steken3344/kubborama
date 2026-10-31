@@ -3,6 +3,7 @@ import { SERVER_PROTOCOL_VERSION } from '../src/core/serverProtocol.js';
 import type { ServerMessage } from '../src/core/serverProtocol.js';
 import {
   GameServer,
+  MAX_SPECTATORS,
   REJOIN_GRACE_MS,
   ROOM_ACTION_COOLDOWN_MS,
 } from './gameServer.js';
@@ -503,5 +504,72 @@ describe('GameServer — profiles (2026-10-31)', () => {
     const ha = server.connect(a.connection);
     await ha.receive({ ...join('simple', 'only-a-clientid-1'), colorIndex: 5 });
     expect(repo.saved.profiles['device:only-a-clientid-1']?.colorIndex).toBe(5);
+  });
+});
+
+describe('GameServer — spectators (2026-10-31)', () => {
+  const watch = { type: 'watch', protocol: SERVER_PROTOCOL_VERSION };
+
+  it('a spectator gets the broadcasts and both avatars, but no seat and no say', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const tv = fakeClient();
+    const ha = server.connect(a.connection);
+    const hb = server.connect(b.connection);
+    const htv = server.connect(tv.connection);
+    expect(await htv.receive(watch)).toBe(true);
+    expect(tv.received[0]).toMatchObject({ type: 'watching' });
+    await ha.receive(join('simple', 'tv-player-A-1'));
+    await hb.receive(join('simple', 'tv-player-B-1'));
+    // Both seats taken by players — the spectator did not take one.
+    expect(a.received).toContainEqual(
+      expect.objectContaining({ type: 'welcome', side: 'host' }),
+    );
+    expect(b.received).toContainEqual(
+      expect.objectContaining({ type: 'welcome', side: 'guest' }),
+    );
+    for (let i = 0; i < 3; i++) server.tick();
+    expect(tv.received.some((m) => m.type === 'snapshot')).toBe(true);
+    expect(tv.received.some((m) => m.type === 'match')).toBe(true);
+    expect(tv.received.filter((m) => m.type === 'players').at(-1)).toEqual({
+      type: 'players',
+      host: { name: null, colorIndex: 0 },
+      guest: { name: null, colorIndex: 1 },
+    });
+    const presence = {
+      type: 'presence',
+      message: {
+        version: 2,
+        head: { position: [0, 1.6, 0], quaternion: [0, 0, 0, 1] },
+        leftHand: { position: [0, 1, 0], quaternion: [0, 0, 0, 1] },
+        rightHand: { position: [0, 1, 0], quaternion: [0, 0, 0, 1] },
+        colorIndex: 0,
+      },
+    };
+    await ha.receive(presence);
+    expect(tv.received).toContainEqual(
+      expect.objectContaining({ type: 'presence', side: 'host' }),
+    );
+    // Nothing a spectator sends counts.
+    expect(await htv.receive({ type: 'reset' })).toBe(false);
+    expect(
+      await htv.receive({ type: 'setGameMode', gameMode: 'advanced' }),
+    ).toBe(false);
+    expect(await htv.receive(join('simple', 'tv-sneaky-1'))).toBe(false);
+  });
+
+  it('caps the spectators', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const tvs = Array.from({ length: MAX_SPECTATORS + 1 }, () => fakeClient());
+    const results = [];
+    for (const tv of tvs) {
+      results.push(await server.connect(tv.connection).receive(watch));
+    }
+    expect(results.filter(Boolean)).toHaveLength(MAX_SPECTATORS);
+    expect(tvs.at(-1)?.received).toContainEqual({
+      type: 'rejected',
+      reason: 'spectatorsFull',
+    });
   });
 });

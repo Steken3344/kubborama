@@ -15,7 +15,8 @@ import { statsSchema } from './stats.js';
  */
 /** v2 (MP6): join carries a clientId; reset, match and round messages.
  * v3 (2026-10-31): server-owned profiles (setProfile, setColor →
- * profile, colors) and notices (foot faults). */
+ * profile, colors), notices (foot faults) and spectators (watch →
+ * watching, players). */
 export const SERVER_PROTOCOL_VERSION = 3;
 /** The server's fixed simulation rate, and every how many ticks it
  * sends a snapshot (→ 20 Hz). Shared: the client interpolates in ticks
@@ -71,6 +72,12 @@ const clientMessageSchema = z.discriminatedUnion('type', [
      * before is lost. */
     colorIndex: colorIndex.optional(),
     profileName: profileName.nullable().optional(),
+  }),
+  /** A browser outside VR: watch the room without taking a seat
+   * (docs/superpowers/specs/2026-10-31-spectator-tv-design.md). */
+  z.object({
+    type: z.literal('watch'),
+    protocol: z.literal(SERVER_PROTOCOL_VERSION),
   }),
   /** "Ny runda". */
   z.object({ type: z.literal('reset') }),
@@ -177,6 +184,18 @@ const serverMessageSchema = z.discriminatedUnion('type', [
     host: colorIndex.nullable(),
     guest: colorIndex.nullable(),
   }),
+  /** A spectator is in: it gets every broadcast from now on. */
+  z.object({
+    type: z.literal('watching'),
+    protocol: z.literal(SERVER_PROTOCOL_VERSION),
+    gameMode: gameModeSchema,
+  }),
+  /** Who is seated, for the spectators' scoreboard (shown colours). */
+  z.object({
+    type: z.literal('players'),
+    host: z.object({ name: profileName.nullable(), colorIndex }).nullable(),
+    guest: z.object({ name: profileName.nullable(), colorIndex }).nullable(),
+  }),
   /** Something both players should see — a foot fault by `side`. */
   z.object({
     type: z.literal('notice'),
@@ -186,7 +205,7 @@ const serverMessageSchema = z.discriminatedUnion('type', [
   /** The room is full or the protocol does not match. */
   z.object({
     type: z.literal('rejected'),
-    reason: z.enum(['full', 'protocol']),
+    reason: z.enum(['full', 'protocol', 'spectatorsFull']),
   }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;

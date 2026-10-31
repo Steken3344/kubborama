@@ -111,6 +111,12 @@ an arm's length past your throwing line is a foot fault ("Övertramp!"):
 it counts as thrown and does nothing. Profiles are stored on the server
 machine in `.kubb-server/profiles.json` (not committed).
 
+**Watching on a TV or computer:** open the same address in an ordinary
+browser (no headset). You get a live broadcast: a camera tour while
+nobody plays, then an automatic director cutting between angles and a
+scoreboard. "Fri kamera" (or dragging) lets you look around yourself.
+Spectators never take a seat.
+
 ## Debug mode (live logs from a headset)
 
 The Quest browser's console is unreachable from outside, so the app can

@@ -3,6 +3,7 @@ import type { MatchEffect, MatchSide, MatchState } from './match.js';
 import type { VoiceSignal } from './serverProtocol.js';
 import type { PresenceMessage } from './presence.js';
 import type { ClientProfile } from './profiles.js';
+import type { PlayersInfo } from './scoreboard.js';
 import type { RoundResult } from './scoring.js';
 import type { Settings } from './settings.js';
 import type { Vec3 } from './vec3.js';
@@ -177,6 +178,18 @@ export interface GameEvents {
   };
   /** This player's profile, as the game server keeps it. */
   ServerProfile: ClientProfile;
+  /** This browser watches as a spectator (the TV view) — or stopped
+   * (it entered VR to play). SpectatorSystem runs the broadcast. */
+  SpectatorMode: {
+    on: boolean;
+  };
+  /** The server's match as it is, for everyone incl. spectators
+   * (players also get MatchStateChanged with their side). */
+  BroadcastMatchState: {
+    state: MatchState | null;
+  };
+  /** Who is seated, with shown colours — the spectators' scoreboard. */
+  BroadcastPlayers: PlayersInfo;
   /** The server judged a release a foot fault (both headsets hear it). */
   FootFault: {
     side: MatchSide;

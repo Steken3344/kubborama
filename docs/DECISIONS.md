@@ -5400,3 +5400,23 @@ head-to-head rows are capped at 64 (most played first) and a match
 between two seats on one profile records nothing; foot-faulted sticks
 get their own sin-bin row a stick length apart; the gh16 gate checks
 compare the server's `round recorded` with the headsets' own summaries.
+
+## 2026-10-31 — Spectator TV view
+
+Spec: `docs/superpowers/specs/2026-10-31-spectator-tv-design.md`. A
+browser that does not enter VR now WATCHES (`watch` → `watching`, up to
+8, no seat, nothing it sends counts) and rejoins as a player the moment
+it enters VR. It gets every broadcast plus both avatars' presence and a
+`players` message (names + shown colours) for the scoreboard; the
+microphone is requested only once seated as a player. SpectatorSystem
+pauses locomotion and the walk area and drives the camera from the pure
+director (`core/director.ts`: tour without a match, over the shoulder on
+a turn, wide on the inkast, follow cam on a throw — detected from a
+stick moving fast above the grass —, close-up on a fall, wide on a win;
+2.5 s minimum shot, cuts away from the tour at once). Every camera pose
+is tested against the scene's trees, rocks, cliffs and the HUD sign on
+both court sizes (the first draft stood inside trees). HTML scoreboard
+and banners (Övertramp, Kungen fälld, winner), dev panels hidden, a
+"Fri kamera" button / drag to orbit, back to the director after 20 s.
+Verified in a headed browser next to two headless players: intro tour,
+over-the-shoulder, follow cam, scoreboard counting down.
