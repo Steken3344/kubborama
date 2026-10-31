@@ -5487,3 +5487,18 @@ to docs/IMPROVEMENTS.md for Erik's approval, bugs are fixed at once.
 First finding: the player's HUD sign covered a third of the TV's
 over-the-shoulder shot — hidden in the spectator view (the TV
 scoreboard replaces it).
+
+Erik approved all three ideas from the first play session (same day):
+
+1. Static batching: `StaticBatchSystem` merges the meshes under scene
+   nodes matching `src/data/static-batch.json` (trees, bushes, rocks,
+   cliffs, campsite, fence) into one mesh per material once the level
+   has loaded (pure `core/meshMerge.ts`; normals exact under uniform
+   scale, anything else is skipped) and hides the originals: 132 meshes
+   → 13 batches, 200 → 74 draw calls in the emulator's XR view, the same
+   picture. Runtime only — scene JSON and editor unchanged. It finds the
+   nodes by `userData.iwsdkSceneNodeId` (IWSDK's own tag; no public
+   enumeration API) and does nothing if none match.
+2. TV scoreboard rows count what each player still has to knock down
+   (standing in the opponent's half), then "kungen".
+3. Bot match aim spread (seeded, default 0.3 m).

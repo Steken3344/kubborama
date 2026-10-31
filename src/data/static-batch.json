@@ -1,0 +1,10 @@
+{
+  "nodeIdPatterns": [
+    "^tree-",
+    "^bush-",
+    "^cliff-",
+    "^rock-",
+    "^campsite-",
+    "^fence-line"
+  ]
+}

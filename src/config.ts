@@ -26,6 +26,7 @@ import roundData from './data/round.json' with { type: 'json' };
 import locomotionData from './data/locomotion.json' with { type: 'json' };
 import uiData from './data/ui.json' with { type: 'json' };
 import spectatorData from './data/spectator.json' with { type: 'json' };
+import staticBatchData from './data/static-batch.json' with { type: 'json' };
 import profileNamesData from './data/profile-names.json' with { type: 'json' };
 
 export const courtPresets = courtPresetsData.presets;
@@ -69,6 +70,10 @@ export const walkArea = {
 };
 /** The menu's fixed profile names — the server accepts only these. */
 export const profileNames: readonly string[] = profileNamesData.names;
+/** Scene nodes whose meshes are merged per material at startup
+ * (systems/staticBatch.ts) — static props only, never pieces or UI. */
+export const staticBatchNodePatterns: readonly RegExp[] =
+  staticBatchData.nodeIdPatterns.map((p) => new RegExp(p, 'u'));
 /** The spectator TV view's director and overlay tunables. */
 export const spectator = spectatorData;
 /** Menu buttons ignore a repeat click within this long (gh#27). */
