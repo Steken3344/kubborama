@@ -1,5 +1,6 @@
 <!--
-  Always-visible scoreboard on a fixed 220 × 152 board (5 rows; the
+  Always-visible scoreboard on a fixed 220 × 160 board (5 rows of ~25
+  plus a little slack — no row value may wrap: keep values short; the
   wooden frame in src/scene-assets/hud-frame.scene-asset.ts is cut to
   the same size — the panel must never grow past it). Practice shows
   round, felled, record and style; a match swaps the last three for
@@ -40,7 +41,7 @@
     justify-content: center;
     font-family: "DM Sans";
     width: 220px;
-    height: 152px;
+    height: 160px;
     background-color: rgba(20, 20, 20, 0.55);
     border-radius: 12px;
     padding: 14px;

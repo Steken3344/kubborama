@@ -56,7 +56,7 @@
   "statsAccuracy": "Accuracy: {value}%",
   "versionLabel": "Version: {version}",
   "inkastRemaining": "Inkast: {n} left",
-  "matchEndKingByInkast": "King felled by an inkast",
+  "matchEndKingByInkast": "King felled by inkast",
   "hudFootFault": "Foot fault!",
   "statsHeadToHead": "Vs {name}: {won}-{lost}",
   "statsHeadToHeadEmpty": "Vs others: no matches yet",

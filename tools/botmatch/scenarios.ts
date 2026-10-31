@@ -188,7 +188,8 @@ export const SCENARIOS: Scenario[] = [
   {
     // A whole match as people play it: both sides aim at each other's
     // kubbs (with the aim spread), toss legally, and play on until one
-    // wins — field kubbs, advantage lines, kings and all.
+    // wins. The evidence proves a decided match seen by A (and confetti);
+    // the series (series.ts) reads the rest — rounds, inkast, raises.
     name: 'real-match',
     timeBoxS: 1800,
     inAll: false,

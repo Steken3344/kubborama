@@ -21,7 +21,7 @@ const run = (seconds: number, seed = 1) => {
 };
 
 describe('confetti', () => {
-  it('bursts every piece from the origin, mostly upwards', () => {
+  it('bursts every piece from the origin, upwards', () => {
     const s = burstConfetti([0, 2.6, -1], opts, createRng(1));
     expect(s.positions.length).toBe(150);
     expect(s.positions[1]).toBeCloseTo(2.6, 5);
@@ -62,5 +62,17 @@ describe('confetti', () => {
     expect(confettiDone(run(1), opts)).toBe(false);
     expect(confettiDone(run(6), opts)).toBe(true);
     expect(run(1, 7).positions).toEqual(run(1, 7).positions);
+  });
+
+  it('lies still once on the grass', () => {
+    const s = run(5);
+    const before = Float32Array.from(s.positions);
+    stepConfetti(s, 0.1, opts);
+    for (let i = 0; i < s.angles.length; i += 1) {
+      if ((before[i * 3 + 1] ?? 1) <= 0.005) {
+        expect(s.positions[i * 3]).toBe(before[i * 3]);
+        expect(s.positions[i * 3 + 2]).toBe(before[i * 3 + 2]);
+      }
+    }
   });
 });

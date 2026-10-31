@@ -17,7 +17,7 @@ import { gameEvents } from '../core/events.js';
 import type { MatchSide, MatchState } from '../core/match.js';
 import { createRng } from '../core/rng.js';
 import { gateLog } from '../debug/gateLog.js';
-import { serverShownColors } from '../shownColors.js';
+import { serverShownColors, shownColorsFor } from '../shownColors.js';
 import { activeCourtHalves } from './activeCourt.js';
 
 /** Colour slot 0 is the winner's avatar colour; the rest from the JSON. */
@@ -51,6 +51,12 @@ export class ConfettiSystem extends createSystem({}) {
   private mesh!: InstancedMesh;
   private state: ConfettiState | null = null;
   private lastWinner: MatchSide | null = null;
+  /** The first state only arms the trigger: a late joiner must not get
+   * confetti for a win already over (review, 2026-10-31). */
+  private seenState = false;
+  /** For the winner's colour without the game server (serverless play). */
+  private mySide: MatchSide | null = null;
+  private opponentColorIndex: number | null = null;
   private bursts = 0;
   private readonly matrix = new Matrix4();
   private readonly position = new Vector3();
@@ -71,21 +77,29 @@ export class ConfettiSystem extends createSystem({}) {
     // have to be refreshed every frame — never cull this one mesh.
     this.mesh.frustumCulled = false;
     this.mesh.visible = false;
-    this.world.createTransformEntity(this.mesh);
+    const entity = this.world.createTransformEntity(this.mesh);
     const onMatch = (state: MatchState | null) => {
       const winner = state?.winner ?? null;
-      if (winner !== null && this.lastWinner === null) {
+      if (this.seenState && winner !== null && this.lastWinner === null) {
         this.burst(winner);
       }
+      this.seenState = true;
       this.lastWinner = winner;
     };
     this.cleanupFuncs.push(
       gameEvents.on('BroadcastMatchState', ({ state }) => {
         onMatch(state);
       }),
-      gameEvents.on('MatchStateChanged', ({ state }) => {
+      gameEvents.on('MatchStateChanged', ({ state, mySide }) => {
+        this.mySide = mySide;
         onMatch(state);
       }),
+      gameEvents.on('PeerPresence', (e) => {
+        this.opponentColorIndex = e.message.colorIndex;
+      }),
+      () => {
+        entity.dispose();
+      },
     );
   }
 
@@ -102,7 +116,7 @@ export class ConfettiSystem extends createSystem({}) {
       OPTS,
       createRng(this.bursts),
     );
-    const winnerIndex = serverShownColors.current?.[winner] ?? null;
+    const winnerIndex = this.winnerColorIndex(winner);
     for (let i = 0; i < confetti.count; i += 1) {
       const slot = this.state.colors[i] ?? 0;
       const hex =
@@ -118,6 +132,16 @@ export class ConfettiSystem extends createSystem({}) {
     }
     this.mesh.visible = true;
     gateLog('confetti', { winner });
+  }
+
+  /** The winner's shown colour: the server's assignment, or — playing
+   * serverless — the same clash-resolved pair the avatars and HUD use. */
+  private winnerColorIndex(winner: MatchSide): number | null {
+    const assigned = serverShownColors.current?.[winner];
+    if (assigned !== undefined && assigned !== null) return assigned;
+    if (this.mySide === null) return null;
+    const shown = shownColorsFor(this.opponentColorIndex, this.mySide);
+    return winner === this.mySide ? shown.mine : shown.theirs;
   }
 
   update(delta: number): void {

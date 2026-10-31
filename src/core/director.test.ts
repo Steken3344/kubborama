@@ -138,6 +138,23 @@ describe('director — which shot', () => {
     expect(s.shot.side).toBe('guest');
   });
 
+  it('a throw during a special view neither repeats nor skips a view', () => {
+    let s = step(
+      initialDirector(),
+      { type: 'turn', side: 'host', phase: 'throwing' },
+      0,
+    );
+    s = directorTick(s, 5.1, opts);
+    expect(s.shot.kind).toBe('overhead');
+    s = step(s, { type: 'throw', pieceId: 'stick-0' }, 6);
+    s = step(s, { type: 'landed' }, 9);
+    expect(s.shot.kind).toBe('overShoulder');
+    s = directorTick(s, 14.2, opts);
+    expect(s.shot.kind).toBe('opponentEnd');
+    s = directorTick(s, 19.3, opts);
+    expect(s.shot.kind).toBe('overShoulder');
+  });
+
   it('a new turn starts the rotation over on its own angle', () => {
     let s = step(
       initialDirector(),

@@ -50,8 +50,8 @@ export interface DirectorState {
   turn: { side: MatchSide; phase: MatchPhase } | null;
   /** Cuts so far: the next shot's variant. */
   cuts: number;
-  /** Re-angles of a resting shot in this turn: they rotate through the
-   * turn's own angle, overhead, the turn's angle, the opponent's end. */
+  /** Special views shown in this turn: even → overhead next, odd → the
+   * opponent's end (they alternate with the turn's own angle). */
   rests: number;
 }
 
@@ -216,16 +216,19 @@ export function directorTick(
       return goLive(state, state.shot, nowS);
     }
     // Four views while play rests (Erik, 2026-10-31: the inkast showed
-    // only its two angles for minutes): the turn's own angle, overhead,
-    // the turn's angle again (its next variant), the opponent's end.
-    const rests = state.rests + 1;
-    const next =
-      rests % 2 === 0
-        ? turnShot(state, nowS)
-        : shot(rests % 4 === 1 ? 'overhead' : 'opponentEnd', nowS, {
-            side: state.turn.side,
-          });
-    return { ...goLive(state, next, nowS), rests };
+    // only its two angles for minutes): from the turn's own angle to a
+    // special view — overhead and the opponent's end in turn — and back
+    // to the turn's angle (its next variant). Decided from the shot on
+    // air, so a throw in between never repeats or skips a view (review).
+    const base = turnShot(state, nowS);
+    if (state.shot.kind !== base.kind) {
+      return goLive(state, base, nowS);
+    }
+    const special = state.rests % 2 === 0 ? 'overhead' : 'opponentEnd';
+    return {
+      ...goLive(state, shot(special, nowS, { side: state.turn.side }), nowS),
+      rests: state.rests + 1,
+    };
   }
   return state;
 }

@@ -5568,3 +5568,16 @@ is cut to the same 2.86 × 1.98 m; a match hides the practice rows
 ended, a foot fault). The inkast count moved off the turn row — appended
 there it wrapped onto two lines. The board stays hidden in the TV view
 (it covered the shoulder shot; the TV scoreboard replaces it).
+
+Review fixes for confetti, views and the board (2026-11-01): a foot
+fault keeps the HUD's message row for its 2.5 s even when it ended the
+turn (a sixth-stick foot fault turned to inkast 0.6 s later and wiped
+it); the inkast count takes the row when it expires. The board gets a
+little slack (220 × 160, frame 2.86 × 2.08 m) and the one value near
+the width limit is shorter ("Inkast fällde kungen" / "King felled by
+inkast") — no row value may wrap. The TV rotation is decided from the
+shot on air (turn angle → special → turn angle, the specials
+alternating overhead / opponent's end), so a throw in between neither
+repeats nor skips a view. Confetti uses the clash-resolved winner
+colour in serverless play too, ignores a win that was already over when
+a client joined, disposes its entity, and flutters in a small circle.

@@ -5,12 +5,12 @@ import { kingWoodMaterial } from './materials.js';
 // board ("en tavla"), not a bare floating panel. A single flat board in
 // the darker king wood tone, peeking out from behind the UIKitML panel
 // like a picture-frame mount. Sized against the panel's FIXED footprint:
-// hud.uikitml is 220 × 152 UIKit units (cm) × hud-panel's node scale
-// 1.3 = 2.86 m × 1.98 m. The panel used to auto-size and grew past the
+// hud.uikitml is 220 × 160 UIKit units (cm) × hud-panel's node scale
+// 1.3 = 2.86 m × 2.08 m. The panel used to auto-size and grew past the
 // board once the match rows appeared (Erik, 2026-10-31) — keep these two
 // in step with hud.uikitml's width/height.
 const PANEL_WIDTH_M = 2.86;
-const PANEL_HEIGHT_M = 1.98;
+const PANEL_HEIGHT_M = 2.08;
 const FRAME_MARGIN_M = 0.12;
 const FRAME_THICKNESS_M = 0.03;
 

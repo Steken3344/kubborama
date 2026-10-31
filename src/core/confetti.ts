@@ -100,10 +100,12 @@ export function stepConfetti(
     s.velocities[i * 3] = vx;
     s.velocities[yi] = vy;
     s.velocities[i * 3 + 2] = vz;
-    const flutter = opts.flutterAmplitudeMps * Math.sin(phase);
-    s.positions[i * 3] = (s.positions[i * 3] ?? 0) + (vx + flutter) * dtS;
+    // A small circle per piece (sin/cos), not one shared diagonal.
+    const flutterX = opts.flutterAmplitudeMps * Math.sin(phase);
+    const flutterZ = opts.flutterAmplitudeMps * Math.cos(phase);
+    s.positions[i * 3] = (s.positions[i * 3] ?? 0) + (vx + flutterX) * dtS;
     s.positions[i * 3 + 2] =
-      (s.positions[i * 3 + 2] ?? 0) + (vz + flutter * 0.6) * dtS;
+      (s.positions[i * 3 + 2] ?? 0) + (vz + flutterZ) * dtS;
     const y = (s.positions[yi] ?? 0) + vy * dtS;
     s.positions[yi] = Math.max(REST_HEIGHT_M, y);
     s.angles[i] = (s.angles[i] ?? 0) + (s.spinRates[i] ?? 0) * dtS;

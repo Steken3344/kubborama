@@ -135,6 +135,8 @@ export class HudSystem extends createSystem({}) {
     this.nowS = timeS;
     if (this.noticeUntilS !== null && timeS >= this.noticeUntilS) {
       this.hideNotice();
+      // The message row is free again: the inkast count, if any.
+      this.updateMatchRow();
     }
   }
 
@@ -242,7 +244,10 @@ export class HudSystem extends createSystem({}) {
       .setProperties({ text: turnText });
     // One message row at a time, so the board never needs a sixth row.
     const inkast = !isFinished(state) && state.phase === 'inkast';
-    if (inkast) {
+    // A foot fault keeps the row for its few seconds even when it ended
+    // the turn (a sixth-stick foot fault turns to inkast 0.6 s later —
+    // review, 2026-10-31); the inkast count follows when it expires.
+    if (inkast && this.noticeUntilS === null) {
       show('inkast-row');
       this.hudPanel.requireElementById('inkast-value').setProperties({
         text: t('inkastRemaining', { n: state.inkastQueue.length }),
@@ -252,7 +257,7 @@ export class HudSystem extends createSystem({}) {
         .requireElementById('inkast-row')
         .setProperties({ display: 'none' });
     }
-    if (inkast || isFinished(state)) {
+    if (isFinished(state)) {
       this.hideNotice();
     }
     if (isFinished(state)) {
