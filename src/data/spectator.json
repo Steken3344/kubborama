@@ -1,6 +1,7 @@
 {
   "minShotS": 2.5,
   "closeUpS": 2,
+  "maxShotS": 5,
   "throwSpeedMps": 3,
   "throwMinHeightM": 0.25,
   "landedSpeedMps": 0.3,

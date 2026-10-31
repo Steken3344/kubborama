@@ -30,6 +30,7 @@ const STICK_IDS = [
 const DIRECTOR_OPTS = {
   minShotS: spectator.minShotS,
   closeUpS: spectator.closeUpS,
+  maxShotS: spectator.maxShotS,
 };
 
 /**
@@ -161,6 +162,7 @@ export class SpectatorSystem extends createSystem({}) {
       gateLog('camera cut', {
         shot: this.director.shot.kind,
         side: this.director.shot.side,
+        variant: this.director.shot.variant,
       });
     }
   }
@@ -286,7 +288,12 @@ export class SpectatorSystem extends createSystem({}) {
           current = { ...shot, focus: this.focus };
         }
       }
-      const pose = shotCameraPose(current, activeCourtHalves(), this.nowS);
+      const pose = shotCameraPose(
+        current,
+        activeCourtHalves(),
+        this.nowS,
+        DIRECTOR_OPTS,
+      );
       this.tmpPos.set(...pose.position);
       this.tmpTarget.set(...pose.target);
     }

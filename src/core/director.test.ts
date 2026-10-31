@@ -10,7 +10,17 @@ import {
 } from './director.js';
 import type { DirectorState, Shot } from './director.js';
 
-const opts = { minShotS: 2.5, closeUpS: 2 };
+const opts = { minShotS: 2.5, closeUpS: 2, maxShotS: 5 };
+
+/** A shot fixture: the given fields over sensible defaults. */
+const at = (fields: Partial<Shot> & Pick<Shot, 'kind'>): Shot => ({
+  side: null,
+  focus: null,
+  pieceId: null,
+  startedAtS: 0,
+  variant: 0,
+  ...fields,
+});
 const step = (
   s: DirectorState,
   e: Parameters<typeof directorEvent>[1],
@@ -89,57 +99,83 @@ describe('director — which shot', () => {
     s = step(s, { type: 'win', side: 'guest' }, 9);
     expect(s.shot).toMatchObject({ kind: 'wide', side: 'guest' });
   });
+
+  it('a resting shot moves on to another angle of the same kind', () => {
+    let s = step(
+      initialDirector(),
+      { type: 'turn', side: 'host', phase: 'throwing' },
+      0,
+    );
+    const first = s.shot;
+    s = directorTick(s, 4.9, opts);
+    expect(s.shot).toBe(first);
+    s = directorTick(s, 5.1, opts);
+    expect(s.shot).toMatchObject({ kind: 'overShoulder', side: 'host' });
+    expect(s.shot.variant).not.toBe(first.variant);
+    expect(s.shot.startedAtS).toBe(5.1);
+  });
+
+  it('a follow cam is never re-angled mid-flight', () => {
+    let s = step(
+      initialDirector(),
+      { type: 'turn', side: 'host', phase: 'throwing' },
+      0,
+    );
+    s = step(s, { type: 'throw', pieceId: 'stick-1' }, 1);
+    const follow = s.shot;
+    s = directorTick(s, 9, opts);
+    expect(s.shot).toBe(follow);
+  });
+
+  it('each cut takes the next angle, so repeats look different', () => {
+    let s = step(
+      initialDirector(),
+      { type: 'turn', side: 'host', phase: 'throwing' },
+      0,
+    );
+    const seen = new Set<number>();
+    for (let i = 0; i < 3; i += 1) {
+      const t = 1 + i * 4;
+      s = step(s, { type: 'throw', pieceId: 'stick-0' }, t);
+      seen.add(s.shot.variant);
+      s = step(s, { type: 'landed' }, t + 3);
+    }
+    expect(seen.size).toBe(3);
+  });
 });
 
 describe('director — camera poses', () => {
-  const shots: Shot[] = [
-    { kind: 'tour', side: null, focus: null, pieceId: null, startedAtS: 0 },
-    {
-      kind: 'overShoulder',
-      side: 'host',
-      focus: null,
-      pieceId: null,
-      startedAtS: 0,
-    },
-    {
-      kind: 'overShoulder',
-      side: 'guest',
-      focus: null,
-      pieceId: null,
-      startedAtS: 0,
-    },
-    {
-      kind: 'inkastWide',
-      side: 'guest',
-      focus: null,
-      pieceId: null,
-      startedAtS: 0,
-    },
-    {
-      kind: 'closeUp',
-      side: null,
-      focus: [1, 0.1, -7],
-      pieceId: null,
-      startedAtS: 0,
-    },
-    {
-      kind: 'follow',
-      side: 'host',
-      focus: [0.2, 2, -3],
-      pieceId: 'stick-0',
-      startedAtS: 0,
-    },
-    { kind: 'wide', side: 'guest', focus: null, pieceId: null, startedAtS: 0 },
+  const kinds = (halves: ReturnType<typeof courtHalves>): Shot[] => [
+    at({ kind: 'tour' }),
+    ...(['host', 'guest', null] as const).flatMap((side) =>
+      [0, 1, 2, 3].flatMap((variant) => [
+        at({ kind: 'overShoulder', side, variant }),
+        at({ kind: 'inkastWide', side, variant }),
+        at({ kind: 'wide', side, variant }),
+      ]),
+    ),
+    // Close-ups and follows anywhere a piece can be on the court.
+    ...[-2.4, 0, 2.4].flatMap((x) =>
+      [halves.nearBaselineZ, halves.centreZ, halves.farBaselineZ].flatMap((z) =>
+        [0, 1, 2].flatMap((variant) => [
+          at({ kind: 'closeUp', focus: [x, 0.1, z], variant }),
+          at({ kind: 'follow', side: 'host', focus: [x, 1.5, z], variant }),
+          at({ kind: 'follow', side: 'guest', focus: [x, 1.5, z], variant }),
+          at({ kind: 'follow', side: 'host', focus: [x, 3.5, z], variant }),
+        ]),
+      ),
+    ),
   ];
+
   for (const preset of [
     { widthM: 5, lengthM: 8 },
     { widthM: 4, lengthM: 6 },
   ]) {
     const halves = courtHalves(preset);
     it(`stays above the grass and inside the garden (${preset.lengthM} m court)`, () => {
-      for (const shot of shots) {
-        for (const t of [0, 3, TOUR_SHOT_S * 2.5]) {
-          const { position, target } = shotCameraPose(shot, halves, t);
+      for (const shot of kinds(halves)) {
+        for (const t of [0, 3, 6, TOUR_SHOT_S * 2.5]) {
+          const { position, target } = shotCameraPose(shot, halves, t, opts);
           expect(position[1]).toBeGreaterThan(0.3);
           expect(Math.abs(position[0])).toBeLessThan(7);
           expect(position[2]).toBeGreaterThan(-12);
@@ -148,36 +184,53 @@ describe('director — camera poses', () => {
         }
       }
     });
+
+    it(`resting shots are camera moves, not stills (${preset.lengthM} m court)`, () => {
+      for (const kind of ['overShoulder', 'inkastWide', 'wide'] as const) {
+        for (const variant of [0, 1, 2, 3]) {
+          const shot = at({ kind, side: 'host', variant });
+          const a = shotCameraPose(shot, halves, 0, opts).position;
+          const b = shotCameraPose(shot, halves, opts.maxShotS, opts).position;
+          const movedM = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+          expect(movedM, `${kind} ${variant}`).toBeGreaterThan(0.3);
+        }
+      }
+    });
   }
 
   it('over the shoulder looks down the court from behind the thrower', () => {
     const halves = courtHalves({ widthM: 5, lengthM: 8 });
-    const host = shotCameraPose(
-      {
-        kind: 'overShoulder',
-        side: 'host',
-        focus: null,
-        pieceId: null,
-        startedAtS: 0,
-      },
+    // Variants 0–2 stand behind the thrower; 3 is the reverse angle.
+    for (const variant of [0, 1, 2]) {
+      const host = shotCameraPose(
+        at({ kind: 'overShoulder', side: 'host', variant }),
+        halves,
+        0,
+        opts,
+      );
+      expect(host.position[2]).toBeGreaterThan(halves.nearBaselineZ);
+      expect(host.target[2]).toBeLessThan(halves.centreZ);
+      const guest = shotCameraPose(
+        at({ kind: 'overShoulder', side: 'guest', variant }),
+        halves,
+        0,
+        opts,
+      );
+      expect(guest.position[2]).toBeLessThan(halves.farBaselineZ);
+      expect(guest.target[2]).toBeGreaterThan(halves.centreZ);
+    }
+  });
+
+  it('the reverse angle looks back at the thrower from the court', () => {
+    const halves = courtHalves({ widthM: 5, lengthM: 8 });
+    const pose = shotCameraPose(
+      at({ kind: 'overShoulder', side: 'host', variant: 3 }),
       halves,
       0,
+      opts,
     );
-    expect(host.position[2]).toBeGreaterThan(halves.nearBaselineZ);
-    expect(host.target[2]).toBeLessThan(halves.centreZ);
-    const guest = shotCameraPose(
-      {
-        kind: 'overShoulder',
-        side: 'guest',
-        focus: null,
-        pieceId: null,
-        startedAtS: 0,
-      },
-      halves,
-      0,
-    );
-    expect(guest.position[2]).toBeLessThan(halves.farBaselineZ);
-    expect(guest.target[2]).toBeGreaterThan(halves.centreZ);
+    expect(pose.position[2]).toBeLessThan(halves.nearBaselineZ);
+    expect(pose.target[2]).toBe(halves.nearBaselineZ);
   });
 });
 
@@ -207,64 +260,31 @@ describe('director — camera never inside the scenery', () => {
   });
 
   const shotsAt = (halves: ReturnType<typeof courtHalves>): Shot[] => [
-    { kind: 'tour', side: null, focus: null, pieceId: null, startedAtS: 0 },
-    {
-      kind: 'overShoulder',
-      side: 'host',
-      focus: null,
-      pieceId: null,
-      startedAtS: 0,
-    },
-    {
-      kind: 'overShoulder',
-      side: 'guest',
-      focus: null,
-      pieceId: null,
-      startedAtS: 0,
-    },
-    {
-      kind: 'inkastWide',
-      side: 'host',
-      focus: null,
-      pieceId: null,
-      startedAtS: 0,
-    },
-    {
-      kind: 'inkastWide',
-      side: 'guest',
-      focus: null,
-      pieceId: null,
-      startedAtS: 0,
-    },
-    { kind: 'wide', side: 'host', focus: null, pieceId: null, startedAtS: 0 },
-    { kind: 'wide', side: 'guest', focus: null, pieceId: null, startedAtS: 0 },
-    { kind: 'wide', side: null, focus: null, pieceId: null, startedAtS: 0 },
-    // Close-ups and follows anywhere a piece can be on the court.
+    at({ kind: 'tour' }),
+    ...(['host', 'guest', null] as const).flatMap((side) =>
+      [0, 1, 2, 3].flatMap((variant) => [
+        at({ kind: 'overShoulder', side, variant }),
+        at({ kind: 'inkastWide', side, variant }),
+        at({ kind: 'wide', side, variant }),
+      ]),
+    ),
+    // Close-ups and follows anywhere a piece can be on the court, and
+    // a little beyond it (a stick sailing long).
     ...[-2.4, 0, 2.4].flatMap((x) =>
-      [halves.nearBaselineZ, halves.centreZ, halves.farBaselineZ].flatMap(
-        (z) => [
-          {
-            kind: 'closeUp' as const,
-            side: null,
-            focus: [x, 0.1, z] as [number, number, number],
-            pieceId: null,
-            startedAtS: 0,
-          },
-          {
-            kind: 'follow' as const,
-            side: 'host' as const,
-            focus: [x, 1.5, z] as [number, number, number],
-            pieceId: 's',
-            startedAtS: 0,
-          },
-          {
-            kind: 'follow' as const,
-            side: 'guest' as const,
-            focus: [x, 1.5, z] as [number, number, number],
-            pieceId: 's',
-            startedAtS: 0,
-          },
-        ],
+      [
+        halves.nearBaselineZ + 1,
+        halves.nearBaselineZ,
+        halves.centreZ,
+        halves.farBaselineZ,
+        halves.farBaselineZ - 1,
+      ].flatMap((z) =>
+        [0, 1, 2].flatMap((variant) => [
+          at({ kind: 'closeUp', focus: [x, 0.1, z], variant }),
+          at({ kind: 'follow', side: 'host', focus: [x, 1.5, z], variant }),
+          at({ kind: 'follow', side: 'guest', focus: [x, 1.5, z], variant }),
+          at({ kind: 'follow', side: 'host', focus: [x, 0.2, z], variant }),
+          at({ kind: 'follow', side: 'guest', focus: [x, 0.2, z], variant }),
+        ]),
       ),
     ),
   ];
@@ -276,13 +296,16 @@ describe('director — camera never inside the scenery', () => {
     it(`clears every obstacle (${preset.lengthM} m court)`, () => {
       const halves = courtHalves(preset);
       for (const shot of shotsAt(halves)) {
-        for (let t = 0; t < TOUR_SHOT_S * 4; t += 0.5) {
-          const [x, y, z] = shotCameraPose(shot, halves, t).position;
+        // The tour loops over its legs; every other move is done by
+        // maxShotS (and a follow cam is live, not timed).
+        const endS = shot.kind === 'tour' ? TOUR_SHOT_S * 4 : opts.maxShotS;
+        for (let t = 0; t <= endS; t += 0.5) {
+          const [x, y, z] = shotCameraPose(shot, halves, t, opts).position;
           for (const o of obstacles) {
             const inside = Math.hypot(x - o.x, z - o.z) < o.r && y < o.h;
             expect(
               inside,
-              `${shot.kind} ${shot.side ?? ''} at t=${t} inside ${o.id} (${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)})`,
+              `${shot.kind} ${shot.side ?? ''} v${shot.variant} at t=${t} inside ${o.id} (${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)})`,
             ).toBe(false);
           }
         }

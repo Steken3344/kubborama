@@ -5433,3 +5433,20 @@ rather than `peers`. Stick positions are seeded when the view starts,
 throws are ignored for 0.8 s after a turn change (re-racking), the
 teleport cutoff is in `spectator.json`, and the free-camera button no
 longer toggles twice.
+
+Livelier TV director (same day, Erik after the first spectator test:
+"mer aktivt, byta vinklar och göra lite svepande"): every shot kind has
+several angles — over the shoulder ×4 (right push-in, left slide, crane
+up, reverse on the thrower's face), inkast ×2, wide ×2 (push-in, high
+orbit), close-up ×2, follow ×3 (side tracking, chase from behind, from
+behind the target kubbs) — picked in turn by a cut counter
+(deterministic, no randomness). Every resting angle is a slow eased
+camera move, and a resting shot older than `maxShotS` (5 s,
+`spectator.json`) cuts to the next angle of the same kind; follow cams
+are never re-angled mid-flight. Tour legs 8 s → 6 s. Low cameras keep to
+the clear corridor (in front of the far cliff/tree, and in front of the
+near bushes unless above them) — every angle and move is checked against
+the scene on both court sizes. Gate probe: in server mode the round
+summary no longer reads the local stats (the server's update arrives a
+moment later, so it lagged one round); a separate `profile stats` line
+logs the server's numbers when they arrive.

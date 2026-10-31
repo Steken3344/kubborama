@@ -6,6 +6,7 @@ import { gameEvents } from '../core/events.js';
 import { standingKubbs } from '../core/match.js';
 import type { MatchSide, MatchState } from '../core/match.js';
 import { debugContext } from '../debug/debugContext.js';
+import { isServerModeOn } from '../serverMode.js';
 import { settingsState } from '../settingsState.js';
 import { StatsSystem } from './stats.js';
 import { gateLog } from '../debug/gateLog.js';
@@ -38,6 +39,7 @@ export class GateProbeSystem extends createSystem({
   private lastState: MatchState | null = null;
   private sticksThisRound = 0;
   private roundsPlayedSeen = 0;
+  private viaServer = false;
   private snapshotTimerS = 0;
 
   init(): void {
@@ -48,6 +50,7 @@ export class GateProbeSystem extends createSystem({
       );
     }
     this.statsSystem = statsSystem;
+    this.viaServer = isServerModeOn();
     this.roundsPlayedSeen = statsSystem.stats.lifetimeTotals.roundsPlayed;
     this.cleanupFuncs.push(
       gameEvents.on('Thrown', () => {
@@ -57,6 +60,24 @@ export class GateProbeSystem extends createSystem({
         this.sticksThisRound += 1;
       }),
       gameEvents.on('RoundEnded', (e) => {
+        if (this.viaServer) {
+          // The server records the round into the thrower's profile and
+          // sends the new numbers a moment later (`profile stats` below):
+          // reading the local copy now would lag one round behind.
+          if (debugContext.enabled) {
+            gateLog('round summary', {
+              mySide: this.mySide ?? 'solo',
+              matchTurn: this.lastState?.currentTurn ?? null,
+              byOpponent: e.byOpponent,
+              statsRecorded: null,
+              statsBy: 'server',
+              sticksThrown: e.sticksThrownThisRound,
+              kubbsFelled: e.result.kubbsFelled,
+              kingFelled: e.result.kingFelled,
+            });
+          }
+          return;
+        }
         // StatsSystem (registered earlier) has already folded this round.
         const after = this.statsSystem.stats.lifetimeTotals.roundsPlayed;
         if (debugContext.enabled) {
@@ -70,6 +91,17 @@ export class GateProbeSystem extends createSystem({
             sticksThrown: e.sticksThrownThisRound,
             kubbsFelled: e.result.kubbsFelled,
             kingFelled: e.result.kingFelled,
+          });
+        }
+        this.roundsPlayedSeen = after;
+      }),
+      gameEvents.on('ServerProfile', (p) => {
+        const after = p.stats.lifetimeTotals.roundsPlayed;
+        if (debugContext.enabled && after !== this.roundsPlayedSeen) {
+          gateLog('profile stats', {
+            mySide: this.mySide ?? 'solo',
+            roundsPlayedBefore: this.roundsPlayedSeen,
+            roundsPlayedAfter: after,
           });
         }
         this.roundsPlayedSeen = after;

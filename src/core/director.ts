@@ -13,7 +13,11 @@ import type { Vec3 } from './vec3.js';
  * thrower's shoulder (inkast → wide on the half being tossed at); a
  * throw → a follow cam at once; a felled piece → a short close-up; a
  * win → wide. Lesser cuts wait out a minimum shot length so the picture
- * never flickers between angles.
+ * never flickers between angles, and a shot that rests longer than the
+ * maximum cuts to another angle of the same kind — like a TV director
+ * who keeps the picture alive between throws. Every kind has a few
+ * angles (`variant`, picked in turn by a cut counter — deterministic,
+ * no randomness) and every resting angle is a slow eased camera move.
  */
 export type ShotKind =
   'tour' | 'overShoulder' | 'follow' | 'closeUp' | 'inkastWide' | 'wide';
@@ -25,6 +29,8 @@ export interface Shot {
   focus: Vec3 | null;
   pieceId: string | null;
   startedAtS: number;
+  /** Which angle of this kind (any integer; the pose wraps it). */
+  variant: number;
 }
 
 export interface DirectorState {
@@ -33,6 +39,8 @@ export interface DirectorState {
   pending: Shot | null;
   /** Whose turn it is (what to go back to after a close-up). */
   turn: { side: MatchSide; phase: MatchPhase } | null;
+  /** Cuts so far: the next shot's variant. */
+  cuts: number;
 }
 
 export type DirectorEvent =
@@ -46,10 +54,12 @@ export type DirectorEvent =
 export interface DirectorOptions {
   minShotS: number;
   closeUpS: number;
+  /** A resting shot older than this cuts to another angle. */
+  maxShotS: number;
 }
 
 /** Each tour shot is a slow move this long. */
-export const TOUR_SHOT_S = 8;
+export const TOUR_SHOT_S = 6;
 
 const shot = (
   kind: ShotKind,
@@ -61,12 +71,30 @@ const shot = (
   focus: null,
   pieceId: null,
   startedAtS,
+  variant: 0,
   ...fields,
 });
 
 export function initialDirector(): DirectorState {
-  return { shot: shot('tour', 0), pending: null, turn: null };
+  return { shot: shot('tour', 0), pending: null, turn: null, cuts: 0 };
 }
+
+/** Put `next` on air now, as the next angle in turn. */
+function goLive(state: DirectorState, next: Shot, nowS: number): DirectorState {
+  return {
+    ...state,
+    shot: { ...next, startedAtS: nowS, variant: state.cuts },
+    pending: null,
+    cuts: state.cuts + 1,
+  };
+}
+
+/** The shots that hold while play rests — these get re-angled. */
+const RESTING: ReadonlySet<ShotKind> = new Set([
+  'overShoulder',
+  'inkastWide',
+  'wide',
+]);
 
 /** The shot for the current turn — what play "rests" on. */
 function turnShot(state: DirectorState, nowS: number): Shot {
@@ -90,7 +118,7 @@ function cutWhenAllowed(
     state.shot.kind === 'tour' ||
     nowS - state.shot.startedAtS >= opts.minShotS
   ) {
-    return { ...state, shot: { ...next, startedAtS: nowS }, pending: null };
+    return goLive(state, next, nowS);
   }
   return { ...state, pending: next };
 }
@@ -105,7 +133,7 @@ export function directorEvent(
     case 'noMatch':
       return state.shot.kind === 'tour' && !state.turn
         ? state
-        : { shot: shot('tour', nowS), pending: null, turn: null };
+        : { ...goLive(state, shot('tour', nowS), nowS), turn: null };
     case 'turn': {
       const next: DirectorState = {
         ...state,
@@ -118,14 +146,14 @@ export function directorEvent(
     }
     case 'throw':
       // The key action: cut at once.
-      return {
-        ...state,
-        shot: shot('follow', nowS, {
+      return goLive(
+        state,
+        shot('follow', nowS, {
           side: state.turn?.side ?? null,
           pieceId: event.pieceId,
         }),
-        pending: null,
-      };
+        nowS,
+      );
     case 'landed':
       return state.shot.kind === 'follow'
         ? cutWhenAllowed(state, turnShot(state, nowS), nowS, opts)
@@ -134,21 +162,18 @@ export function directorEvent(
       if (state.shot.kind === 'closeUp') {
         return state; // one close-up for a cluster of falls
       }
-      return {
-        ...state,
-        shot: shot('closeUp', nowS, { focus: event.position }),
-        pending: null,
-      };
+      return goLive(
+        state,
+        shot('closeUp', nowS, { focus: event.position }),
+        nowS,
+      );
     case 'win':
-      return {
-        ...state,
-        shot: shot('wide', nowS, { side: event.side }),
-        pending: null,
-      };
+      return goLive(state, shot('wide', nowS, { side: event.side }), nowS);
   }
 }
 
-/** Every frame: a close-up ends, a waiting cut happens. */
+/** Every frame: a close-up ends, a waiting cut happens, a resting shot
+ * that has run long enough moves on to another angle. */
 export function directorTick(
   state: DirectorState,
   nowS: number,
@@ -156,18 +181,13 @@ export function directorTick(
 ): DirectorState {
   const age = nowS - state.shot.startedAtS;
   if (state.shot.kind === 'closeUp' && age >= opts.closeUpS) {
-    return {
-      ...state,
-      shot: { ...(state.pending ?? turnShot(state, nowS)), startedAtS: nowS },
-      pending: null,
-    };
+    return goLive(state, state.pending ?? turnShot(state, nowS), nowS);
   }
   if (state.pending && age >= opts.minShotS) {
-    return {
-      ...state,
-      shot: { ...state.pending, startedAtS: nowS },
-      pending: null,
-    };
+    return goLive(state, state.pending, nowS);
+  }
+  if (!state.pending && RESTING.has(state.shot.kind) && age >= opts.maxShotS) {
+    return goLive(state, state.shot, nowS);
   }
   return state;
 }
@@ -209,18 +229,46 @@ const lerp3 = (a: Vec3, b: Vec3, t: number): Vec3 => [
 /** Smooth start and stop for a camera move. */
 const easeInOut = (t: number): number => t * t * (3 - 2 * t);
 
-/** Where `shot`'s camera stands and looks at `nowS`. Over-the-shoulder
- * and wide shots are fixed per court; follow and close-up frame a live
- * point. Side B is the mirror of side A across the centre line. */
+const clamp = (v: number, lo: number, hi: number): number =>
+  Math.min(hi, Math.max(lo, v));
+
+/** A camera low enough to hit scenery stays in the clear corridor
+ * along the court: in front of the cliff and tree behind the far
+ * baseline, and in front of the bushes behind the near one unless it
+ * is above them (director.test.ts checks every pose against the scene). */
+const LOW_MIN_Z = -8.6;
+const ABOVE_BUSHES_M = 1.8;
+const lowZ = (z: number, y: number): number =>
+  clamp(z, LOW_MIN_Z, y > ABOVE_BUSHES_M ? 2.5 : 1.2);
+
+/** The angle `variant` picks out of `n`, for any integer. */
+const pick = (variant: number, n: number): number => ((variant % n) + n) % n;
+
+/** Where `shot`'s camera stands and looks at `nowS`. Resting shots are
+ * slow eased moves over `opts.maxShotS` (a close-up over its own
+ * length); follow shots frame a live point. Side B is the mirror of
+ * side A across the centre line. */
 export function shotCameraPose(
   current: Shot,
   halves: CourtHalves,
   nowS: number,
+  opts: DirectorOptions,
 ): CameraPose {
   const { nearBaselineZ: nearZ, farBaselineZ: farZ, centreZ } = halves;
   const ownZ = (side: MatchSide | null) => (side === 'guest' ? farZ : nearZ);
   const otherZ = (side: MatchSide | null) => (side === 'guest' ? nearZ : farZ);
+  // +1 points from the court towards this side's back (host: +z).
   const back = (side: MatchSide | null) => (side === 'guest' ? -1 : 1);
+  const age = Math.max(0, nowS - current.startedAtS);
+  const move = (from: CameraPose, to: CameraPose, lengthS: number) => {
+    const t = easeInOut(clamp(age / lengthS, 0, 1));
+    return {
+      position: lerp3(from.position, to.position, t),
+      target: lerp3(from.target, to.target, t),
+    };
+  };
+  const rest = (from: CameraPose, to: CameraPose) =>
+    move(from, to, opts.maxShotS);
   switch (current.kind) {
     case 'tour': {
       const index = Math.floor(nowS / TOUR_SHOT_S);
@@ -236,46 +284,145 @@ export function shotCameraPose(
     }
     case 'overShoulder': {
       const sd = current.side;
-      return {
-        position: [0.7 * back(sd), 1.9, ownZ(sd) + 1.2 * back(sd)],
-        target: [0, 0.3, otherZ(sd)],
-      };
+      const b = back(sd);
+      const own = ownZ(sd);
+      const down: Vec3 = [0, 0.3, otherZ(sd)];
+      switch (pick(current.variant, 4)) {
+        case 0: // push in over the right shoulder
+          return rest(
+            { position: [0.9 * b, 2, lowZ(own + 1.6 * b, 2)], target: down },
+            { position: [0.55 * b, 1.9, lowZ(own + 1 * b, 1.9)], target: down },
+          );
+        case 1: // slide in over the left shoulder
+          return rest(
+            {
+              position: [-1.1 * b, 1.6, lowZ(own + 1.2 * b, 1.6)],
+              target: down,
+            },
+            {
+              position: [-0.4 * b, 2.1, lowZ(own + 1.3 * b, 2.1)],
+              target: down,
+            },
+          );
+        case 2: {
+          // crane up behind the thrower
+          const mid: Vec3 = [0, 0.2, (centreZ + otherZ(sd)) / 2];
+          return rest(
+            { position: [0, 1.6, lowZ(own + 1.8 * b, 1.6)], target: mid },
+            { position: [0, 4.2, lowZ(own + 1.2 * b, 4.2)], target: mid },
+          );
+        }
+        default: {
+          // reverse angle: the thrower's face, from the court side
+          const face: Vec3 = [0, 1.2, own];
+          return rest(
+            { position: [1.8 * b, 1.1, own - 1.6 * b], target: face },
+            { position: [1.4 * b, 1.5, own - 1 * b], target: face },
+          );
+        }
+      }
     }
     case 'inkastWide': {
-      // The tosser throws at the OTHER half: look across it from above
-      // the near side line (inside the tree line).
+      // The tosser throws at the OTHER half: look across it.
       const halfZ = (otherZ(current.side) + centreZ) / 2;
-      return { position: [1.5, 4.2, halfZ + 2], target: [0, 0.2, halfZ] };
+      const half: Vec3 = [0, 0.2, halfZ];
+      if (pick(current.variant, 2) === 0) {
+        // slide across the half, high above the court
+        return rest(
+          { position: [1.6, 4.4, halfZ + 2], target: half },
+          { position: [-1.6, 4.4, halfZ + 2], target: half },
+        );
+      }
+      // crane up from behind the tosser
+      const b = back(current.side);
+      const own = ownZ(current.side);
+      return rest(
+        { position: [0, 2.2, lowZ(own + 1.2 * b, 2.2)], target: half },
+        { position: [0, 5, lowZ(own + 0.4 * b, 5)], target: half },
+      );
     }
     case 'closeUp': {
       const f = current.focus ?? [0, 0.1, centreZ];
-      // Stand on the court side of the piece, never out among the trees.
+      // Stay on the court side of the piece, never out among the trees,
+      // and above the low rocks by the corners.
       const dx = f[0] > 0.5 ? -1 : 1;
-      return {
-        position: [f[0] + dx, 0.7, f[2] + 0.9],
-        target: [f[0], 0.1, f[2]],
-      };
+      const target: Vec3 = [f[0], 0.1, f[2]];
+      if (pick(current.variant, 2) === 0) {
+        // dolly in from the near side
+        return move(
+          {
+            position: [f[0] + dx * 1.3, 1.15, lowZ(f[2] + 1.2, 1.15)],
+            target,
+          },
+          {
+            position: [f[0] + dx * 0.9, 0.95, lowZ(f[2] + 0.8, 0.95)],
+            target,
+          },
+          opts.closeUpS,
+        );
+      }
+      // drop down from above on the far side
+      return move(
+        { position: [f[0] + dx * 0.6, 1.4, lowZ(f[2] - 1.1, 1.4)], target },
+        { position: [f[0] + dx * 1, 0.95, lowZ(f[2] - 0.9, 0.95)], target },
+        opts.closeUpS,
+      );
     }
     case 'follow': {
       const f = current.focus ?? [0, 1, centreZ];
-      return {
-        position: [
-          -2.1,
-          Math.max(1.7, f[1] + 0.8),
-          Math.max(-9, Math.min(0.8, f[2] + 1.4 * back(current.side))),
-        ],
-        target: f,
-      };
+      const b = back(current.side);
+      switch (pick(current.variant, 3)) {
+        case 0: {
+          // tracking alongside the stick (out at the side line, so in
+          // front of the tree behind the near corner)
+          const y = Math.max(1.7, f[1] + 0.8);
+          const z = Math.min(0.8, lowZ(f[2] + 1.4 * b, y));
+          return { position: [-2.1, y, z], target: f };
+        }
+        case 1: {
+          // chase from behind, riding along with the stick
+          const y = Math.max(2.2, f[1] + 1.2);
+          return {
+            position: [0.4 * b, y, lowZ(f[2] + 3.2 * b, y)],
+            target: f,
+          };
+        }
+        default: // from behind the target kubbs, the stick flying in
+          return {
+            position: [
+              1 + 0.3 * f[0],
+              2.4,
+              lowZ(otherZ(current.side) - 0.6 * b, 2.4),
+            ],
+            target: f,
+          };
+      }
     }
     case 'wide': {
-      const z = current.side === 'guest' ? farZ - 3 : nearZ + 3;
+      const s = current.side === 'guest' ? -1 : 1;
+      const target: Vec3 = [
+        0,
+        0.2,
+        current.side ? (ownZ(current.side) + centreZ) / 2 : centreZ,
+      ];
+      if (pick(current.variant, 2) === 0) {
+        // high push in from the end
+        const z = current.side === 'guest' ? farZ - 3 : nearZ + 3;
+        return rest(
+          { position: [0, 7, z], target },
+          { position: [0, 5.8, z - 1.2 * s], target },
+        );
+      }
+      // high orbit round the court, above every tree top
+      const r = 5.5;
+      const angleRad = 0.5 - easeInOut(clamp(age / opts.maxShotS, 0, 1));
       return {
-        position: [0, 6.5, z],
-        target: [
-          0,
-          0.2,
-          current.side ? (ownZ(current.side) + centreZ) / 2 : centreZ,
+        position: [
+          Math.sin(angleRad) * r,
+          7.6,
+          centreZ + Math.cos(angleRad) * r * s,
         ],
+        target,
       };
     }
   }
