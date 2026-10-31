@@ -1,5 +1,6 @@
 {
   "walkAreaHalfWidthM": 5.5,
   "walkAreaMinZ": -10,
-  "walkAreaMaxZ": 3
+  "walkAreaMaxZ": 3,
+  "lineLeanAllowanceM": 0.5
 }

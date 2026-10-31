@@ -98,7 +98,8 @@ changes the port. For development, `npm run dev` does the same on the
 Vite dev server (port 8081) with hot reload.
 
 **Moving around:** the left thumbstick slides you across the garden
-(kept inside the trees), the right thumbstick snap-turns 45°. When you
+(kept inside the trees, and during a match never past your own
+throwing line), the right thumbstick snap-turns 45°. When you
 throw from the advantage line you are teleported onto it, and back to
 your baseline when your turn ends.
 

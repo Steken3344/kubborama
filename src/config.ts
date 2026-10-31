@@ -64,6 +64,8 @@ export const walkArea = {
   minZ: locomotionData.walkAreaMinZ,
   maxZ: locomotionData.walkAreaMaxZ,
 };
+/** How far past the throwing line the head may lean (core/walkArea.ts). */
+export const lineLeanAllowanceM = locomotionData.lineLeanAllowanceM;
 /** MP4 inkast tunables (docs/superpowers/specs/2026-09-26-field-kubbs-design.md). */
 export const inkast = inkastData;
 export const stickRack = stickRackData;

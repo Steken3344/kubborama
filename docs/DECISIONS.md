@@ -5319,3 +5319,18 @@ CHANGES, keeping thumbstick adjustments. IWSDK's parabolic teleport
 (right stick forward) comes with the locomotion system and stays.
 Verified in the emulator: the left stick slides the rig and stops at
 the walk-area edge, the right stick snap-turns 45°, console clean.
+
+## 2026-10-31 — No walking past the throwing line
+
+Erik after the locomotion playtest: "man skall inte kunna förflytta sig
+förbi baslinjen. Nu kunde jag gå över och ställa mig precis bredvid
+kubben." During a match WalkAreaSystem holds the player behind their
+own throwing line — the baseline, or the advantage line while throwing
+from it (`standingLineZ`, the same rule as the teleport). The check uses
+the HEAD's world z, so walking forward in the room is stopped as well as
+sliding, with `lineLeanAllowanceM` 0.5 m (`src/data/locomotion.json`)
+so a throw's forward lean never shoves the world. Outside a match (solo,
+or alone in the room) there is no line, since a seated guest's side is
+not known without a match state; a court switch clears the line until
+the next match state, so the old court's baseline can never push anyone.
+Verified by unit tests only (the clamp needs a two-player match).
