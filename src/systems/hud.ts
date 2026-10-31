@@ -134,10 +134,7 @@ export class HudSystem extends createSystem({}) {
   update(_delta: number, timeS: number): void {
     this.nowS = timeS;
     if (this.noticeUntilS !== null && timeS >= this.noticeUntilS) {
-      this.noticeUntilS = null;
-      this.hudPanel
-        .requireElementById('notice-row')
-        .setProperties({ display: 'none' });
+      this.hideNotice();
     }
   }
 
@@ -195,6 +192,9 @@ export class HudSystem extends createSystem({}) {
     const show = (id: string) =>
       this.hudPanel.requireElementById(id).setProperties({ display: 'flex' });
 
+    // A match has its own rows; the practice ones (felled, record, style
+    // — also in the Statistik tab) step aside so the fixed board fits.
+    this.showPracticeRows(false);
     // "Du är: Spelare A/B" — each player's own fixed identity for the
     // whole match (Erik, 2026-09-02: with only a turn label there was
     // no way to tell WHICH player you were).
@@ -234,15 +234,27 @@ export class HudSystem extends createSystem({}) {
       ? state.winner === mySide
         ? t('matchWon')
         : t('matchLost')
-      : (state.currentTurn === 'host'
-          ? t('matchPlayerATurn')
-          : t('matchPlayerBTurn')) +
-        (state.phase === 'inkast'
-          ? `, ${t('inkastRemaining', { n: state.inkastQueue.length })}`
-          : '');
+      : state.currentTurn === 'host'
+        ? t('matchPlayerATurn')
+        : t('matchPlayerBTurn');
     this.hudPanel
       .requireElementById('turn-value')
       .setProperties({ text: turnText });
+    // One message row at a time, so the board never needs a sixth row.
+    const inkast = !isFinished(state) && state.phase === 'inkast';
+    if (inkast) {
+      show('inkast-row');
+      this.hudPanel.requireElementById('inkast-value').setProperties({
+        text: t('inkastRemaining', { n: state.inkastQueue.length }),
+      });
+    } else {
+      this.hudPanel
+        .requireElementById('inkast-row')
+        .setProperties({ display: 'none' });
+    }
+    if (inkast || isFinished(state)) {
+      this.hideNotice();
+    }
     if (isFinished(state)) {
       show('end-reason-row');
       this.hudPanel.requireElementById('end-reason-value').setProperties({
@@ -261,9 +273,31 @@ export class HudSystem extends createSystem({}) {
   }
 
   private hidePeerRows(): void {
-    for (const id of ['role-row', 'match-row', 'turn-row', 'end-reason-row']) {
+    for (const id of [
+      'role-row',
+      'match-row',
+      'turn-row',
+      'inkast-row',
+      'end-reason-row',
+    ]) {
       this.hudPanel.requireElementById(id).setProperties({ display: 'none' });
     }
+    this.showPracticeRows(true);
+  }
+
+  private showPracticeRows(visible: boolean): void {
+    for (const id of ['felled-row', 'best-row', 'style-row']) {
+      this.hudPanel
+        .requireElementById(id)
+        .setProperties({ display: visible ? 'flex' : 'none' });
+    }
+  }
+
+  private hideNotice(): void {
+    this.noticeUntilS = null;
+    this.hudPanel
+      .requireElementById('notice-row')
+      .setProperties({ display: 'none' });
   }
 
   private updateBestFelled(): void {

@@ -100,7 +100,7 @@ describe('director — which shot', () => {
     expect(s.shot).toMatchObject({ kind: 'wide', side: 'guest' });
   });
 
-  it('a resting shot moves on to another angle of the same kind', () => {
+  it('a resting shot cuts away after maxShotS, back to a new angle after', () => {
     let s = step(
       initialDirector(),
       { type: 'turn', side: 'host', phase: 'throwing' },
@@ -110,9 +110,46 @@ describe('director — which shot', () => {
     s = directorTick(s, 4.9, opts);
     expect(s.shot).toBe(first);
     s = directorTick(s, 5.1, opts);
+    expect(s.shot.kind).toBe('overhead');
+    expect(s.shot.startedAtS).toBe(5.1);
+    s = directorTick(s, 10.2, opts);
     expect(s.shot).toMatchObject({ kind: 'overShoulder', side: 'host' });
     expect(s.shot.variant).not.toBe(first.variant);
-    expect(s.shot.startedAtS).toBe(5.1);
+  });
+
+  it('while play rests it rotates through four views', () => {
+    let s = step(
+      initialDirector(),
+      { type: 'turn', side: 'guest', phase: 'inkast' },
+      0,
+    );
+    const kinds = [s.shot.kind];
+    for (let t = 5.1; t < 25; t += 5.1) {
+      s = directorTick(s, t, opts);
+      kinds.push(s.shot.kind);
+    }
+    expect(kinds).toEqual([
+      'inkastWide',
+      'overhead',
+      'inkastWide',
+      'opponentEnd',
+      'inkastWide',
+    ]);
+    expect(s.shot.side).toBe('guest');
+  });
+
+  it('a new turn starts the rotation over on its own angle', () => {
+    let s = step(
+      initialDirector(),
+      { type: 'turn', side: 'host', phase: 'throwing' },
+      0,
+    );
+    s = directorTick(s, 5.1, opts);
+    expect(s.shot.kind).toBe('overhead');
+    s = step(s, { type: 'turn', side: 'guest', phase: 'throwing' }, 9);
+    expect(s.shot).toMatchObject({ kind: 'overShoulder', side: 'guest' });
+    s = directorTick(s, 14.1, opts);
+    expect(s.shot.kind).toBe('overhead');
   });
 
   it('a follow cam is never re-angled mid-flight', () => {
@@ -152,6 +189,8 @@ describe('director — camera poses', () => {
         at({ kind: 'overShoulder', side, variant }),
         at({ kind: 'inkastWide', side, variant }),
         at({ kind: 'wide', side, variant }),
+        at({ kind: 'overhead', side, variant }),
+        at({ kind: 'opponentEnd', side, variant }),
       ]),
     ),
     // Close-ups and follows anywhere a piece can be on the court.
@@ -186,7 +225,13 @@ describe('director — camera poses', () => {
     });
 
     it(`resting shots are camera moves, not stills (${preset.lengthM} m court)`, () => {
-      for (const kind of ['overShoulder', 'inkastWide', 'wide'] as const) {
+      for (const kind of [
+        'overShoulder',
+        'inkastWide',
+        'wide',
+        'overhead',
+        'opponentEnd',
+      ] as const) {
         for (const variant of [0, 1, 2, 3]) {
           const shot = at({ kind, side: 'host', variant });
           const a = shotCameraPose(shot, halves, 0, opts).position;
@@ -256,6 +301,8 @@ describe('director — camera never inside a player', () => {
           ),
           ...[0, 1].map((variant) => at({ kind: 'inkastWide', side, variant })),
           ...[0, 1].map((variant) => at({ kind: 'wide', side, variant })),
+          at({ kind: 'overhead', side }),
+          at({ kind: 'opponentEnd', side }),
           // Close-ups on kubbs at the thrower's own baseline.
           ...[-2, -1.3, 0, 1.3, 2].flatMap((x) =>
             [0, 1].map((variant) =>
@@ -334,6 +381,8 @@ describe('director — camera never inside the scenery', () => {
         at({ kind: 'overShoulder', side, variant }),
         at({ kind: 'inkastWide', side, variant }),
         at({ kind: 'wide', side, variant }),
+        at({ kind: 'overhead', side, variant }),
+        at({ kind: 'opponentEnd', side, variant }),
       ]),
     ),
     // Close-ups and follows anywhere a piece can be on the court, and

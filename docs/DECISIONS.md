@@ -5549,3 +5549,22 @@ the TV's high orbit 7.6 → 8.6 m and 5.5 → 4.5 m out (far-end tree tops
 filled a third of the frame), and the bot spreads its legal inkast
 tosses over the half (aimed at one spot they landed on each other: 96
 "inkast hit" re-raises in 162 tosses).
+
+TV views and the HUD board (same day). Erik: "kameravyerna när man är i
+spel är lite få … 4 vyer: de 2 som finns, en ovanifrån så man ser båda
+och en på motståndarens sida". His TV showed ~60 inkast cuts that only
+alternated the inkast shot's two angles. Now, while play rests, the
+director rotates through four views — the turn's own angle, `overhead`
+(high above the near end, tilted ~30° down the court so both halves sit
+upright in frame; straight down left the court diagonal), the turn's
+angle again (next variant), `opponentEnd` (behind the far baseline above
+the heads, looking back at the thrower); a new turn restarts the
+rotation; throws and falls still cut to follow cams and close-ups. Erik
+also saw the HUD text grow past its wooden board once match rows
+appeared: the panel is now a fixed 220 × 152 (five rows) and the frame
+is cut to the same 2.86 × 1.98 m; a match hides the practice rows
+(felled, record, style — still in the Statistik tab) and shows round,
+"Du är", score, turn plus ONE message row at a time (inkast left, how it
+ended, a foot fault). The inkast count moved off the turn row — appended
+there it wrapped onto two lines. The board stays hidden in the TV view
+(it covered the shoulder shot; the TV scoreboard replaces it).

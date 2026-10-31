@@ -1,5 +1,12 @@
 <!--
-  Always-visible scoreboard: current round number, last round's
+  Always-visible scoreboard on a fixed 220 × 152 board (5 rows; the
+  wooden frame in src/scene-assets/hud-frame.scene-asset.ts is cut to
+  the same size — the panel must never grow past it). Practice shows
+  round, felled, record and style; a match swaps the last three for
+  "Du är", the score and the turn, plus ONE message row at a time
+  (inkast left / how it ended / a foot fault) — see src/systems/hud.ts.
+
+  Originally: current round number, last round's
   result, the personal-best "most felled in one round", and the most
   recent throw's classified style (underhand/overhand/helicopter,
   informational only per docs/PLAN.md). Driven by src/systems/hud.ts,
@@ -30,8 +37,10 @@
 
   .panel-root {
     flex-direction: column;
+    justify-content: center;
     font-family: "DM Sans";
     width: 220px;
+    height: 152px;
     background-color: rgba(20, 20, 20, 0.55);
     border-radius: 12px;
     padding: 14px;
@@ -65,15 +74,15 @@
     <span id="round-label" class="label">Runda</span>
     <span id="round-number" class="value">1</span>
   </div>
-  <div class="row">
+  <div id="felled-row" class="row">
     <span id="felled-label" class="label">Fallna</span>
     <span id="last-round-felled" class="value">-</span>
   </div>
-  <div class="row">
+  <div id="best-row" class="row">
     <span id="best-label" class="label">Rekord</span>
     <span id="best-felled" class="value">0</span>
   </div>
-  <div class="row">
+  <div id="style-row" class="row">
     <span id="style-label" class="label">Stil</span>
     <span id="throw-style" class="value">-</span>
   </div>
@@ -92,6 +101,12 @@
   <div id="turn-row" class="row" style="display: none">
     <span id="turn-label" class="label">Tur</span>
     <span id="turn-value" class="value">-</span>
+  </div>
+  <!-- Kubbs left to toss in, on its own row: appended to the turn it
+       wrapped onto two lines and pushed the panel off its board. -->
+  <div id="inkast-row" class="row" style="display: none">
+    <span id="inkast-label" class="label"></span>
+    <span id="inkast-value" class="value">-</span>
   </div>
   <!-- Label deliberately empty: the value ("Kungen fälld") is the whole
        message, right-aligned under the verdict like the other values. -->

@@ -20,7 +20,16 @@ import type { Vec3 } from './vec3.js';
  * no randomness) and every resting angle is a slow eased camera move.
  */
 export type ShotKind =
-  'tour' | 'overShoulder' | 'follow' | 'closeUp' | 'inkastWide' | 'wide';
+  | 'tour'
+  | 'overShoulder'
+  | 'follow'
+  | 'closeUp'
+  | 'inkastWide'
+  | 'wide'
+  /** High above the centre line: both halves at once. */
+  | 'overhead'
+  /** From behind the far end, looking back at the thrower. */
+  | 'opponentEnd';
 
 export interface Shot {
   kind: ShotKind;
@@ -41,6 +50,9 @@ export interface DirectorState {
   turn: { side: MatchSide; phase: MatchPhase } | null;
   /** Cuts so far: the next shot's variant. */
   cuts: number;
+  /** Re-angles of a resting shot in this turn: they rotate through the
+   * turn's own angle, overhead, the turn's angle, the opponent's end. */
+  rests: number;
 }
 
 export type DirectorEvent =
@@ -76,7 +88,13 @@ const shot = (
 });
 
 export function initialDirector(): DirectorState {
-  return { shot: shot('tour', 0), pending: null, turn: null, cuts: 0 };
+  return {
+    shot: shot('tour', 0),
+    pending: null,
+    turn: null,
+    cuts: 0,
+    rests: 0,
+  };
 }
 
 /** Put `next` on air now, as the next angle in turn. */
@@ -94,6 +112,8 @@ const RESTING: ReadonlySet<ShotKind> = new Set([
   'overShoulder',
   'inkastWide',
   'wide',
+  'overhead',
+  'opponentEnd',
 ]);
 
 /** The shot for the current turn — what play "rests" on. */
@@ -133,11 +153,16 @@ export function directorEvent(
     case 'noMatch':
       return state.shot.kind === 'tour' && !state.turn
         ? state
-        : { ...goLive(state, shot('tour', nowS), nowS), turn: null };
+        : {
+            ...goLive(state, shot('tour', nowS), nowS),
+            turn: null,
+            rests: 0,
+          };
     case 'turn': {
       const next: DirectorState = {
         ...state,
         turn: { side: event.side, phase: event.phase },
+        rests: 0,
       };
       if (state.shot.kind === 'follow' || state.shot.kind === 'closeUp') {
         return { ...next, pending: turnShot(next, nowS) };
@@ -187,7 +212,20 @@ export function directorTick(
     return goLive(state, state.pending, nowS);
   }
   if (!state.pending && RESTING.has(state.shot.kind) && age >= opts.maxShotS) {
-    return goLive(state, state.shot, nowS);
+    if (state.shot.kind === 'wide' || !state.turn) {
+      return goLive(state, state.shot, nowS);
+    }
+    // Four views while play rests (Erik, 2026-10-31: the inkast showed
+    // only its two angles for minutes): the turn's own angle, overhead,
+    // the turn's angle again (its next variant), the opponent's end.
+    const rests = state.rests + 1;
+    const next =
+      rests % 2 === 0
+        ? turnShot(state, nowS)
+        : shot(rests % 4 === 1 ? 'overhead' : 'opponentEnd', nowS, {
+            side: state.turn.side,
+          });
+    return { ...goLive(state, next, nowS), rests };
   }
   return state;
 }
@@ -411,6 +449,28 @@ export function shotCameraPose(
             target: f,
           };
       }
+    }
+    case 'overhead': {
+      // High above the near end, tilted down the court (~30° from
+      // straight down — straight down left the court diagonal in the
+      // frame and the kubbs specks): both halves at once, drifting.
+      const centre: Vec3 = [0, 0, centreZ];
+      return rest(
+        { position: [0.8, 8.5, centreZ + 4.5], target: centre },
+        { position: [-0.8, 8, centreZ + 3.8], target: centre },
+      );
+    }
+    case 'opponentEnd': {
+      // Behind the far baseline (the end the thrower aims at), above the
+      // heads, looking back at the thrower.
+      const sd = current.side;
+      const b = back(sd);
+      const thrower: Vec3 = [0, 1, ownZ(sd)];
+      const z = lowZ(otherZ(sd) - 1 * b, 2.8);
+      return rest(
+        { position: [1.6 * b, 2.8, z], target: thrower },
+        { position: [0.5 * b, 3.2, z], target: thrower },
+      );
     }
     case 'wide': {
       const s = current.side === 'guest' ? -1 : 1;
