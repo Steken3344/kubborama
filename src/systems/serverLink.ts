@@ -401,8 +401,13 @@ export class ServerLinkSystem extends createSystem({}) {
       last = new Float64Array(7).fill(NaN);
       this.lastApplied.set(id, last);
     }
+    // While an own throw is predicted locally, every piece is rewritten
+    // every frame: the predicted stick then meets kubbs held at their
+    // server pose instead of tipping them locally, only for the server
+    // to stand them up again (review, 2026-10-31).
     if (
       !this.freshSnapshot &&
+      this.handovers.size === 0 &&
       last[0] === position[0] &&
       last[1] === position[1] &&
       last[2] === position[2] &&
@@ -480,6 +485,9 @@ export class ServerLinkSystem extends createSystem({}) {
       pieceId,
       startHandover(this.buffer.latestPosition(pieceId) ?? position),
     );
+    // Its next server pose must be written even if it equals the last
+    // one (a refused throw returns to the rack pose it left).
+    this.lastApplied.delete(pieceId);
     this.send({
       type: 'throw',
       pieceId,

@@ -1178,7 +1178,11 @@ export class MultiplayerSystem extends createSystem({}) {
    * actually present, so solo play never shows match/turn UI). */
   private setMatchState(state: MatchState): void {
     this.matchState = state;
-    if (this.hasMultiplayerPeer()) {
+    // Only once roles are resolved: before that isHostNow() is false on
+    // the real host too, and a wrong `mySide` would misplace the player
+    // (AdvantageLine teleport, WalkArea line — review, 2026-10-31).
+    // announceMatchStartIfHost re-emits as soon as they resolve.
+    if (this.hasMultiplayerPeer() && this.rolesResolved()) {
       gameEvents.emit('MatchStateChanged', {
         state,
         mySide: this.isHostNow() ? 'host' : 'guest',

@@ -55,6 +55,9 @@ export function noteServerPose(
 export type HandoverStep =
   { kind: 'local' } | { kind: 'blend'; t: number } | { kind: 'done' };
 
+const LOCAL: HandoverStep = { kind: 'local' };
+const DONE: HandoverStep = { kind: 'done' };
+
 /** Once per frame: what to show for the piece now. */
 export function advanceHandover(
   h: Handover,
@@ -65,12 +68,12 @@ export function advanceHandover(
   h.elapsedS += dtS;
   if (h.blendElapsedS === null) {
     if (h.movedAtTick === null || renderTick < h.movedAtTick) {
-      return h.elapsedS > opts.timeoutS ? { kind: 'done' } : { kind: 'local' };
+      return h.elapsedS > opts.timeoutS ? DONE : LOCAL;
     }
     h.blendElapsedS = 0;
     return { kind: 'blend', t: 0 };
   }
   h.blendElapsedS += dtS;
   const t = h.blendElapsedS / opts.blendS;
-  return t >= 1 ? { kind: 'done' } : { kind: 'blend', t };
+  return t >= 1 ? DONE : { kind: 'blend', t };
 }

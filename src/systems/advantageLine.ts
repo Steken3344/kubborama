@@ -54,6 +54,11 @@ export class AdvantageLineSystem extends createSystem({}) {
         this.show(z, e.state.currentTurn);
         this.stand(e.state, e.mySide);
       }),
+      // A court switch re-places the rig at the new baseline
+      // (ServerLinkSystem): any line from the old court is gone.
+      gameEvents.on('GameModeChanged', () => {
+        this.onLineZ = null;
+      }),
       gameEvents.on('MultiplayerPeerDisconnected', () => {
         // The room emptied: whoever owns the seat places the rig now.
         this.show(null, null);

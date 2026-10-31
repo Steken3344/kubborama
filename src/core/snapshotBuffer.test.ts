@@ -115,8 +115,9 @@ describe('InterpolationClock', () => {
   it('drifts smoothly toward the target, snaps after a big gap', () => {
     const clock = new InterpolationClock();
     clock.advance(0, 30, 60, 6); // 24
-    const t = clock.advance(0, 32, 60, 6); // target 26, error 2
-    expect(t).toBeGreaterThan(24);
+    // 1/60 s later: advanced 25, target 26 — corrected part of the way.
+    const t = clock.advance(1 / 60, 32, 60, 6);
+    expect(t).toBeGreaterThan(25);
     expect(t).toBeLessThan(26);
     expect(clock.advance(0, 300, 60, 6)).toBe(294);
   });

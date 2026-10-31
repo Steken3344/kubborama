@@ -131,8 +131,9 @@ function copy(
 
 /** Gaps (ticks) beyond this snap the clock instead of drifting. */
 const MAX_DRIFT_TICKS = 30;
-/** Fraction of the remaining error corrected per frame. */
-const DRIFT_GAIN = 0.05;
+/** Drift correction rate (1/s): the remaining error decays as
+ * exp(−rate·t), the same at 72 and 90 fps (≈ 5 % per frame at 60). */
+const DRIFT_RATE_PER_S = 3;
 
 /**
  * The render time, in server ticks: advances with the local frame clock
@@ -155,7 +156,8 @@ export class InterpolationClock {
       return target;
     }
     const advanced = this.tick + dtS * tickHz;
-    this.tick = advanced + (target - advanced) * DRIFT_GAIN;
+    const gain = 1 - Math.exp(-DRIFT_RATE_PER_S * dtS);
+    this.tick = advanced + (target - advanced) * gain;
     return this.tick;
   }
 
