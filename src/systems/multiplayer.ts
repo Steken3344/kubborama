@@ -317,6 +317,13 @@ export class MultiplayerSystem extends createSystem({}) {
       this.stickNearRackHomePoses.set(`stick-${i}`, localPoseOf(object3D));
     }
 
+    if (this.viaServer) {
+      // One address (2026-10-31): the game server introduces the
+      // headsets — pieces, match, avatars (ServerLinkSystem) and voice
+      // (VoiceLinkSystem) — so no Trystero room at all.
+      log('info', 'net', 'multiplayer via the game server', {});
+      return;
+    }
     const roomId = this.roomId();
     this.room = joinRoom({ appId: multiplayer.appId }, roomId);
     this.presenceAction = this.room.makeAction<PresenceMessage>('presence');

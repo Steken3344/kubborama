@@ -11,7 +11,11 @@ import {
   SERVER_PATH,
   SERVER_PROTOCOL_VERSION,
 } from '../core/serverProtocol.js';
-import type { ClientMessage, ServerMessage } from '../core/serverProtocol.js';
+import type {
+  ClientMessage,
+  ServerMessage,
+  VoiceSignal,
+} from '../core/serverProtocol.js';
 import type { MatchSide } from '../core/match.js';
 import type { Quat } from '../core/quat.js';
 import type { Vec3 } from '../core/vec3.js';
@@ -156,6 +160,7 @@ export class ServerLinkSystem extends createSystem({}) {
       this.settingsSystem.releaseMatchGameMode();
       this.leaveMatch();
       this.dropPeerAvatar();
+      gameEvents.emit('ServerPeers', { count: 0, mySide: null });
       if (!this.stopped) {
         setTimeout(() => this.connect(), RECONNECT_DELAY_MS);
       }
@@ -194,6 +199,13 @@ export class ServerLinkSystem extends createSystem({}) {
         if (message.count < 2) {
           this.dropPeerAvatar();
         }
+        gameEvents.emit('ServerPeers', {
+          count: message.count,
+          mySide: this.side,
+        });
+        return;
+      case 'signal':
+        gameEvents.emit('VoiceSignal', { data: message.data });
         return;
       case 'presence':
         this.peerAvatarId = `server-${message.side}`;
@@ -260,6 +272,11 @@ export class ServerLinkSystem extends createSystem({}) {
       gameEvents.emit('PeerLeft', { peerId: this.peerAvatarId });
       this.peerAvatarId = null;
     }
+  }
+
+  /** VoiceLinkSystem's WebRTC signaling, via the server. */
+  sendSignal(data: VoiceSignal): void {
+    this.send({ type: 'signal', data });
   }
 
   /** MultiplayerSystem's 20 Hz head + hands, routed through the server. */

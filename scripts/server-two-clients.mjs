@@ -144,6 +144,11 @@ const serverGate = entries
   .filter((e) => e.role === 'server')
   .map((e) => `${e.message} ${JSON.stringify(e.data)}`);
 const stickAccepted = phases.includes('guest/throwing');
+const voiceConnectedBy = new Set(
+  entries
+    .filter((e) => e.message === 'peer voice connected')
+    .map((e) => e.client),
+);
 const avatarsSeenBy = new Set(
   entries
     .filter((e) => e.message === 'peer avatar created')
@@ -164,11 +169,14 @@ const ok =
     ? phases.includes('guest/throwing')
     : serverGate.some((l) => l.startsWith('inkast landed'))) &&
   stickAccepted &&
-  avatarsSeenBy.size === 2;
+  avatarsSeenBy.size === 2 &&
+  voiceConnectedBy.size === 2;
 console.log(
   JSON.stringify(
     {
       ok,
+      voiceConnectedBy: voiceConnectedBy.size,
+      avatarsSeenBy: avatarsSeenBy.size,
       welcomes,
       commonTicks: common.length,
       identical,

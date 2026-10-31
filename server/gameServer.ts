@@ -50,6 +50,7 @@ interface Seat {
   leftAtMs: number | null;
   recentThrowsMs: number[];
   lastPresenceMs: number;
+  recentSignalsMs: number[];
 }
 
 const SIDES: readonly MatchSide[] = ['host', 'guest'];
@@ -174,6 +175,26 @@ export class GameServer {
       }
       return true;
     }
+    if (message.type === 'signal') {
+      // Voice signaling: relay to the other seat only, capped (an ICE
+      // burst is tens of messages, not thousands).
+      const now = this.nowMs();
+      seat.recentSignalsMs = seat.recentSignalsMs.filter((t) => now - t < 1000);
+      if (seat.recentSignalsMs.length >= 60) {
+        return false;
+      }
+      seat.recentSignalsMs.push(now);
+      for (const other of this.seats) {
+        if (other !== seat) {
+          other.connection?.send({
+            type: 'signal',
+            side: seat.side,
+            data: message.data,
+          });
+        }
+      }
+      return true;
+    }
     if (message.type === 'reset') {
       this.log('info', 'gate', 'reset pressed', { side: seat.side });
       this.host.reset();
@@ -223,6 +244,7 @@ export class GameServer {
         leftAtMs: null,
         recentThrowsMs: [],
         lastPresenceMs: -Infinity,
+        recentSignalsMs: [],
       };
       this.seats.push(seat);
     }

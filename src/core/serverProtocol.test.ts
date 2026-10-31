@@ -124,3 +124,34 @@ describe('serverProtocol v2 (MP6)', () => {
     });
   });
 });
+
+describe('serverProtocol — voice signaling', () => {
+  it('accepts offer/answer/ice and rejects oversize or unknown kinds', () => {
+    expect(
+      parseClientMessage({
+        type: 'signal',
+        data: { kind: 'offer', sdp: 'v=0' },
+      })?.type,
+    ).toBe('signal');
+    expect(
+      parseClientMessage({
+        type: 'signal',
+        data: {
+          kind: 'ice',
+          candidate: 'candidate:1',
+          sdpMid: '0',
+          sdpMLineIndex: 0,
+        },
+      })?.type,
+    ).toBe('signal');
+    expect(
+      parseClientMessage({
+        type: 'signal',
+        data: { kind: 'offer', sdp: 'x'.repeat(20_001) },
+      }),
+    ).toBeNull();
+    expect(
+      parseClientMessage({ type: 'signal', data: { kind: 'hello' } }),
+    ).toBeNull();
+  });
+});

@@ -32,6 +32,7 @@ import { ToppleSystem } from './systems/topple.js';
 import { TriggerGrabSystem } from './systems/triggerGrab.js';
 import { TuningLabSystem } from './systems/tuningLab.js';
 import { WindIndicatorSystem } from './systems/windIndicator.js';
+import { VoiceLinkSystem } from './systems/voiceLink.js';
 import { WindSystem } from './systems/wind.js';
 
 // NOT `await` at module top level — that breaks the production build
@@ -139,6 +140,8 @@ void loadServerConfig()
     world.registerSystem(MultiplayerSystem);
     // MP5: link to the authoritative game server (only with ?server=1).
     world.registerSystem(ServerLinkSystem);
+    // Voice through the game server's signaling (server mode only).
+    world.registerSystem(VoiceLinkSystem);
     // MP3a: physical side of a multiplayer match (sin-bin per side, king
     // unprotected, auto-restart). Event-driven only — order irrelevant.
     world.registerSystem(MatchRulesSystem);

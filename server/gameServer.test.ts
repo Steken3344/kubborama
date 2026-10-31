@@ -201,3 +201,38 @@ describe('GameServer — presence relay (MP7)', () => {
     expect(toA).toHaveLength(0);
   });
 });
+
+describe('GameServer — voice signaling relay', () => {
+  it('relays a signal to the other seat only, and caps a flood', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const ha = server.connect(a.connection);
+    const hb = server.connect(b.connection);
+    await ha.receive(join());
+    await hb.receive(join());
+    await ha.receive({ type: 'signal', data: { kind: 'offer', sdp: 'v=0' } });
+    expect(b.received).toContainEqual({
+      type: 'signal',
+      side: 'host',
+      data: { kind: 'offer', sdp: 'v=0' },
+    });
+    expect(a.received.some((m) => m.type === 'signal')).toBe(false);
+    let accepted = 0;
+    for (let i = 0; i < 100; i++) {
+      if (
+        await hb.receive({
+          type: 'signal',
+          data: {
+            kind: 'ice',
+            candidate: `c${i}`,
+            sdpMid: '0',
+            sdpMLineIndex: 0,
+          },
+        })
+      )
+        accepted += 1;
+    }
+    expect(accepted).toBe(60);
+  });
+});

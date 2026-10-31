@@ -1,5 +1,6 @@
 import type { Language } from './i18n.js';
 import type { MatchEffect, MatchSide, MatchState } from './match.js';
+import type { VoiceSignal } from './serverProtocol.js';
 import type { PresenceMessage } from './presence.js';
 import type { RoundResult } from './scoring.js';
 import type { Settings } from './settings.js';
@@ -164,6 +165,16 @@ export interface GameEvents {
    * ServerLinkSystem forwards it; the server resets and every client
    * follows its snapshots. */
   ServerResetRequested: Record<string, never>;
+  /** How many players the game server has seated, and our side
+   * (ServerLinkSystem) — VoiceLinkSystem starts or ends the call on it. */
+  ServerPeers: {
+    count: number;
+    mySide: MatchSide | null;
+  };
+  /** Voice signaling from the other player, via the game server. */
+  VoiceSignal: {
+    data: VoiceSignal;
+  };
   /** MP3b: a validated presence message from a peer, forwarded by
    * MultiplayerSystem (which owns the network) so PeerAvatarSystem
    * (which owns the avatars) never touches Trystero — and HudSystem can

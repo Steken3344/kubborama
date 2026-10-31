@@ -30,6 +30,20 @@ const quat = z.tuple([finite, finite, finite, finite]);
 // Scene ids are short (`stick-5`, `kubb-9`, `king`); a long one is garbage.
 const pieceId = z.string().min(1).max(32);
 const side = z.enum(['host', 'guest']);
+/** WebRTC voice signaling, relayed by the server between the two seats
+ * (the server "introduces" the headsets — no Trystero/Nostr). Bounded:
+ * an audio-only SDP is a few kB. */
+const voiceSignal = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('offer'), sdp: z.string().max(20_000) }),
+  z.object({ kind: z.literal('answer'), sdp: z.string().max(20_000) }),
+  z.object({
+    kind: z.literal('ice'),
+    candidate: z.string().max(2_000),
+    sdpMid: z.string().max(64).nullable(),
+    sdpMLineIndex: z.number().int().nonnegative().max(64).nullable(),
+  }),
+]);
+export type VoiceSignal = z.infer<typeof voiceSignal>;
 
 const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({
@@ -54,6 +68,7 @@ const clientMessageSchema = z.discriminatedUnion('type', [
     linearVelocity: linearVec,
     angularVelocity: angularVec,
   }),
+  z.object({ type: z.literal('signal'), data: voiceSignal }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
 
@@ -86,6 +101,8 @@ const serverMessageSchema = z.discriminatedUnion('type', [
     side,
     message: presenceMessageSchema,
   }),
+  /** The other player's voice signaling (offer / answer / ICE). */
+  z.object({ type: z.literal('signal'), side, data: voiceSignal }),
   /** The match (null = practice: fewer than two players). */
   z.object({ type: z.literal('match'), state: matchStateSchema.nullable() }),
   /** A finished round — the RoundEnded payload plus who threw it. */
