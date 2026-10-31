@@ -236,3 +236,69 @@ describe('GameServer — voice signaling relay', () => {
     expect(accepted).toBe(60);
   });
 });
+
+describe('GameServer — seat lifecycle (2026-10-31)', () => {
+  it('a second tab with the same clientId takes the seat over', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const tab1 = fakeClient();
+    const tab2 = fakeClient();
+    const h1 = server.connect(tab1.connection);
+    await h1.receive(join('simple', 'same-browser-1'));
+    const h2 = server.connect(tab2.connection);
+    await h2.receive(join('simple', 'same-browser-1'));
+    expect(tab1.closed).toBe(true);
+    expect(tab2.received).toContainEqual({
+      type: 'welcome',
+      protocol: SERVER_PROTOCOL_VERSION,
+      side: 'host',
+      gameMode: 'simple',
+    });
+    expect(await h1.receive({ type: 'reset' })).toBe(false); // the old tab no longer acts
+    expect(await h2.receive({ type: 'reset' })).toBe(true);
+  });
+
+  it('both players reload within the grace and keep their sides and the match', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const ha = server.connect(a.connection);
+    const hb = server.connect(b.connection);
+    await ha.receive(join('simple', 'reload-A-1'));
+    await hb.receive(join('simple', 'reload-B-1'));
+    ha.close();
+    hb.close();
+    clock.now += 5_000;
+    server.tick();
+    const a2 = fakeClient();
+    const b2 = fakeClient();
+    await server.connect(b2.connection).receive(join('simple', 'reload-B-1'));
+    await server.connect(a2.connection).receive(join('simple', 'reload-A-1'));
+    expect(a2.received.find((m) => m.type === 'welcome')).toMatchObject({
+      side: 'host',
+    });
+    expect(b2.received.find((m) => m.type === 'welcome')).toMatchObject({
+      side: 'guest',
+    });
+    // The rejoiners get the running match straight away.
+    expect(
+      b2.received.some((m) => m.type === 'match' && m.state !== null),
+    ).toBe(true);
+  });
+
+  it('drops the world once every seat has expired; the next join starts fresh', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const ha = server.connect(a.connection);
+    await ha.receive(join('advanced', 'lonely-A-1'));
+    ha.close();
+    clock.now += REJOIN_GRACE_MS + 1;
+    server.tick();
+    const b = fakeClient();
+    await server.connect(b.connection).receive(join('simple', 'fresh-B-1'));
+    // A fresh room: B is seat A and the court follows B's mode now.
+    expect(b.received.find((m) => m.type === 'welcome')).toMatchObject({
+      side: 'host',
+      gameMode: 'simple',
+    });
+  });
+});

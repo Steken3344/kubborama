@@ -493,13 +493,16 @@ export class MatchHost {
       longestFellingThrowM: this.longestFellingThrowM,
       roundDurationS: this.timeS - this.roundStartS,
     });
+    // A king still inside its grace is decided NOW, for the thrower who
+    // fell it and with this round's stick count — before the round state
+    // resets (test 2026-10-31: the 6th stick's king reported stick 0).
+    if (this.matchActive && this.kingFelledAtS !== null) {
+      this.applyKingDecision();
+    }
     this.startRound(nextRoundState(this.roundState));
     if (!this.matchActive) {
       this.placeEverythingHome();
       return;
-    }
-    if (this.kingFelledAtS !== null) {
-      this.applyKingDecision(); // decide for the thrower who fell it
     }
     this.setMatchState(withTurnAdvanced(this.matchState));
     this.placeSticksFor(this.matchState.currentTurn);

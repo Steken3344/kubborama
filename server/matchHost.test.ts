@@ -239,3 +239,173 @@ describe('MatchHost — match (two players)', () => {
     expect(h.throwStick('guest', 'stick-0')).toBe(true); // the sole player practises
   });
 });
+
+describe('MatchHost — stability scenarios (2026-10-31)', () => {
+  /** Host knocks the given guest kubbs flat, one stick each. */
+  function knock(
+    h: ReturnType<typeof host>,
+    side: 'host' | 'guest',
+    ids: string[],
+    firstStick = 0,
+  ) {
+    ids.forEach((id, i) => {
+      expect(h.throwStick(side, `stick-${firstStick + i}`)).toBe(true);
+      const home = h.world.homePose(id)?.position ?? [0, 0, 0];
+      h.world.land(id, [home[0], 0.035, home[2] - 0.1]);
+      h.world.land(`stick-${firstStick + i}`, [home[0], 0.022, home[2] + 0.3]);
+      h.run(0.7);
+    });
+  }
+
+  it('a full match: all five kubbs then the king with the 6th stick = win', () => {
+    const h = host();
+    h.mh.setPlayers(['host', 'guest']);
+    h.run(1.2);
+    knock(h, 'host', ['kubb-0', 'kubb-1', 'kubb-2', 'kubb-3', 'kubb-4']);
+    expect(h.last()?.baselineKubbs.guest).toEqual([]);
+    expect(h.throwStick('host', 'stick-5')).toBe(true);
+    h.world.land('king', [0, 0.045, -3.1]);
+    h.world.land('stick-5', [0, 0.022, -2.8]);
+    h.run(2.5);
+    expect(h.last()?.winner).toBe('host');
+    expect(h.last()?.endReason).toBe('allKubbsAndKing');
+    expect(
+      h.gates.find((g) => g.message === 'king decision')?.data[
+        'stickNumberInRound'
+      ],
+    ).toBe(6);
+  });
+
+  it('Ny runda during the inkast: a fresh match, an empty rack, sticks back at A', () => {
+    const h = host();
+    h.mh.setPlayers(['host', 'guest']);
+    h.run(1.2);
+    knock(h, 'host', ['kubb-0']);
+    for (let i = 1; i < 6; i++) {
+      h.throwStick('host', `stick-${i}`);
+      h.world.land(`stick-${i}`, [i * 0.3, 0.022, -3.5]);
+      h.run(0.6);
+    }
+    h.run(1);
+    expect(h.last()?.phase).toBe('inkast');
+    h.mh.reset();
+    const s = h.last();
+    expect(s?.phase).toBe('throwing');
+    expect(s?.currentTurn).toBe('host');
+    expect(s?.inkastQueue).toEqual([]);
+    expect(h.world.poses.get('kubb-0')?.position[2]).toBeCloseTo(-6);
+    expect(h.world.poses.get('stick-0')?.position[2]).toBeCloseTo(1.09);
+    expect(h.throwStick('host', 'stick-0')).toBe(true);
+  });
+
+  it('the second player joining mid-practice starts a fresh match, no round reported', () => {
+    const h = host();
+    h.mh.setPlayers(['host']);
+    h.run(1.2);
+    h.throwStick('host', 'stick-0');
+    h.world.land('stick-0', [0, 0.022, -3]);
+    h.run(0.7);
+    h.mh.setPlayers(['host', 'guest']);
+    expect(h.rounds).toHaveLength(0);
+    expect(h.last()?.currentTurn).toBe('host');
+    expect(h.world.poses.get('stick-0')?.position[2]).toBeCloseTo(1.09);
+    expect(h.throwStick('host', 'stick-0')).toBe(true);
+  });
+
+  it('an early baseline kubb is restored home and can be felled again later', () => {
+    const h = host();
+    h.mh.setPlayers(['host', 'guest']);
+    h.run(1.2);
+    knock(h, 'host', ['kubb-0']); // host fells a guest kubb
+    for (let i = 1; i < 6; i++) {
+      h.throwStick('host', `stick-${i}`);
+      h.world.land(`stick-${i}`, [i * 0.3, 0.022, -3.5]);
+      h.run(0.6);
+    }
+    h.run(1);
+    // Guest tosses it onto the host half → a field kubb there.
+    h.mh.onThrow('guest', {
+      pieceId: 'kubb-0',
+      position: [0, 1, -6.4],
+      quaternion: UP,
+      linearVelocity: [0, 3, 5],
+      angularVelocity: [0, 0, 0],
+    });
+    h.world.land('kubb-0', [0.5, 0.035, -2]);
+    h.run(0.8);
+    expect(h.last()?.phase).toBe('throwing');
+    // Guest knocks a host BASELINE kubb while the field kubb stands → restored.
+    knock(h, 'guest', ['kubb-7']);
+    expect(
+      h.gates.some(
+        (g) =>
+          g.message === 'kubb raised' && g.data['reason'] === 'earlyBaseline',
+      ),
+    ).toBe(true);
+    expect(h.world.poses.get('kubb-7')?.quaternion).toEqual(UP);
+    h.run(0.6); // re-armed once seen upright and resting
+    // Now the field kubb, then kubb-7 again — this time it counts.
+    knock(h, 'guest', ['kubb-0'], 1);
+    knock(h, 'guest', ['kubb-7'], 2);
+    expect(h.last()?.felledThisTurn).toEqual(['kubb-0', 'kubb-7']);
+  });
+
+  it('a stick that never comes to rest is force-settled so the round still ends', () => {
+    const h = host();
+    h.mh.setPlayers(['host']);
+    h.run(1.2);
+    for (let i = 0; i < 6; i++) {
+      h.throwStick('host', `stick-${i}`); // never landed: keeps "moving"
+    }
+    h.run(9);
+    expect(h.rounds).toHaveLength(1);
+  });
+
+  it('a tossed kubb that never comes to rest still lands (timed out)', () => {
+    const h = host();
+    h.mh.setPlayers(['host', 'guest']);
+    h.run(1.2);
+    knock(h, 'host', ['kubb-0']);
+    for (let i = 1; i < 6; i++) {
+      h.throwStick('host', `stick-${i}`);
+      h.world.land(`stick-${i}`, [i * 0.3, 0.022, -3.5]);
+      h.run(0.6);
+    }
+    h.run(1);
+    h.mh.onThrow('guest', {
+      pieceId: 'kubb-0',
+      position: [0, 1, -6.4],
+      quaternion: UP,
+      linearVelocity: [0, 3, 5],
+      angularVelocity: [0, 0, 0],
+    });
+    h.run(7); // > maxTossFlightS
+    const landed = h.gates.find((g) => g.message === 'inkast landed');
+    expect(landed?.data['timedOut']).toBe(true);
+  });
+
+  it('rejects a toss of a kubb that is not queued, and a toss by the wrong side', () => {
+    const h = host();
+    h.mh.setPlayers(['host', 'guest']);
+    h.run(1.2);
+    knock(h, 'host', ['kubb-0']);
+    for (let i = 1; i < 6; i++) {
+      h.throwStick('host', `stick-${i}`);
+      h.world.land(`stick-${i}`, [i * 0.3, 0.022, -3.5]);
+      h.run(0.6);
+    }
+    h.run(1);
+    const toss = (side: 'host' | 'guest', id: string) =>
+      h.mh.onThrow(side, {
+        pieceId: id,
+        position: [0, 1, -6.4],
+        quaternion: UP,
+        linearVelocity: [0, 3, 5],
+        angularVelocity: [0, 0, 0],
+      });
+    expect(toss('guest', 'kubb-3')).toBe(false); // not queued
+    expect(toss('host', 'kubb-0')).toBe(false); // not the thrower
+    expect(toss('guest', 'kubb-0')).toBe(true);
+    expect(toss('guest', 'kubb-0')).toBe(false); // already in the air
+  });
+});
