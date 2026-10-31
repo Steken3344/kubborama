@@ -27,19 +27,19 @@ most live in one new adapter, `systems/gateProbe.ts` (GateProbeSystem),
 which only subscribes to existing events — gameplay systems get at most
 a one-line log call.
 
-| Probe (message) | Where | Data |
-|---|---|---|
-| `mode adopted` | multiplayer.ts (exists as `[net] adopting the host's game mode`; re-tagged `gate`) | hostMode, ownMode |
-| `mode released` | settings.ts releaseMatchGameMode | restoredMode |
-| `mode button pressed` | menu.ts game-mode button | locked, gameMode |
-| `round summary` | GateProbeSystem on RoundEnded | mySide (or solo), matchTurn, byOpponent, statsRecorded, roundsPlayedBefore/After, sticksThrown, kubbsFelled, kingFelled |
-| `sin-bin after round` | GateProbeSystem on Reset{roundEnd}, after MatchRules ran | felledKubbIds per side (the client's own MatchState copy) |
-| `king decision` | GateProbeSystem on MatchStateChanged when winner goes null→set | winner, endReason, mySide, stickNumberInRound (1–6, counted from Thrown + ThrowRelayed since the last Reset) |
-| `match restart` | matchRules.ts auto-restart (exists as `[state] match auto-restart`; add data) | secondsSinceFinished, nextTurn |
-| `reset pressed` | menu.ts "Ny runda" button (the line's role says which headset) | — |
-| `match state` | GateProbeSystem on every MatchStateChanged | mySide, turn, winner, endReason, felled counts, fresh |
-| `avatar color` | settings change (sent) + peerAvatar.ts (received) + hud.ts (digit tinted) | colorIndex/color, side |
-| `avatar fit` | peerAvatar.ts, at most 1 Hz per peer | per arm: armEndToHandM; handSizeM; maxTorsoYawRateRadS and maxHeadPitchRad over the last second |
+| Probe (message)       | Where                                                                              | Data                                                                                                                    |
+| --------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `mode adopted`        | multiplayer.ts (exists as `[net] adopting the host's game mode`; re-tagged `gate`) | hostMode, ownMode                                                                                                       |
+| `mode released`       | settings.ts releaseMatchGameMode                                                   | restoredMode                                                                                                            |
+| `mode button pressed` | menu.ts game-mode button                                                           | locked, gameMode                                                                                                        |
+| `round summary`       | GateProbeSystem on RoundEnded                                                      | mySide (or solo), matchTurn, byOpponent, statsRecorded, roundsPlayedBefore/After, sticksThrown, kubbsFelled, kingFelled |
+| `sin-bin after round` | GateProbeSystem on Reset{roundEnd}, after MatchRules ran                           | felledKubbIds per side (the client's own MatchState copy)                                                               |
+| `king decision`       | GateProbeSystem on MatchStateChanged when winner goes null→set                     | winner, endReason, mySide, stickNumberInRound (1–6, counted from Thrown + ThrowRelayed since the last Reset)            |
+| `match restart`       | matchRules.ts auto-restart (exists as `[state] match auto-restart`; add data)      | secondsSinceFinished, nextTurn                                                                                          |
+| `reset pressed`       | menu.ts "Ny runda" button (the line's role says which headset)                     | —                                                                                                                       |
+| `match state`         | GateProbeSystem on every MatchStateChanged                                         | mySide, turn, winner, endReason, felled counts, fresh                                                                   |
+| `avatar color`        | settings change (sent) + peerAvatar.ts (received) + hud.ts (digit tinted)          | colorIndex/color, side                                                                                                  |
+| `avatar fit`          | peerAvatar.ts, at most 1 Hz per peer                                               | per arm: armEndToHandM; handSizeM; maxTorsoYawRateRadS and maxHeadPitchRad over the last second                         |
 
 `avatar fit` is computed by a pure `core/avatarFit.ts` (plain data in,
 numbers out, TDD) from the solver's existing `AvatarPose` + input +
@@ -65,26 +65,26 @@ Each item is **PASS**, **FAIL** (with the offending line) or **NOT
 SEEN** (never exercised), plus **EYES** items printed last as questions
 (English output, per the project's language rule):
 
-| Id | Check | Rule |
-|---|---|---|
-| gh15-adopt | guest plays on the host's court | a `mode adopted` line, or both clients' snapshots show the same gameMode throughout |
-| gh15-release | guest's own mode returns | `mode released` after the last peer left |
-| gh15-lock | mode button locked in a match | every `mode button pressed` during a match has locked=true |
-| gh16-host | opponent turn not in host stats | host `round summary` with byOpponent=true has statsRecorded=false and roundsPlayedAfter = roundsPlayedBefore |
-| gh16-guest | guest's own turn in guest stats | guest `round summary` with byOpponent=false has statsRecorded=true |
-| mp3a-sinbin | felled kubbs stay across rounds | per client, each `sin-bin after round` list is a superset of the previous one within the same match |
-| mp3a-score | score on both | sync check below finds no score disagreement |
-| mp3a-king-early | king early = loss | a `king decision` with endReason=kingFelledEarly whose winner is the non-thrower |
-| mp3a-king-win | king after all kubbs = win | a `king decision` with endReason=allKubbsAndKing whose winner is the thrower |
-| mp3a-king-6th | king decided by the 6th stick | a `king decision` with stickNumberInRound=6 |
-| mp3a-restart | auto-restart ~10 s, host starts | `match restart` with secondsSinceFinished in [9, 12] and nextTurn=host |
-| mp3a-reset-host / -guest | "Ny runda" from either headset | a `reset` requestedBy=host and one requestedBy=guest, each followed by a fresh match state on both |
-| mp3b-avatar | both see a body | `peer avatar created` on both clients |
-| mp3b-arms | arm ends at the mitten | every `avatar fit` armEndToHandM ≤ handSizeM / 2 |
-| mp3b-torso | no torso twitch on look-up | in `avatar fit` lines with maxHeadPitchRad ≥ 1.0, maxTorsoYawRateRadS ≤ 3.0 |
-| mp3b-color | color change reaches the other side + HUD | a `avatar color` sent on one client followed within 3 s by received + digit tinted on the other, and the sender's own digit tinted |
-| sync | host and guest agree | see below |
-| EYES | proportions look right; visor sits on the head; two-span score row lays out | asked, not checked |
+| Id                       | Check                                                                       | Rule                                                                                                                               |
+| ------------------------ | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| gh15-adopt               | guest plays on the host's court                                             | a `mode adopted` line, or both clients' snapshots show the same gameMode throughout                                                |
+| gh15-release             | guest's own mode returns                                                    | `mode released` after the last peer left                                                                                           |
+| gh15-lock                | mode button locked in a match                                               | every `mode button pressed` during a match has locked=true                                                                         |
+| gh16-host                | opponent turn not in host stats                                             | host `round summary` with byOpponent=true has statsRecorded=false and roundsPlayedAfter = roundsPlayedBefore                       |
+| gh16-guest               | guest's own turn in guest stats                                             | guest `round summary` with byOpponent=false has statsRecorded=true                                                                 |
+| mp3a-sinbin              | felled kubbs stay across rounds                                             | per client, each `sin-bin after round` list is a superset of the previous one within the same match                                |
+| mp3a-score               | score on both                                                               | sync check below finds no score disagreement                                                                                       |
+| mp3a-king-early          | king early = loss                                                           | a `king decision` with endReason=kingFelledEarly whose winner is the non-thrower                                                   |
+| mp3a-king-win            | king after all kubbs = win                                                  | a `king decision` with endReason=allKubbsAndKing whose winner is the thrower                                                       |
+| mp3a-king-6th            | king decided by the 6th stick                                               | a `king decision` with stickNumberInRound=6                                                                                        |
+| mp3a-restart             | auto-restart ~10 s, host starts                                             | `match restart` with secondsSinceFinished in [9, 12] and nextTurn=host                                                             |
+| mp3a-reset-host / -guest | "Ny runda" from either headset                                              | a `reset` requestedBy=host and one requestedBy=guest, each followed by a fresh match state on both                                 |
+| mp3b-avatar              | both see a body                                                             | `peer avatar created` on both clients                                                                                              |
+| mp3b-arms                | arm ends at the mitten                                                      | every `avatar fit` armEndToHandM ≤ handSizeM / 2                                                                                   |
+| mp3b-torso               | no torso twitch on look-up                                                  | in `avatar fit` lines with maxHeadPitchRad ≥ 1.0, maxTorsoYawRateRadS ≤ 3.0                                                        |
+| mp3b-color               | color change reaches the other side + HUD                                   | a `avatar color` sent on one client followed within 3 s by received + digit tinted on the other, and the sender's own digit tinted |
+| sync                     | host and guest agree                                                        | see below                                                                                                                          |
+| EYES                     | proportions look right; visor sits on the head; two-span score row lays out | asked, not checked                                                                                                                 |
 
 **Sync check.** Snapshots are paired host↔guest by nearest `receivedAt`
 (within 1.5 s). A field disagreeing in 3 or more consecutive pairs is

@@ -78,7 +78,7 @@ docs/DECISIONS.md):
 - **Protocol** (`src/core/serverProtocol.ts`, zod, shared): client →
   server `join { protocol, gameMode }`, `throw` (the throwRelay v2
   shape); server → client `welcome { protocol, side }`, `snapshot
-  { tick, pieces }` (the pieceSync piece shape), `peers { count }`.
+{ tick, pieces }` (the pieceSync piece shape), `peers { count }`.
 - **Client**: `ServerLinkSystem`, on when the URL has `?server=1`
   (remembered like `?room`); it applies snapshots to every networked
   piece not held locally and sends the local player's throws. While it

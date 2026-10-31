@@ -32,10 +32,12 @@
 ### Task 1: Pure avatar fit + head pitch
 
 **Files:**
+
 - Create: `src/core/avatarFit.ts`, `src/core/avatarFit.test.ts`
 - Modify: `src/core/quat.ts`, `src/core/quat.test.ts`
 
 **Interfaces:**
+
 - Produces: `pitchFromQuaternion(q: Quat): number` (rad, + = looking up); `armEndToHandM(shoulder: Vec3, arm: Segment, hand: Vec3): number`; `interface FitWindow`; `emptyFitWindow(): FitWindow`; `addFitSample(w: FitWindow, s: FitSample): void` (mutates); `FIT_WINDOW_MS = 1000`.
 
 - [ ] **Step 1: Failing tests**
@@ -65,8 +67,14 @@ import { solveAvatarPose } from './avatarPose.js';
 import type { AvatarDims } from './avatarPose.js';
 
 const dims: AvatarDims = {
-  neckM: 0.2, torsoHeightM: 0.5, torsoWidthM: 0.35, torsoDepthM: 0.2,
-  shoulderWidthM: 0.4, armRadiusM: 0.03, headRadiusM: 0.1, handSizeM: 0.1,
+  neckM: 0.2,
+  torsoHeightM: 0.5,
+  torsoWidthM: 0.35,
+  torsoDepthM: 0.2,
+  shoulderWidthM: 0.4,
+  armRadiusM: 0.03,
+  headRadiusM: 0.1,
+  handSizeM: 0.1,
   yawSmoothingS: 0.2,
 };
 const id = [0, 0, 0, 1] as const;
@@ -91,8 +99,20 @@ describe('armEndToHandM', () => {
 describe('addFitSample', () => {
   it('tracks maxima and the torso yaw rate (wrapping at ±π)', () => {
     const w = emptyFitWindow();
-    addFitSample(w, { atMs: 0, torsoYawRad: 3.1, headPitchRad: 0.2, leftArmEndToHandM: 0.05, rightArmEndToHandM: 0.04 });
-    addFitSample(w, { atMs: 100, torsoYawRad: -3.1, headPitchRad: 1.1, leftArmEndToHandM: 0.03, rightArmEndToHandM: 0.06 });
+    addFitSample(w, {
+      atMs: 0,
+      torsoYawRad: 3.1,
+      headPitchRad: 0.2,
+      leftArmEndToHandM: 0.05,
+      rightArmEndToHandM: 0.04,
+    });
+    addFitSample(w, {
+      atMs: 100,
+      torsoYawRad: -3.1,
+      headPitchRad: 1.1,
+      leftArmEndToHandM: 0.03,
+      rightArmEndToHandM: 0.06,
+    });
     expect(w.startMs).toBe(0);
     expect(w.maxHeadPitchRad).toBeCloseTo(1.1);
     expect(w.maxLeftArmEndToHandM).toBeCloseTo(0.05);
@@ -136,7 +156,11 @@ export const FIT_WINDOW_MS = 1000;
 
 /** A segment is centred between its start (the shoulder) and its end,
  * so end = 2·centre − shoulder; returns |end − hand|. */
-export function armEndToHandM(shoulder: Vec3, arm: Segment, hand: Vec3): number {
+export function armEndToHandM(
+  shoulder: Vec3,
+  arm: Segment,
+  hand: Vec3,
+): number {
   return Math.hypot(
     2 * arm.position[0] - shoulder[0] - hand[0],
     2 * arm.position[1] - shoulder[1] - hand[1],
@@ -187,8 +211,14 @@ export function addFitSample(w: FitWindow, s: FitSample): void {
   w.lastAtMs = s.atMs;
   w.lastTorsoYawRad = s.torsoYawRad;
   w.maxHeadPitchRad = Math.max(w.maxHeadPitchRad, s.headPitchRad);
-  w.maxLeftArmEndToHandM = Math.max(w.maxLeftArmEndToHandM, s.leftArmEndToHandM);
-  w.maxRightArmEndToHandM = Math.max(w.maxRightArmEndToHandM, s.rightArmEndToHandM);
+  w.maxLeftArmEndToHandM = Math.max(
+    w.maxLeftArmEndToHandM,
+    s.leftArmEndToHandM,
+  );
+  w.maxRightArmEndToHandM = Math.max(
+    w.maxRightArmEndToHandM,
+    s.rightArmEndToHandM,
+  );
 }
 
 /** Starts the next window but keeps the last yaw sample, so the rate
@@ -208,9 +238,11 @@ export function restartFitWindow(w: FitWindow): void {
 ### Task 2: Settings — gate log channel, remembered room + debug
 
 **Files:**
+
 - Modify: `src/core/log.ts` (add `| 'gate'` to `LogChannel`), `src/core/settings.ts`, `src/core/settings.test.ts`, `src/systems/settings.ts`, `src/systems/multiplayer.ts` (`roomIdFromUrl`)
 
 **Interfaces:**
+
 - Produces: `Settings.roomId: string | null`; `urlSettingOverrides(search: string): { roomId?: string; debugRelay?: true }`; `SettingsSystem.setRoomId(roomId: string | null): void`; log channel `'gate'`.
 
 - [ ] **Step 1: Failing tests** — append to `src/core/settings.test.ts` (import `urlSettingOverrides`, `decodeSettings`, `defaultSettings` from `./settings.js` as needed):
@@ -218,7 +250,10 @@ export function restartFitWindow(w: FitWindow): void {
 ```ts
 describe('roomId migration', () => {
   it('decodes a pre-roomId settings JSON, keeping its values', () => {
-    const { roomId: _drop, ...old } = { ...defaultSettings(), language: 'en' as const };
+    const { roomId: _drop, ...old } = {
+      ...defaultSettings(),
+      language: 'en' as const,
+    };
     const decoded = decodeSettings(JSON.stringify(old));
     expect(decoded.language).toBe('en');
     expect(decoded.roomId).toBeNull();
@@ -277,11 +312,11 @@ export function urlSettingOverrides(search: string): {
 In `src/systems/settings.ts` import `urlSettingOverrides` and, in `init()` right after `settingsState.current = loadSettings();`:
 
 ```ts
-    const overrides = urlSettingOverrides(window.location.search);
-    if (Object.keys(overrides).length > 0) {
-      settingsState.current = { ...settingsState.current, ...overrides };
-      this.persist();
-    }
+const overrides = urlSettingOverrides(window.location.search);
+if (Object.keys(overrides).length > 0) {
+  settingsState.current = { ...settingsState.current, ...overrides };
+  this.persist();
+}
 ```
 
 and add the setter next to the others:
@@ -308,10 +343,12 @@ In `src/systems/multiplayer.ts` replace the body of `roomIdFromUrl()` and rename
 ### Task 3: GateProbeSystem
 
 **Files:**
+
 - Create: `src/systems/gateProbe.ts`
 - Modify: `src/index.ts` (register after `PeerAvatarSystem`, before `DebugWatchSystem`)
 
 **Interfaces:**
+
 - Consumes: events `RoundEnded`, `Thrown`, `ThrowRelayed`, `Reset`, `MatchStateChanged`, `MultiplayerPeerDisconnected`; `StatsSystem.stats.lifetimeTotals.roundsPlayed`; `debugContext.pieceIdByEntityIndex`; `score()`.
 - Produces gate lines: `round summary`, `match state`, `sin-bin after round`, `king decision`, `sync snapshot` (data shapes below — Task 5 parses exactly these).
 
@@ -360,7 +397,9 @@ export class GateProbeSystem extends createSystem({
   init(): void {
     const statsSystem = this.world.getSystem(StatsSystem);
     if (!statsSystem) {
-      throw new Error('GateProbeSystem requires StatsSystem to be registered first');
+      throw new Error(
+        'GateProbeSystem requires StatsSystem to be registered first',
+      );
     }
     this.statsSystem = statsSystem;
     this.roundsPlayedSeen = statsSystem.stats.lifetimeTotals.roundsPlayed;
@@ -409,7 +448,8 @@ export class GateProbeSystem extends createSystem({
           endReason: e.state.endReason,
           felledHost: host.length,
           felledGuest: guest.length,
-          fresh: host.length === 0 && guest.length === 0 && e.state.winner === null,
+          fresh:
+            host.length === 0 && guest.length === 0 && e.state.winner === null,
         });
         if (prev?.winner == null && e.state.winner !== null) {
           log('info', 'gate', 'king decision', {
@@ -443,7 +483,9 @@ export class GateProbeSystem extends createSystem({
       if (!p) {
         continue;
       }
-      const id = debugContext.pieceIdByEntityIndex.get(entity.index) ?? `entity-${entity.index}`;
+      const id =
+        debugContext.pieceIdByEntityIndex.get(entity.index) ??
+        `entity-${entity.index}`;
       pieces[id] = [round5cm(p.x), round5cm(p.y), round5cm(p.z)];
     }
     log('info', 'gate', 'sync snapshot', {
@@ -466,7 +508,9 @@ export class GateProbeSystem extends createSystem({
       if (!p) {
         continue;
       }
-      const id = debugContext.pieceIdByEntityIndex.get(entity.index) ?? `entity-${entity.index}`;
+      const id =
+        debugContext.pieceIdByEntityIndex.get(entity.index) ??
+        `entity-${entity.index}`;
       kubbs[id] = [round5cm(p.x), round5cm(p.y), round5cm(p.z)];
     }
     log('info', 'gate', 'sin-bin after round', { kubbs });
@@ -477,10 +521,10 @@ export class GateProbeSystem extends createSystem({
 In `src/index.ts`, import it and register right before `DebugWatchSystem`:
 
 ```ts
-  // Debug mode only: gate-report probes (docs/superpowers/specs/
-  // 2026-09-26-gate-report-design.md). Must come after MultiplayerSystem
-  // — see the class doc.
-  world.registerSystem(GateProbeSystem);
+// Debug mode only: gate-report probes (docs/superpowers/specs/
+// 2026-09-26-gate-report-design.md). Must come after MultiplayerSystem
+// — see the class doc.
+world.registerSystem(GateProbeSystem);
 ```
 
 - [ ] **Step 2:** `npx tsc --noEmit && npx eslint src --quiet && npx prettier --write src` → clean.
@@ -495,7 +539,7 @@ In `src/index.ts`, import it and register right before `DebugWatchSystem`:
 - [ ] **Step 1: settings.ts** — `import { log } from '../core/log.js';`; in `releaseMatchGameMode()` after `this.preferredGameMode = null;`:
 
 ```ts
-    log('info', 'gate', 'mode released', { restoredMode: preferred });
+log('info', 'gate', 'mode released', { restoredMode: preferred });
 ```
 
 - [ ] **Step 2: multiplayer.ts** — in `adoptHostGameModeIfGuest()` change `log('info', 'net', "adopting the host's game mode", {` to `log('info', 'gate', 'mode adopted', {`.
@@ -514,10 +558,10 @@ In `src/index.ts`, import it and register right before `DebugWatchSystem`:
 reset button: `this.wireButton('reset-button', () => { log('info', 'gate', 'reset pressed', {}); this.resetAll('manual'); });`; avatar-color button: after `this.settingsSystem.setAvatarColorIndex(…);` add
 
 ```ts
-      log('info', 'gate', 'avatar color', {
-        event: 'sent',
-        colorIndex: settingsState.current.avatarColorIndex,
-      });
+log('info', 'gate', 'avatar color', {
+  event: 'sent',
+  colorIndex: settingsState.current.avatarColorIndex,
+});
 ```
 
 (`log` is already imported in menu.ts — check; import from `../core/log.js` if not.)
@@ -525,19 +569,19 @@ reset button: `this.wireButton('reset-button', () => { log('info', 'gate', 'rese
 - [ ] **Step 4: matchRules.ts** — replace `log('info', 'state', 'match auto-restart', {});` (before `this.restartInS = null;`, reorder so the value is read first):
 
 ```ts
-    log('info', 'gate', 'match restart', {
-      // restartInS has just crossed 0, so this is ≥ the configured delay.
-      secondsSinceFinished: match.restartDelayS - this.restartInS,
-    });
-    this.restartInS = null;
+log('info', 'gate', 'match restart', {
+  // restartInS has just crossed 0, so this is ≥ the configured delay.
+  secondsSinceFinished: match.restartDelayS - this.restartInS,
+});
+this.restartInS = null;
 ```
 
 - [ ] **Step 5: peerAvatar.ts** — imports: `addFitSample, armEndToHandM, emptyFitWindow, FIT_WINDOW_MS, restartFitWindow` + `type FitWindow` from `../core/avatarFit.js`, `pitchFromQuaternion` from `../core/quat.js`, `debugContext` from `../debug/debugContext.js`. Add `fit: FitWindow;` to `AvatarInstance` and `fit: emptyFitWindow(),` to the literal in the creation path. In `applyPresence`, inside the color-change `if`, add `log('info', 'gate', 'avatar color', { event: 'received', colorIndex: message.colorIndex });`. At the end of `applyPresence` (after the `applySegment` calls):
 
 ```ts
-    if (debugContext.enabled) {
-      this.sampleFit(instance, nowMs, solved, message);
-    }
+if (debugContext.enabled) {
+  this.sampleFit(instance, nowMs, solved, message);
+}
 ```
 
 and the method:
@@ -578,19 +622,27 @@ and the method:
 - [ ] **Step 6: hud.ts** — fields `private loggedMyColor: number | null = null; private loggedTheirColor: number | null = null;`; in `updateMatchRow()` after both `setProperties` score calls:
 
 ```ts
-    if (debugContext.enabled) {
-      const mine = settingsState.current.avatarColorIndex;
-      if (mine !== this.loggedMyColor) {
-        this.loggedMyColor = mine;
-        log('info', 'gate', 'avatar color', { event: 'tinted', who: 'mine', colorIndex: mine });
-      }
-      if (this.opponentColorIndex !== this.loggedTheirColor) {
-        this.loggedTheirColor = this.opponentColorIndex;
-        if (this.opponentColorIndex !== null) {
-          log('info', 'gate', 'avatar color', { event: 'tinted', who: 'opponent', colorIndex: this.opponentColorIndex });
-        }
-      }
+if (debugContext.enabled) {
+  const mine = settingsState.current.avatarColorIndex;
+  if (mine !== this.loggedMyColor) {
+    this.loggedMyColor = mine;
+    log('info', 'gate', 'avatar color', {
+      event: 'tinted',
+      who: 'mine',
+      colorIndex: mine,
+    });
+  }
+  if (this.opponentColorIndex !== this.loggedTheirColor) {
+    this.loggedTheirColor = this.opponentColorIndex;
+    if (this.opponentColorIndex !== null) {
+      log('info', 'gate', 'avatar color', {
+        event: 'tinted',
+        who: 'opponent',
+        colorIndex: this.opponentColorIndex,
+      });
     }
+  }
+}
 ```
 
 - [ ] **Step 7:** `npx tsc --noEmit && npx eslint src --quiet && npx prettier --write src && npx vitest run --reporter=dot` → clean/PASS.
@@ -601,6 +653,7 @@ and the method:
 **Files:** Create `scripts/gate/checks.mjs`, `scripts/gate/checks.test.mjs`.
 
 **Interfaces:**
+
 - Produces: `parseLog(text: string): Entry[]` (drops unparsable lines); `syncPairs(entries): {pairs, incidents}`; `runChecks(entries): Array<{id, label, status: 'PASS'|'FAIL'|'NOT SEEN'|'EYES', evidence: string}>`; constants exported as `THRESHOLDS`.
 
 - [ ] **Step 1: Failing tests** — `scripts/gate/checks.test.mjs`:
@@ -612,15 +665,34 @@ import { runChecks, syncPairs } from './checks.mjs';
 let t = 0;
 const g = (role, message, data, dtMs = 100, client = role) => {
   t += dtMs;
-  return { level: 'info', channel: 'gate', message, data, role, client, timeMs: t, receivedAt: t };
+  return {
+    level: 'info',
+    channel: 'gate',
+    message,
+    data,
+    role,
+    client,
+    timeMs: t,
+    receivedAt: t,
+  };
 };
-const status = (entries, id) => runChecks(entries).find((r) => r.id === id).status;
+const status = (entries, id) =>
+  runChecks(entries).find((r) => r.id === id).status;
 const snap = (role, over = {}) =>
-  g(role, 'sync snapshot', {
-    turn: 'host', winner: null, score: { host: 0, guest: 0 },
-    felled: { host: [], guest: [] }, gameMode: 'simple',
-    pieces: { king: [0, 0.15, -3] }, ...over,
-  }, 500);
+  g(
+    role,
+    'sync snapshot',
+    {
+      turn: 'host',
+      winner: null,
+      score: { host: 0, guest: 0 },
+      felled: { host: [], guest: [] },
+      gameMode: 'simple',
+      pieces: { king: [0, 0.15, -3] },
+      ...over,
+    },
+    500,
+  );
 
 describe('runChecks', () => {
   it('everything is NOT SEEN (or EYES) on an empty log', () => {
@@ -629,27 +701,62 @@ describe('runChecks', () => {
     }
   });
   it('gh16-host: PASS when the opponent round is not recorded, FAIL when it is', () => {
-    const ok = g('host', 'round summary', { byOpponent: true, statsRecorded: false });
-    const bad = g('host', 'round summary', { byOpponent: true, statsRecorded: true });
+    const ok = g('host', 'round summary', {
+      byOpponent: true,
+      statsRecorded: false,
+    });
+    const bad = g('host', 'round summary', {
+      byOpponent: true,
+      statsRecorded: true,
+    });
     expect(status([ok], 'gh16-host')).toBe('PASS');
     expect(status([ok, bad], 'gh16-host')).toBe('FAIL');
   });
   it('gh15-lock: an unlocked press while connected FAILs, solo presses do not count', () => {
-    expect(status([g('solo', 'mode button pressed', { locked: false })], 'gh15-lock')).toBe('NOT SEEN');
-    expect(status([g('guest', 'mode button pressed', { locked: true })], 'gh15-lock')).toBe('PASS');
-    expect(status([g('guest', 'mode button pressed', { locked: false })], 'gh15-lock')).toBe('FAIL');
+    expect(
+      status(
+        [g('solo', 'mode button pressed', { locked: false })],
+        'gh15-lock',
+      ),
+    ).toBe('NOT SEEN');
+    expect(
+      status(
+        [g('guest', 'mode button pressed', { locked: true })],
+        'gh15-lock',
+      ),
+    ).toBe('PASS');
+    expect(
+      status(
+        [g('guest', 'mode button pressed', { locked: false })],
+        'gh15-lock',
+      ),
+    ).toBe('FAIL');
   });
   it('king rules: early loss, win after all, 6th stick', () => {
-    const early = g('host', 'king decision', { thrower: 'host', winner: 'guest', endReason: 'kingFelledEarly', stickNumberInRound: 6 });
-    const win = g('host', 'king decision', { thrower: 'guest', winner: 'guest', endReason: 'allKubbsAndKing', stickNumberInRound: 3 });
+    const early = g('host', 'king decision', {
+      thrower: 'host',
+      winner: 'guest',
+      endReason: 'kingFelledEarly',
+      stickNumberInRound: 6,
+    });
+    const win = g('host', 'king decision', {
+      thrower: 'guest',
+      winner: 'guest',
+      endReason: 'allKubbsAndKing',
+      stickNumberInRound: 3,
+    });
     expect(status([early, win], 'mp3a-king-early')).toBe('PASS');
     expect(status([early, win], 'mp3a-king-win')).toBe('PASS');
     expect(status([early, win], 'mp3a-king-6th')).toBe('PASS');
     expect(status([win], 'mp3a-king-6th')).toBe('NOT SEEN');
   });
   it('mp3a-sinbin: FAILs when a sin-bin kubb moves or vanishes within a match', () => {
-    const a = g('host', 'sin-bin after round', { kubbs: { 'kubb-1': [2, 0.15, 1] } });
-    const same = g('host', 'sin-bin after round', { kubbs: { 'kubb-1': [2, 0.15, 1], 'kubb-2': [2.3, 0.15, 1] } });
+    const a = g('host', 'sin-bin after round', {
+      kubbs: { 'kubb-1': [2, 0.15, 1] },
+    });
+    const same = g('host', 'sin-bin after round', {
+      kubbs: { 'kubb-1': [2, 0.15, 1], 'kubb-2': [2.3, 0.15, 1] },
+    });
     const gone = g('host', 'sin-bin after round', { kubbs: {} });
     expect(status([a, same], 'mp3a-sinbin')).toBe('PASS');
     expect(status([a, gone], 'mp3a-sinbin')).toBe('FAIL');
@@ -660,7 +767,12 @@ describe('runChecks', () => {
     const r = g('host', 'match restart', { secondsSinceFinished: 10.02 });
     const fresh = g('host', 'match state', { fresh: true, turn: 'host' });
     expect(status([r, fresh], 'mp3a-restart')).toBe('PASS');
-    expect(status([g('host', 'match restart', { secondsSinceFinished: 14 }), fresh], 'mp3a-restart')).toBe('FAIL');
+    expect(
+      status(
+        [g('host', 'match restart', { secondsSinceFinished: 14 }), fresh],
+        'mp3a-restart',
+      ),
+    ).toBe('FAIL');
   });
   it('mp3a-reset-guest: needs a fresh state on both sides within 3 s', () => {
     const press = g('guest', 'reset pressed', {});
@@ -670,18 +782,44 @@ describe('runChecks', () => {
     expect(status([press, h], 'mp3a-reset-guest')).toBe('FAIL');
   });
   it('mp3b-arms and mp3b-torso', () => {
-    const fit = (over) => g('guest', 'avatar fit', { leftArmEndToHandM: 0.05, rightArmEndToHandM: 0.05, handSizeM: 0.1, maxTorsoYawRateRadS: 1, maxHeadPitchRad: 1.2, ...over });
+    const fit = (over) =>
+      g('guest', 'avatar fit', {
+        leftArmEndToHandM: 0.05,
+        rightArmEndToHandM: 0.05,
+        handSizeM: 0.1,
+        maxTorsoYawRateRadS: 1,
+        maxHeadPitchRad: 1.2,
+        ...over,
+      });
     expect(status([fit({})], 'mp3b-arms')).toBe('PASS');
     expect(status([fit({ leftArmEndToHandM: 0.2 })], 'mp3b-arms')).toBe('FAIL');
     expect(status([fit({})], 'mp3b-torso')).toBe('PASS');
-    expect(status([fit({ maxTorsoYawRateRadS: 5 })], 'mp3b-torso')).toBe('FAIL');
-    expect(status([fit({ maxHeadPitchRad: 0.2, maxTorsoYawRateRadS: 5 })], 'mp3b-torso')).toBe('NOT SEEN');
+    expect(status([fit({ maxTorsoYawRateRadS: 5 })], 'mp3b-torso')).toBe(
+      'FAIL',
+    );
+    expect(
+      status(
+        [fit({ maxHeadPitchRad: 0.2, maxTorsoYawRateRadS: 5 })],
+        'mp3b-torso',
+      ),
+    ).toBe('NOT SEEN');
   });
   it('mp3b-color: sent → received + opponent tint elsewhere, own tint here, within 3 s', () => {
     const sent = g('host', 'avatar color', { event: 'sent', colorIndex: 2 });
-    const mine = g('host', 'avatar color', { event: 'tinted', who: 'mine', colorIndex: 2 });
-    const rec = g('guest', 'avatar color', { event: 'received', colorIndex: 2 });
-    const theirs = g('guest', 'avatar color', { event: 'tinted', who: 'opponent', colorIndex: 2 });
+    const mine = g('host', 'avatar color', {
+      event: 'tinted',
+      who: 'mine',
+      colorIndex: 2,
+    });
+    const rec = g('guest', 'avatar color', {
+      event: 'received',
+      colorIndex: 2,
+    });
+    const theirs = g('guest', 'avatar color', {
+      event: 'tinted',
+      who: 'opponent',
+      colorIndex: 2,
+    });
     expect(status([sent, mine, rec, theirs], 'mp3b-color')).toBe('PASS');
     expect(status([sent, mine, rec], 'mp3b-color')).toBe('FAIL');
   });
@@ -752,14 +890,21 @@ const gate = (entries, message) =>
 const at = (e) => e.receivedAt ?? e.timeMs;
 const fmt = (e) =>
   `${new Date(at(e)).toISOString().slice(11, 19)} ${e.role}/${e.client} ${e.message} ${JSON.stringify(e.data)}`;
-const verdict = (id, label, status, evidence = '') => ({ id, label, status, evidence });
+const verdict = (id, label, status, evidence = '') => ({
+  id,
+  label,
+  status,
+  evidence,
+});
 
 /** PASS when `relevant` is non-empty and none is bad; FAIL on the first
  * bad one; NOT SEEN when nothing relevant happened. */
 function allOf(id, label, relevant, isBad) {
   if (relevant.length === 0) return verdict(id, label, 'NOT SEEN');
   const bad = relevant.find(isBad);
-  return bad ? verdict(id, label, 'FAIL', fmt(bad)) : verdict(id, label, 'PASS', fmt(relevant[0]));
+  return bad
+    ? verdict(id, label, 'FAIL', fmt(bad))
+    : verdict(id, label, 'PASS', fmt(relevant[0]));
 }
 
 function anyOf(id, label, relevant, isGood) {
@@ -772,11 +917,15 @@ function anyOf(id, label, relevant, isGood) {
 
 function within(entries, from, predicate) {
   return entries.some(
-    (e) => at(e) >= at(from) && at(e) - at(from) <= THRESHOLDS.followUpMs && predicate(e),
+    (e) =>
+      at(e) >= at(from) &&
+      at(e) - at(from) <= THRESHOLDS.followUpMs &&
+      predicate(e),
   );
 }
 
-const freshState = (e) => e.channel === 'gate' && e.message === 'match state' && e.data.fresh;
+const freshState = (e) =>
+  e.channel === 'gate' && e.message === 'match state' && e.data.fresh;
 
 function sinBinCheck(entries) {
   const id = 'mp3a-sinbin';
@@ -795,35 +944,75 @@ function sinBinCheck(entries) {
     compared += 1;
     for (const [kubb, p] of Object.entries(prev)) {
       const q = e.data.kubbs[kubb];
-      const moved = !q || Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) > THRESHOLDS.sinBinToleranceM;
-      if (moved) return verdict(id, label, 'FAIL', `${kubb} ${q ? 'moved' : 'left the sin-bin'}: ${fmt(e)}`);
+      const moved =
+        !q ||
+        Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) >
+          THRESHOLDS.sinBinToleranceM;
+      if (moved)
+        return verdict(
+          id,
+          label,
+          'FAIL',
+          `${kubb} ${q ? 'moved' : 'left the sin-bin'}: ${fmt(e)}`,
+        );
     }
   }
-  return compared === 0 ? verdict(id, label, 'NOT SEEN') : verdict(id, label, 'PASS', `${compared} round transitions`);
+  return compared === 0
+    ? verdict(id, label, 'NOT SEEN')
+    : verdict(id, label, 'PASS', `${compared} round transitions`);
 }
 
 function resetCheck(entries, side) {
   const id = `mp3a-reset-${side}`;
   const label = `"Ny runda" from the ${side} resets the match on both`;
   const presses = gate(entries, 'reset pressed').filter((e) => e.role === side);
-  return allOf(id, label, presses, (p) =>
-    !(within(entries, p, (e) => freshState(e) && e.role === 'host') &&
-      within(entries, p, (e) => freshState(e) && e.role === 'guest')),
+  return allOf(
+    id,
+    label,
+    presses,
+    (p) =>
+      !(
+        within(entries, p, (e) => freshState(e) && e.role === 'host') &&
+        within(entries, p, (e) => freshState(e) && e.role === 'guest')
+      ),
   );
 }
 
 function colorCheck(entries) {
-  const sent = gate(entries, 'avatar color').filter((e) => e.data.event === 'sent' && e.role !== 'solo');
-  const color = (e, ev, who) => e.channel === 'gate' && e.message === 'avatar color' && e.data.event === ev && (who === undefined || e.data.who === who);
-  return allOf('mp3b-color', 'color change reaches the other side and both HUDs', sent, (s) => {
-    const same = (e) => e.data.colorIndex === s.data.colorIndex;
-    const here = (e) => e.client === s.client;
-    return !(
-      within(entries, s, (e) => color(e, 'tinted', 'mine') && here(e) && same(e)) &&
-      within(entries, s, (e) => color(e, 'received') && !here(e) && same(e)) &&
-      within(entries, s, (e) => color(e, 'tinted', 'opponent') && !here(e) && same(e))
-    );
-  });
+  const sent = gate(entries, 'avatar color').filter(
+    (e) => e.data.event === 'sent' && e.role !== 'solo',
+  );
+  const color = (e, ev, who) =>
+    e.channel === 'gate' &&
+    e.message === 'avatar color' &&
+    e.data.event === ev &&
+    (who === undefined || e.data.who === who);
+  return allOf(
+    'mp3b-color',
+    'color change reaches the other side and both HUDs',
+    sent,
+    (s) => {
+      const same = (e) => e.data.colorIndex === s.data.colorIndex;
+      const here = (e) => e.client === s.client;
+      return !(
+        within(
+          entries,
+          s,
+          (e) => color(e, 'tinted', 'mine') && here(e) && same(e),
+        ) &&
+        within(
+          entries,
+          s,
+          (e) => color(e, 'received') && !here(e) && same(e),
+        ) &&
+        within(
+          entries,
+          s,
+          (e) => color(e, 'tinted', 'opponent') && !here(e) && same(e),
+        )
+      );
+    },
+  );
 }
 
 const SYNC_FIELDS = ['turn', 'winner', 'score', 'felled', 'gameMode'];
@@ -832,7 +1021,11 @@ function piecesDiffer(a, b) {
   for (const [id, p] of Object.entries(a)) {
     const q = b[id];
     if (!q) continue;
-    if (Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) > THRESHOLDS.positionToleranceM) return true;
+    if (
+      Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) >
+      THRESHOLDS.positionToleranceM
+    )
+      return true;
   }
   return false;
 }
@@ -842,13 +1035,19 @@ function piecesDiffer(a, b) {
  * disagreeing pairs into incidents — shorter runs are network lag. */
 export function syncPairs(entries) {
   const host = gate(entries, 'sync snapshot').filter((e) => e.role === 'host');
-  const guest = gate(entries, 'sync snapshot').filter((e) => e.role === 'guest');
+  const guest = gate(entries, 'sync snapshot').filter(
+    (e) => e.role === 'guest',
+  );
   const pairs = [];
   for (const gs of guest) {
     let best = null;
     for (const hs of host) {
       const d = Math.abs(at(hs) - at(gs));
-      if (d <= THRESHOLDS.pairWindowMs && (!best || d < Math.abs(at(best) - at(gs)))) best = hs;
+      if (
+        d <= THRESHOLDS.pairWindowMs &&
+        (!best || d < Math.abs(at(best) - at(gs)))
+      )
+        best = hs;
     }
     if (best) pairs.push([best, gs]);
   }
@@ -862,17 +1061,20 @@ export function syncPairs(entries) {
           field,
           fromMs: at(g),
           toMs: at(run[run.length - 1][1]),
-          host: field === 'pieces' ? '(positions)' : JSON.stringify(h.data[field]),
-          guest: field === 'pieces' ? '(positions)' : JSON.stringify(g.data[field]),
+          host:
+            field === 'pieces' ? '(positions)' : JSON.stringify(h.data[field]),
+          guest:
+            field === 'pieces' ? '(positions)' : JSON.stringify(g.data[field]),
         });
       }
       run = [];
     };
     for (const pair of pairs) {
       const [h, g] = pair;
-      const differs = field === 'pieces'
-        ? piecesDiffer(h.data.pieces, g.data.pieces)
-        : JSON.stringify(h.data[field]) !== JSON.stringify(g.data[field]);
+      const differs =
+        field === 'pieces'
+          ? piecesDiffer(h.data.pieces, g.data.pieces)
+          : JSON.stringify(h.data[field]) !== JSON.stringify(g.data[field]);
       if (differs) run.push(pair);
       else close();
     }
@@ -893,53 +1095,155 @@ export function runChecks(entries) {
 
   const results = [
     modeAdopted.length > 0
-      ? verdict('gh15-adopt', "guest plays on the host's court", 'PASS', fmt(modeAdopted[0]))
+      ? verdict(
+          'gh15-adopt',
+          "guest plays on the host's court",
+          'PASS',
+          fmt(modeAdopted[0]),
+        )
       : sync.pairs === 0
         ? verdict('gh15-adopt', "guest plays on the host's court", 'NOT SEEN')
         : sync.incidents.some((i) => i.field === 'gameMode')
-          ? verdict('gh15-adopt', "guest plays on the host's court", 'FAIL', 'gameMode differs in sync snapshots')
-          : verdict('gh15-adopt', "guest plays on the host's court", 'PASS', 'same mode on both (nothing to adopt)'),
-    anyOf('gh15-release', "guest's own mode returns when the room empties", gate(entries, 'mode released'), () => true),
-    allOf('gh15-lock', 'mode button locked while connected',
-      gate(entries, 'mode button pressed').filter((e) => e.role !== 'solo'), (e) => !e.data.locked),
-    allOf('gh16-host', "opponent's turn stays out of the host's stats",
-      summaries.filter((e) => e.role === 'host' && e.data.byOpponent), (e) => e.data.statsRecorded),
-    allOf('gh16-guest', "guest's own turn lands in the guest's stats",
-      summaries.filter((e) => e.role === 'guest' && !e.data.byOpponent && e.data.sticksThrown > 0), (e) => !e.data.statsRecorded),
+          ? verdict(
+              'gh15-adopt',
+              "guest plays on the host's court",
+              'FAIL',
+              'gameMode differs in sync snapshots',
+            )
+          : verdict(
+              'gh15-adopt',
+              "guest plays on the host's court",
+              'PASS',
+              'same mode on both (nothing to adopt)',
+            ),
+    anyOf(
+      'gh15-release',
+      "guest's own mode returns when the room empties",
+      gate(entries, 'mode released'),
+      () => true,
+    ),
+    allOf(
+      'gh15-lock',
+      'mode button locked while connected',
+      gate(entries, 'mode button pressed').filter((e) => e.role !== 'solo'),
+      (e) => !e.data.locked,
+    ),
+    allOf(
+      'gh16-host',
+      "opponent's turn stays out of the host's stats",
+      summaries.filter((e) => e.role === 'host' && e.data.byOpponent),
+      (e) => e.data.statsRecorded,
+    ),
+    allOf(
+      'gh16-guest',
+      "guest's own turn lands in the guest's stats",
+      summaries.filter(
+        (e) =>
+          e.role === 'guest' && !e.data.byOpponent && e.data.sticksThrown > 0,
+      ),
+      (e) => !e.data.statsRecorded,
+    ),
     sinBinCheck(entries),
     sync.pairs === 0
       ? verdict('mp3a-score', 'score agrees on both', 'NOT SEEN')
       : scoreIncidents.length > 0
-        ? verdict('mp3a-score', 'score agrees on both', 'FAIL', JSON.stringify(scoreIncidents[0]))
-        : verdict('mp3a-score', 'score agrees on both', 'PASS', `${sync.pairs} snapshot pairs`),
-    anyOf('mp3a-king-early', 'king felled early = loss',
-      kings.filter((e) => e.data.endReason === 'kingFelledEarly'), (e) => e.data.winner !== e.data.thrower),
-    anyOf('mp3a-king-win', 'king after all kubbs = win',
-      kings.filter((e) => e.data.endReason === 'allKubbsAndKing'), (e) => e.data.winner === e.data.thrower),
+        ? verdict(
+            'mp3a-score',
+            'score agrees on both',
+            'FAIL',
+            JSON.stringify(scoreIncidents[0]),
+          )
+        : verdict(
+            'mp3a-score',
+            'score agrees on both',
+            'PASS',
+            `${sync.pairs} snapshot pairs`,
+          ),
+    anyOf(
+      'mp3a-king-early',
+      'king felled early = loss',
+      kings.filter((e) => e.data.endReason === 'kingFelledEarly'),
+      (e) => e.data.winner !== e.data.thrower,
+    ),
+    anyOf(
+      'mp3a-king-win',
+      'king after all kubbs = win',
+      kings.filter((e) => e.data.endReason === 'allKubbsAndKing'),
+      (e) => e.data.winner === e.data.thrower,
+    ),
     kings.some((e) => e.data.stickNumberInRound === 6)
-      ? verdict('mp3a-king-6th', 'king decided by the 6th stick', 'PASS', fmt(kings.find((e) => e.data.stickNumberInRound === 6)))
+      ? verdict(
+          'mp3a-king-6th',
+          'king decided by the 6th stick',
+          'PASS',
+          fmt(kings.find((e) => e.data.stickNumberInRound === 6)),
+        )
       : verdict('mp3a-king-6th', 'king decided by the 6th stick', 'NOT SEEN'),
-    allOf('mp3a-restart', 'auto-restart after ~10 s, host starts',
+    allOf(
+      'mp3a-restart',
+      'auto-restart after ~10 s, host starts',
       gate(entries, 'match restart').filter((e) => e.role === 'host'),
-      (r) => r.data.secondsSinceFinished < THRESHOLDS.restartMinS ||
+      (r) =>
+        r.data.secondsSinceFinished < THRESHOLDS.restartMinS ||
         r.data.secondsSinceFinished > THRESHOLDS.restartMaxS ||
-        !within(entries, r, (e) => freshState(e) && e.role === 'host' && e.data.turn === 'host')),
+        !within(
+          entries,
+          r,
+          (e) => freshState(e) && e.role === 'host' && e.data.turn === 'host',
+        ),
+    ),
     resetCheck(entries, 'host'),
     resetCheck(entries, 'guest'),
-    new Set(created.map((e) => e.role)).size >= 2 && created.some((e) => e.role === 'host') && created.some((e) => e.role === 'guest')
-      ? verdict('mp3b-avatar', 'both see a body', 'PASS', `${created.length} avatars created`)
-      : verdict('mp3b-avatar', 'both see a body', 'NOT SEEN', created.length ? `only on ${created[0].role}` : ''),
-    allOf('mp3b-arms', 'arm ends at the mitten', fits,
-      (e) => Math.max(e.data.leftArmEndToHandM, e.data.rightArmEndToHandM) > e.data.handSizeM / 2 + THRESHOLDS.armEndSlackM),
-    allOf('mp3b-torso', 'no torso twitch on a full look-up',
+    new Set(created.map((e) => e.role)).size >= 2 &&
+    created.some((e) => e.role === 'host') &&
+    created.some((e) => e.role === 'guest')
+      ? verdict(
+          'mp3b-avatar',
+          'both see a body',
+          'PASS',
+          `${created.length} avatars created`,
+        )
+      : verdict(
+          'mp3b-avatar',
+          'both see a body',
+          'NOT SEEN',
+          created.length ? `only on ${created[0].role}` : '',
+        ),
+    allOf(
+      'mp3b-arms',
+      'arm ends at the mitten',
+      fits,
+      (e) =>
+        Math.max(e.data.leftArmEndToHandM, e.data.rightArmEndToHandM) >
+        e.data.handSizeM / 2 + THRESHOLDS.armEndSlackM,
+    ),
+    allOf(
+      'mp3b-torso',
+      'no torso twitch on a full look-up',
       fits.filter((e) => e.data.maxHeadPitchRad >= THRESHOLDS.lookUpPitchRad),
-      (e) => e.data.maxTorsoYawRateRadS > THRESHOLDS.maxTorsoYawRateRadS),
+      (e) => e.data.maxTorsoYawRateRadS > THRESHOLDS.maxTorsoYawRateRadS,
+    ),
     colorCheck(entries),
     sync.pairs === 0
       ? verdict('sync', 'host and guest agree', 'NOT SEEN')
       : sync.incidents.length > 0
-        ? verdict('sync', 'host and guest agree', 'FAIL', sync.incidents.map((i) => `${i.field} ${new Date(i.fromMs).toISOString().slice(11, 19)}–${new Date(i.toMs).toISOString().slice(11, 19)} host=${i.host} guest=${i.guest}`).join('; '))
-        : verdict('sync', 'host and guest agree', 'PASS', `${sync.pairs} pairs, 0 incidents`),
+        ? verdict(
+            'sync',
+            'host and guest agree',
+            'FAIL',
+            sync.incidents
+              .map(
+                (i) =>
+                  `${i.field} ${new Date(i.fromMs).toISOString().slice(11, 19)}–${new Date(i.toMs).toISOString().slice(11, 19)} host=${i.host} guest=${i.guest}`,
+              )
+              .join('; '),
+          )
+        : verdict(
+            'sync',
+            'host and guest agree',
+            'PASS',
+            `${sync.pairs} pairs, 0 incidents`,
+          ),
     verdict('eyes-proportions', 'avatar proportions look right', 'EYES'),
     verdict('eyes-visor', 'the visor sits on the head', 'EYES'),
     verdict('eyes-score-row', 'the two-colored score row lays out', 'EYES'),
@@ -969,7 +1273,9 @@ import { parseLog, runChecks } from './gate/checks.mjs';
 
 const LOG_PATH = '.iwsdk/runtime/logs/kubb-debug.ndjson';
 const args = process.argv.slice(2);
-const sinceArg = args.includes('--since') ? args[args.indexOf('--since') + 1] : null;
+const sinceArg = args.includes('--since')
+  ? args[args.indexOf('--since') + 1]
+  : null;
 const watch = args.includes('--watch');
 
 function sinceMs() {
@@ -982,7 +1288,9 @@ function sinceMs() {
 
 function render() {
   if (!existsSync(LOG_PATH)) {
-    console.log(`No ${LOG_PATH} — start the dev server and open the app with ?debug=1.`);
+    console.log(
+      `No ${LOG_PATH} — start the dev server and open the app with ?debug=1.`,
+    );
     return;
   }
   const from = sinceMs();
@@ -990,11 +1298,17 @@ function render() {
     (e) => (e.receivedAt ?? e.timeMs) >= from,
   );
   const clients = new Set(entries.map((e) => `${e.role}/${e.client}`));
-  console.log(`gate report — ${entries.length} entries, clients: ${[...clients].join(', ') || 'none'}\n`);
+  console.log(
+    `gate report — ${entries.length} entries, clients: ${[...clients].join(', ') || 'none'}\n`,
+  );
   const results = runChecks(entries);
   const order = { FAIL: 0, 'NOT SEEN': 1, PASS: 2, EYES: 3 };
-  for (const r of [...results].sort((a, b) => order[a.status] - order[b.status])) {
-    console.log(`${r.status.padEnd(8)} ${r.id.padEnd(18)} ${r.label}${r.evidence ? `\n         ${r.evidence}` : ''}`);
+  for (const r of [...results].sort(
+    (a, b) => order[a.status] - order[b.status],
+  )) {
+    console.log(
+      `${r.status.padEnd(8)} ${r.id.padEnd(18)} ${r.label}${r.evidence ? `\n         ${r.evidence}` : ''}`,
+    );
   }
 }
 

@@ -23,14 +23,14 @@ connection** — with no Trystero/Nostr dependency in server mode.
    the app + the server, then run it. One HTTPS server (port 8443,
    `KUBB_PORT` to change; the self-signed certificate is the one the
    dev server already uses, `.iwsdk/https/`, via `@vitejs/plugin-basic-
-   ssl`'s `getCertificate`) serving:
+ssl`'s `getCertificate`) serving:
    - the built game from `dist/` (static files, correct MIME types, no
      path traversal, index fallback);
    - `GET /__kubb/config.json` — `{ server: true, protocol, room, debug }`;
    - `POST /__kubb/log` — the debug relay, same NDJSON file as today;
    - the game WebSocket `/__kubb/game` (unchanged GameServer).
-   The request handling is one testable module shared with the Vite dev
-   plugin (DRY: the dev server serves the same config and log routes).
+     The request handling is one testable module shared with the Vite dev
+     plugin (DRY: the dev server serves the same config and log routes).
 2. **The client asks the server** — at boot, before the world is built,
    `fetch('/__kubb/config.json')`. Present → server mode, room and debug
    from the server. Absent (GitHub Pages) → the old serverless mode.
@@ -40,7 +40,7 @@ connection** — with no Trystero/Nostr dependency in server mode.
 3. **The server introduces the headsets (voice)** — WebRTC audio between
    the two headsets with the game server as the signaling channel:
    client → `signal { data }`, server → the other seat `signal { side,
-   data }` (offer/answer/ICE, size-capped, only between seated players).
+data }` (offer/answer/ICE, size-capped, only between seated players).
    Side A makes the offer when both are seated. LAN only, so no STUN.
    In server mode MultiplayerSystem no longer joins a Trystero room;
    mic capture and the mute setting are reused.

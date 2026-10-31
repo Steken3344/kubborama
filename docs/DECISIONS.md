@@ -5140,6 +5140,7 @@ the browser (IWSDK, headless Chromium, `world.update` forced to a fixed
 0.1 s delta clamp makes the comparison meaningless).
 
 Findings:
+
 - **Flight matches**: first ground contact agrees within a few cm and
   ~0.03 s (e.g. z −7.852 in both, t 0.95 vs 0.98 s).
 - **Rest positions after bouncing/rolling are chaotic**, not engine
@@ -5190,6 +5191,7 @@ always on, and the default room is `kubborama-dev` instead of the public
 lobby. The production build keeps Trystero (no server until MP8).
 `serverChoice` replaces the one-day-old `serverMode` boolean: its stored
 `false` on Erik's headsets would otherwise have kept 'auto' off.
+
 - Same day, first server-mode test: the **managed editor browser** loaded
   the app, joined the game server first and took side A from Erik's
   headset. Fix: a client becomes a player only when it enters XR
@@ -5204,6 +5206,7 @@ lobby. The production build keeps Trystero (no server until MP8).
 ## 2026-09-27 — MP6: the match on the server
 
 Built per the MP6 section of the server spec. Choices (reversible):
+
 - **Side on reload** (docs/QUESTIONS.md MP6 question): option 1 — seats
   keyed by a per-browser `clientId`; a seat survives a disconnect for
   60 s, so a reload continues the match on the same side. After 60 s the
@@ -5225,6 +5228,7 @@ Built per the MP6 section of the server spec. Choices (reversible):
 Erik's first full server match: field-kubb flow worked live (miss →
 rack, second miss → clamped and raised, early baseline kubb re-raised,
 advantage line, gh#16 stats on both, sync 0 incidents). Two findings:
+
 - "Kastet är för svagt": his kubb tosses left the hand at ~6.4 m/s
   (sticks 8–10 m/s) — a 45° toss at 6.4 m/s reaches ~4.2 m, short of the
   8 m court's far half. `tossVelocityMultiplier` 1.0 → 1.4 (~9 m/s).
@@ -5251,6 +5255,7 @@ Erik: one address on the home network should give the headsets the
 game, the configuration and the server; the server leads (turns etc.)
 and introduces the headsets; server unit tests before headset tests.
 Cloud parked (headsets are always at home).
+
 - `npm start` = vite build + esbuild bundle of `server/main.ts` + run.
   One HTTPS server on 8443 serves `dist/`, `/__kubb/config.json`,
   `/__kubb/log` and the game WebSocket. It reuses the dev server's

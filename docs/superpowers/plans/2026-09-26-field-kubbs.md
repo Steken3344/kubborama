@@ -41,15 +41,41 @@
 ### Task 1: `core/inkast.ts` — geometry of halves
 
 **Interfaces (produces):**
+
 ```ts
-export interface CourtHalves { halfWidthM: number; nearBaselineZ: number; centreZ: number; farBaselineZ: number }
-export function courtHalves(preset: CourtPreset): CourtHalves;          // near 0, far −L, centre −L/2
-export function halfBounds(h: CourtHalves, side: MatchSide): { minZ: number; maxZ: number }; // host [centre,0], guest [far,centre]
-export function halfOfZ(h: CourtHalves, z: number): MatchSide;           // z ≥ centre → host
-export function isLegalLanding(h: CourtHalves, side: MatchSide, x: number, z: number): boolean; // lines count as in
-export function clampIntoHalf(h: CourtHalves, side: MatchSide, x: number, z: number, insetM: number): { x: number; z: number };
-export function nudgeClear(p: { x: number; z: number }, others: ReadonlyArray<{ x: number; z: number }>, minSeparationM: number, h: CourtHalves): { x: number; z: number };
+export interface CourtHalves {
+  halfWidthM: number;
+  nearBaselineZ: number;
+  centreZ: number;
+  farBaselineZ: number;
+}
+export function courtHalves(preset: CourtPreset): CourtHalves; // near 0, far −L, centre −L/2
+export function halfBounds(
+  h: CourtHalves,
+  side: MatchSide,
+): { minZ: number; maxZ: number }; // host [centre,0], guest [far,centre]
+export function halfOfZ(h: CourtHalves, z: number): MatchSide; // z ≥ centre → host
+export function isLegalLanding(
+  h: CourtHalves,
+  side: MatchSide,
+  x: number,
+  z: number,
+): boolean; // lines count as in
+export function clampIntoHalf(
+  h: CourtHalves,
+  side: MatchSide,
+  x: number,
+  z: number,
+  insetM: number,
+): { x: number; z: number };
+export function nudgeClear(
+  p: { x: number; z: number },
+  others: ReadonlyArray<{ x: number; z: number }>,
+  minSeparationM: number,
+  h: CourtHalves,
+): { x: number; z: number };
 ```
+
 `nudgeClear`: up to 10 iterations; for the first `other` closer than `minSeparationM`, step `minSeparationM` along x away from it (`+1` when equal x); clamp x to ±halfWidth; return the result.
 
 - [ ] Tests (`src/core/inkast.test.ts`): tournament preset (5×8) → halves; legal inside / on the line / beyond the centre line / beyond the sideline / wrong half; clamp from outside each edge lands inset; nudge moves a coincident point by ≥ minSeparation and leaves a clear point untouched; `halfOfZ(-4)` = host (centre counts as host — document it).
@@ -58,6 +84,7 @@ export function nudgeClear(p: { x: number; z: number }, others: ReadonlyArray<{ 
 ### Task 2: `core/match.ts` v3 reducer
 
 **Interfaces (produces):**
+
 ```ts
 export type MatchPhase = 'inkast' | 'throwing';
 export type MatchEndReason = 'allKubbsAndKing' | 'kingFelledEarly' | 'kingFelledByInkast';
@@ -87,9 +114,11 @@ standingKubbs(s): { host: number; guest: number }
 // kept: otherSide, turnPassedTo, kubbSide, kubbId, kubbIndexFromId, isFinished
 // removed: score, felledKubbIds
 ```
+
 Same-reference `state` and the shared frozen empty `effects` when nothing applies.
 
 Behavior (spec rules → tests, `src/core/match.test.ts` rewritten):
+
 - `withKubbFelled`, phase `throwing`:
   - target-half field kubb → removed from `fieldKubbs`, appended to `felledThisTurn`, no effect.
   - target-half baseline kubb, no field kubb on the target half → removed from `baselineKubbs[target]`, appended.

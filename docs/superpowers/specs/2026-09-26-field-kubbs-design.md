@@ -18,7 +18,7 @@ z = −L (guest), centre line z = −L/2, sidelines x = ±W/2, king at
 (0, −L/2). The **host half** is z ∈ [−L/2, 0], the **guest half**
 z ∈ [−L, −L/2]. A kubb belongs to the half it stands on, not to a player.
 
-1. **Turn = inkast (if any) + 6 batons.** The thrower's *target half* is
+1. **Turn = inkast (if any) + 6 batons.** The thrower's _target half_ is
    the opponent's half.
 2. **Inkast.** At the start of a turn the thrower tosses every kubb
    felled in the previous turn (they come from the thrower's own half)
@@ -66,17 +66,26 @@ Solo (`SimpleRulesSystem`) and Advanced solo are unchanged.
 
 ```ts
 type MatchPhase = 'inkast' | 'throwing';
-interface FieldKubb { kubbId: string; half: MatchSide; x: number; z: number }
-interface InkastItem { kubbId: string; attempt: 1 | 2 }
+interface FieldKubb {
+  kubbId: string;
+  half: MatchSide;
+  x: number;
+  z: number;
+}
+interface InkastItem {
+  kubbId: string;
+  attempt: 1 | 2;
+}
 interface MatchState {
   currentTurn: MatchSide;
   phase: MatchPhase;
   baselineKubbs: { host: string[]; guest: string[] }; // standing, by half
-  fieldKubbs: FieldKubb[];                           // standing
-  felledThisTurn: string[];                          // counted fells, target half
-  inkastQueue: InkastItem[];                         // to toss this turn
+  fieldKubbs: FieldKubb[]; // standing
+  felledThisTurn: string[]; // counted fells, target half
+  inkastQueue: InkastItem[]; // to toss this turn
   winner: MatchSide | null;
-  endReason: 'allKubbsAndKing' | 'kingFelledEarly' | 'kingFelledByInkast' | null;
+  endReason:
+    'allKubbsAndKing' | 'kingFelledEarly' | 'kingFelledByInkast' | null;
 }
 ```
 
@@ -141,8 +150,8 @@ sin-bin row is replaced by the inkast rack); `data/sin-bin.json` and
 - **HUD**: `standingKubbs` per half in each player's avatar color;
   phase row.
 - **Gate probes** (`gateLog`): `inkast landed {kubbId, legal, attempt,
-  clamped}`, `kubb raised {kubbId, reason: inkast|inkastHit|earlyBaseline|
-  rebound}`, `advantage line {side, z}`, plus `phase` in `match state` and
+clamped}`, `kubb raised {kubbId, reason: inkast|inkastHit|earlyBaseline|
+rebound}`, `advantage line {side, z}`, plus `phase` in `match state` and
   the sync snapshot. New gate-report items: `mp4-inkast-legal`,
   `mp4-inkast-retry`, `mp4-inkast-clamp`, `mp4-field-first`,
   `mp4-rebound`, `mp4-advantage`, `mp4-sync-phase` (host/guest agree on

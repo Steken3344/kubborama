@@ -628,8 +628,8 @@ Spec: docs/superpowers/specs/2026-09-26-authoritative-server-design.md
 - [x] Two headless clients: identical stick positions per server tick;
       a thrown stick rests where the spike predicted.
 - Known interim gap (MP6): rules, rounds and the match still run locally
-      in server mode. Server code changes need a dev-server restart
-      (loaded once via ssrLoadModule).
+  in server mode. Server code changes need a dev-server restart
+  (loaded once via ssrLoadModule).
 
 ## MP4 — Field kubbs `status: DONE — headset gate PASSED 2026-09-27 via the server (MP7), tagged v0.8-mp7`
 
