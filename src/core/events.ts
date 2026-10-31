@@ -2,6 +2,7 @@ import type { Language } from './i18n.js';
 import type { MatchEffect, MatchSide, MatchState } from './match.js';
 import type { VoiceSignal } from './serverProtocol.js';
 import type { PresenceMessage } from './presence.js';
+import type { ClientProfile } from './profiles.js';
 import type { RoundResult } from './scoring.js';
 import type { Settings } from './settings.js';
 import type { Vec3 } from './vec3.js';
@@ -165,6 +166,23 @@ export interface GameEvents {
    * ServerLinkSystem forwards it; the server resets and every client
    * follows its snapshots. */
   ServerResetRequested: Record<string, never>;
+  /** The menu's name / colour buttons while playing through the game
+   * server: the profile lives on the server (2026-10-31), so
+   * ServerLinkSystem asks it; the answer comes back as ServerProfile. */
+  ServerProfileRequested: {
+    name: string | null;
+  };
+  ServerColorRequested: {
+    colorIndex: number;
+  };
+  /** This player's profile, as the game server keeps it. */
+  ServerProfile: ClientProfile;
+  /** The server judged a release a foot fault (both headsets hear it). */
+  FootFault: {
+    side: MatchSide;
+    /** It was this headset's own throw. */
+    mine: boolean;
+  };
   /** The court button pressed while playing through the game server —
    * a ROOM setting: ServerLinkSystem asks the server, which switches
    * the court for both players (2026-10-31). */

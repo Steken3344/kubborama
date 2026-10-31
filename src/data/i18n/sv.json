@@ -56,5 +56,9 @@
   "statsAccuracy": "Precision: {value}%",
   "versionLabel": "Version: {version}",
   "inkastRemaining": "Inkast: {n} kvar",
-  "matchEndKingByInkast": "Kungen fälld vid inkast"
+  "matchEndKingByInkast": "Kungen fälld vid inkast",
+  "hudFootFault": "Övertramp!",
+  "statsHeadToHead": "Mot {name}: {won}-{lost}",
+  "statsHeadToHeadEmpty": "Mot andra: inga matcher än",
+  "statsOpponentDefault": "Spelare"
 }

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SERVER_PROTOCOL_VERSION } from '../src/core/serverProtocol.js';
-import { createKubbRequestHandler } from './httpRoutes.js';
+import { createKubbRequestHandler, deviceIdFromCookie } from './httpRoutes.js';
 
 const root = mkdtempSync(join(tmpdir(), 'kubb-http-'));
 const staticDir = join(root, 'dist');
@@ -109,5 +109,28 @@ describe('caching (review, 2026-10-31)', () => {
     expect(
       (await fetch(`${base}/__kubb/config.json`)).headers.get('cache-control'),
     ).toBe('no-store');
+  });
+});
+
+describe('device cookie (2026-10-31)', () => {
+  it('a browser without one gets a random device id; with one, none', async () => {
+    const first = await fetch(`${base}/__kubb/config.json`);
+    const cookie = first.headers.get('set-cookie') ?? '';
+    expect(cookie).toMatch(/^kubb_device=[0-9a-f-]{36};/u);
+    expect(cookie).toContain('HttpOnly');
+    expect(cookie).toContain('SameSite=Strict');
+    const id = cookie.split(';')[0] ?? '';
+    const again = await fetch(`${base}/__kubb/config.json`, {
+      headers: { cookie: id },
+    });
+    expect(again.headers.get('set-cookie')).toBeNull();
+  });
+
+  it('reads only a well-formed id from a Cookie header', () => {
+    expect(
+      deviceIdFromCookie('a=1; kubb_device=0123456789abcdef-0123; b=2'),
+    ).toBe('0123456789abcdef-0123');
+    expect(deviceIdFromCookie('kubb_device=<script>')).toBeNull();
+    expect(deviceIdFromCookie(undefined)).toBeNull();
   });
 });

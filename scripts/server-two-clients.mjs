@@ -64,6 +64,16 @@ await a.page.waitForFunction(
   null,
   { timeout: 30000 },
 );
+// Both seated and the match on, before A throws: a slow headless page
+// can take longer than the sleeps above, and a throw made while A is
+// still alone (practice) is wiped by the match starting on B's join.
+for (const p of [a.page, b.page]) {
+  await p.waitForFunction(
+    () => globalThis.__kubbDev?.lastMatch?.currentTurn === 'host',
+    null,
+    { timeout: 60000 },
+  );
+}
 const throwStick = (page, stickIndex) =>
   page.evaluate((i) => {
     const { gameEvents, debugContext } = globalThis.__kubbDev;
@@ -163,7 +173,10 @@ const ok =
   welcomes.every((w) => w.gameMode === 'simple') &&
   common.length >= 5 &&
   identical &&
-  rounds.some((r) => r.side === 'host' && !r.byOpponent && r.statsRecorded) &&
+  // gh#16 through the server (2026-10-31): the SERVER records A's round
+  // into A's profile; neither headset counts locally.
+  serverGate.includes('round recorded {"side":"host"}') &&
+  rounds.some((r) => r.side === 'host' && !r.byOpponent) &&
   rounds.some((r) => r.side === 'guest' && r.byOpponent && !r.statsRecorded) &&
   (tossed === null
     ? phases.includes('guest/throwing')

@@ -4,6 +4,7 @@ import type { Http2SecureServer } from 'node:http2';
 import { WebSocketServer } from 'ws';
 import { SERVER_PATH } from '../src/core/serverProtocol.js';
 import type { GameServer } from './gameServer.js';
+import { deviceIdFromCookie } from './httpRoutes.js';
 
 /** Largest client message we accept — a throw is ~250 bytes. */
 const MAX_PAYLOAD_BYTES = 16 * 1024;
@@ -37,14 +38,18 @@ export function attachGameWebSocket(
     wss.handleUpgrade(request, socket, head, (ws) => {
       alive.set(ws, true);
       ws.on('pong', () => alive.set(ws, true));
-      const handle = game.connect({
-        send: (message) => {
-          ws.send(JSON.stringify(message));
+      const deviceId = deviceIdFromCookie(request.headers.cookie);
+      const handle = game.connect(
+        {
+          send: (message) => {
+            ws.send(JSON.stringify(message));
+          },
+          close: () => {
+            ws.close();
+          },
         },
-        close: () => {
-          ws.close();
-        },
-      });
+        deviceId ? { deviceId } : {},
+      );
       ws.on('message', (raw) => {
         let data: unknown;
         try {

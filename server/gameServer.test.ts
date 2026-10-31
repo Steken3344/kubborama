@@ -6,6 +6,7 @@ import {
   REJOIN_GRACE_MS,
   ROOM_ACTION_COOLDOWN_MS,
 } from './gameServer.js';
+import { memoryProfileRepository } from './profileRepository.js';
 import { noServerLog } from './serverLog.js';
 
 const clock = { now: 0 };
@@ -401,5 +402,77 @@ describe('GameServer — room action cooldown (gh#27)', () => {
     ); // no flip back
     const rooms = a.received.filter((m) => m.type === 'room');
     expect(rooms).toEqual([{ type: 'room', gameMode: 'advanced' }]);
+  });
+});
+
+describe('GameServer — profiles (2026-10-31)', () => {
+  const lastOf = <T extends ServerMessage['type']>(
+    c: ReturnType<typeof fakeClient>,
+    type: T,
+  ) =>
+    c.received
+      .filter((m): m is Extract<ServerMessage, { type: T }> => m.type === type)
+      .at(-1);
+
+  it('on join each player gets its profile and both get the room colours', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const ha = server.connect(a.connection, { deviceId: 'device-aaaa-0001' });
+    const hb = server.connect(b.connection, { deviceId: 'device-bbbb-0002' });
+    await ha.receive(join('simple', 'prof-A-1'));
+    await hb.receive(join('simple', 'prof-B-1'));
+    expect(lastOf(a, 'profile')).toMatchObject({ name: null, colorIndex: 0 });
+    // Both chose colour 0: side B is shown in the next one.
+    expect(lastOf(b, 'colors')).toEqual({ type: 'colors', host: 0, guest: 1 });
+  });
+
+  it('a chosen name and colour are kept for the device across reconnects', async () => {
+    const repo = memoryProfileRepository();
+    const server = new GameServer({
+      log: noServerLog,
+      nowMs: () => clock.now,
+      profiles: repo,
+    });
+    const a = fakeClient();
+    const ha = server.connect(a.connection, { deviceId: 'device-aaaa-0003' });
+    await ha.receive(join('simple', 'prof-A-2'));
+    expect(await ha.receive({ type: 'setProfile', name: 'Erik' })).toBe(true);
+    expect(await ha.receive({ type: 'setColor', colorIndex: 2 })).toBe(true);
+    expect(lastOf(a, 'profile')).toMatchObject({ name: 'Erik', colorIndex: 2 });
+    // A name outside the menu's list is refused.
+    expect(await ha.receive({ type: 'setProfile', name: 'Mallory' })).toBe(
+      false,
+    );
+    // A new server reading the same store: the device is still Erik.
+    const server2 = new GameServer({
+      log: noServerLog,
+      nowMs: () => clock.now,
+      profiles: memoryProfileRepository(repo.saved),
+    });
+    const a2 = fakeClient();
+    const ha2 = server2.connect(a2.connection, {
+      deviceId: 'device-aaaa-0003',
+    });
+    await ha2.receive(join('simple', 'a-brand-new-clientid'));
+    expect(lastOf(a2, 'profile')).toMatchObject({
+      name: 'Erik',
+      colorIndex: 2,
+    });
+  });
+
+  it('without a cookie the clientId keys the profile', async () => {
+    const repo = memoryProfileRepository();
+    const server = new GameServer({
+      log: noServerLog,
+      nowMs: () => clock.now,
+      profiles: repo,
+    });
+    const a = fakeClient();
+    const ha = server.connect(a.connection);
+    await ha.receive(join('simple', 'only-a-clientid-1'));
+    expect(repo.saved.devices['only-a-clientid-1']).toBe(
+      'device:only-a-clientid-1',
+    );
   });
 });

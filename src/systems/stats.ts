@@ -7,7 +7,9 @@ import {
   encodeStats,
   recordRound,
 } from '../core/stats.js';
+import type { ClientProfile } from '../core/profiles.js';
 import type { Stats } from '../core/stats.js';
+import { isServerModeOn } from '../serverMode.js';
 
 const STATS_STORAGE_KEY = 'kubborama.stats.v1';
 
@@ -33,14 +35,27 @@ function saveStats(stats: Stats): void {
  * player (an opponent's relayed turn is skipped, gh#16) into
  * lifetime totals + personal bests, persisted to localStorage. The
  * HUD reads `stats` directly (same-frame, no event round-trip
- * needed). */
+ * needed). Through the game server the SERVER keeps them in the
+ * player's profile (2026-10-31): this system then only shows the
+ * server's numbers and never records or saves locally. */
 export class StatsSystem extends createSystem({}) {
   stats: Stats = emptyStats();
+  /** Results against each opponent (server mode only). */
+  headToHead: ClientProfile['headToHead'] = [];
   private unsubscribeRoundEnded?: () => void;
+  private unsubscribeServerProfile?: () => void;
 
   init(): void {
-    this.stats = loadStats();
+    const viaServer = isServerModeOn();
+    this.stats = viaServer ? emptyStats() : loadStats();
+    this.unsubscribeServerProfile = gameEvents.on('ServerProfile', (p) => {
+      this.stats = p.stats;
+      this.headToHead = p.headToHead;
+    });
     this.unsubscribeRoundEnded = gameEvents.on('RoundEnded', (e) => {
+      if (viaServer) {
+        return; // the server records it into the profile
+      }
       if (e.byOpponent) {
         // gh#16: the opponent's turn, relayed to this host — not ours.
         return;
@@ -62,5 +77,6 @@ export class StatsSystem extends createSystem({}) {
 
   destroy(): void {
     this.unsubscribeRoundEnded?.();
+    this.unsubscribeServerProfile?.();
   }
 }

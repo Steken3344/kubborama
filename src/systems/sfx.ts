@@ -2,7 +2,12 @@ import { AudioSource, AudioUtils, createSystem } from '@iwsdk/core';
 import type { Entity } from '@iwsdk/core';
 import { audio } from '../config.js';
 import { gameEvents } from '../core/events.js';
-import { kingFelled, kubbFelled, roundCleared } from '../core/haptics.js';
+import {
+  footFault,
+  kingFelled,
+  kubbFelled,
+  roundCleared,
+} from '../core/haptics.js';
 import type { HapticSequence } from '../core/haptics.js';
 import { createRng } from '../core/rng.js';
 import { playHapticSequence } from './hapticPlayer.js';
@@ -35,6 +40,7 @@ export class SfxSystem extends createSystem({}) {
   private unsubscribeKubbFelled?: () => void;
   private unsubscribeKingFelled?: () => void;
   private unsubscribeRoundEnded?: () => void;
+  private unsubscribeFootFault?: () => void;
 
   init(): void {
     this.ambienceEntity = this.world.createEntity();
@@ -80,12 +86,18 @@ export class SfxSystem extends createSystem({}) {
         this.pulseBothHands(roundCleared);
       }
     });
+    this.unsubscribeFootFault = gameEvents.on('FootFault', ({ mine }) => {
+      if (mine) {
+        this.pulseBothHands(footFault);
+      }
+    });
   }
 
   destroy(): void {
     this.unsubscribeKubbFelled?.();
     this.unsubscribeKingFelled?.();
     this.unsubscribeRoundEnded?.();
+    this.unsubscribeFootFault?.();
   }
 
   update(): void {

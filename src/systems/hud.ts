@@ -11,6 +11,10 @@ import { settingsState } from '../settingsState.js';
 import { StatsSystem } from './stats.js';
 import { gateLog } from '../debug/gateLog.js';
 
+/** How long a server notice (a foot fault) stays on the HUD. */
+const NOTICE_SHOWN_S = 2.5;
+const FOOT_FAULT_COLOR = '#ff6b5b';
+
 /**
  * Updates the always-visible scoreboard panel. Purely event-driven —
  * text only changes when a round ends or a throw is released, so
@@ -28,6 +32,9 @@ export class HudSystem extends createSystem({}) {
   private unsubscribeThrown?: () => void;
   private unsubscribeLanguageChanged?: () => void;
   private unsubscribeMatchStateChanged?: () => void;
+  private unsubscribeFootFault?: () => void;
+  private nowS = 0;
+  private noticeUntilS: number | null = null;
   private unsubscribeMultiplayerPeerDisconnected?: () => void;
   private unsubscribePeerPresence?: () => void;
   private unsubscribeAvatarColorChanged?: () => void;
@@ -100,9 +107,36 @@ export class HudSystem extends createSystem({}) {
         this.updateMatchRow(); // my own digit — reads settingsState
       },
     );
+    // 2026-10-31: the server judged a foot fault — tell both players.
+    this.unsubscribeFootFault = gameEvents.on('FootFault', (e) => {
+      const t = i18nState.t;
+      const who = e.side === 'host' ? t('rolePlayerA') : t('rolePlayerB');
+      this.hudPanel.requireElementById('notice-label').setProperties({
+        text: who,
+      });
+      this.hudPanel.requireElementById('notice-value').setProperties({
+        text: t('hudFootFault'),
+        color: FOOT_FAULT_COLOR,
+      });
+      this.hudPanel
+        .requireElementById('notice-row')
+        .setProperties({ display: 'flex' });
+      this.noticeUntilS = this.nowS + NOTICE_SHOWN_S;
+    });
+  }
+
+  update(_delta: number, timeS: number): void {
+    this.nowS = timeS;
+    if (this.noticeUntilS !== null && timeS >= this.noticeUntilS) {
+      this.noticeUntilS = null;
+      this.hudPanel
+        .requireElementById('notice-row')
+        .setProperties({ display: 'none' });
+    }
   }
 
   destroy(): void {
+    this.unsubscribeFootFault?.();
     this.unsubscribeRoundEnded?.();
     this.unsubscribeThrown?.();
     this.unsubscribeLanguageChanged?.();

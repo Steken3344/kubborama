@@ -94,3 +94,12 @@ export const roundCleared: HapticSequence = {
   ],
   gapMs: 80,
 };
+
+/** Two firm buzzes: "your throw did not count" (a foot fault). */
+export const footFault: HapticSequence = {
+  pulses: [
+    { intensity: 0.9, durationMs: 60 },
+    { intensity: 0.9, durationMs: 60 },
+  ],
+  gapMs: 140,
+};

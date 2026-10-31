@@ -25,6 +25,7 @@ import avatarPaletteData from './data/avatar-palette.json' with { type: 'json' }
 import roundData from './data/round.json' with { type: 'json' };
 import locomotionData from './data/locomotion.json' with { type: 'json' };
 import uiData from './data/ui.json' with { type: 'json' };
+import profileNamesData from './data/profile-names.json' with { type: 'json' };
 
 export const courtPresets = courtPresetsData.presets;
 export type CourtPresetName = keyof typeof courtPresets;
@@ -65,10 +66,15 @@ export const walkArea = {
   minZ: locomotionData.walkAreaMinZ,
   maxZ: locomotionData.walkAreaMaxZ,
 };
+/** The menu's fixed profile names — the server accepts only these. */
+export const profileNames: readonly string[] = profileNamesData.names;
 /** Menu buttons ignore a repeat click within this long (gh#27). */
 export const ui = uiData;
 /** How far past the throwing line the head may lean (core/walkArea.ts). */
 export const lineLeanAllowanceM = locomotionData.lineLeanAllowanceM;
+/** A stick released further than this past the throwing line is a
+ * foot fault (core/walkArea.ts isFootFault, judged by the server). */
+export const footFaultReachM = locomotionData.footFaultReachM;
 /** MP4 inkast tunables (docs/superpowers/specs/2026-09-26-field-kubbs-design.md). */
 export const inkast = inkastData;
 export const stickRack = stickRackData;

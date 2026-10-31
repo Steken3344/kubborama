@@ -291,6 +291,27 @@ function roomCourtCheck(entries) {
     : verdict(id, label, 'PASS', fmt(changes[0]));
 }
 
+/** 2026-10-31: the server judges a foot fault; both headsets are told. */
+function footFaultCheck(entries) {
+  const id = 'foot-fault';
+  const label = 'a foot fault is announced on both headsets';
+  const faults = gate(entries, 'foot fault').filter((e) => e.role === 'server');
+  if (faults.length === 0) return verdict(id, label, 'NOT SEEN');
+  const bad = faults.find((f) => {
+    const told = (role) =>
+      within(
+        entries,
+        f,
+        (e) =>
+          e.channel === 'gate' && e.message === 'foot fault' && e.role === role,
+      );
+    return !(told('host') && told('guest'));
+  });
+  return bad
+    ? verdict(id, label, 'FAIL', fmt(bad))
+    : verdict(id, label, 'PASS', fmt(faults[0]));
+}
+
 function sameRoomCheck(entries) {
   const id = 'same-room';
   const label = 'every headset joined the same room';
@@ -375,23 +396,47 @@ export function runChecks(entries) {
           gate(entries, 'mode button pressed').filter((e) => e.role !== 'solo'),
           (e) => !e.data.locked,
         ),
-    allOf(
-      'gh16-host',
-      "opponent's turn stays out of the host's stats",
-      summaries.filter((e) => e.role === 'host' && e.data.byOpponent),
-      (e) => e.data.statsRecorded,
-    ),
-    allOf(
-      'gh16-guest',
-      "guest's own turn lands in the guest's stats",
-      summaries.filter(
-        (e) =>
-          e.role === 'guest' && !e.data.byOpponent && e.data.sticksThrown > 0,
-      ),
-      (e) => !e.data.statsRecorded,
-    ),
+    // Server mode (2026-10-31): the server records each round into its
+    // thrower's profile and logs it — the headsets no longer count.
+    ...(gate(entries, 'round recorded').length > 0
+      ? [
+          allOf(
+            'gh16-host',
+            "opponent's turn stays out of the host's stats",
+            gate(entries, 'round recorded'),
+            (e) => e.data.side !== 'host' && e.data.side !== 'guest',
+          ),
+          allOf(
+            'gh16-guest',
+            "guest's own turn lands in the guest's stats",
+            gate(entries, 'round recorded').filter(
+              (e) => e.data.side === 'guest',
+            ),
+            () => false,
+          ),
+        ]
+      : [
+          allOf(
+            'gh16-host',
+            "opponent's turn stays out of the host's stats",
+            summaries.filter((e) => e.role === 'host' && e.data.byOpponent),
+            (e) => e.data.statsRecorded,
+          ),
+          allOf(
+            'gh16-guest',
+            "guest's own turn lands in the guest's stats",
+            summaries.filter(
+              (e) =>
+                e.role === 'guest' &&
+                !e.data.byOpponent &&
+                e.data.sticksThrown > 0,
+            ),
+            (e) => !e.data.statsRecorded,
+          ),
+        ]),
     ...fieldKubbChecks(entries),
     roomCourtCheck(entries),
+    footFaultCheck(entries),
     sync.pairs === 0
       ? verdict('mp3a-score', 'score agrees on both', 'NOT SEEN')
       : scoreIncidents.length > 0

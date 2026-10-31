@@ -19,7 +19,7 @@ const lifetimeTotalsSchema = z.object({
   playTimeS: z.number().nonnegative(),
 });
 
-const statsSchema = z.object({
+export const statsSchema = z.object({
   version: z.literal(STATS_SCHEMA_VERSION),
   // Reserved for post-POC accounts/match history (docs/PLAN.md's
   // stats.ts note) — unused by the POC, kept so a future schema bump

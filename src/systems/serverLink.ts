@@ -11,6 +11,7 @@ import { log } from '../core/log.js';
 import { NETWORKED_PIECE_IDS } from '../core/pieceSync.js';
 import { standingPose } from '../core/presence.js';
 import { placePlayer } from '../playerPlacement.js';
+import { serverShownColors } from '../shownColors.js';
 import type { PresenceMessage } from '../core/presence.js';
 import {
   parseServerMessage,
@@ -133,6 +134,12 @@ export class ServerLinkSystem extends createSystem({}) {
       gameEvents.on('ServerGameModeRequested', (e) => {
         this.send({ type: 'setGameMode', gameMode: e.gameMode });
       }),
+      gameEvents.on('ServerProfileRequested', (e) => {
+        this.send({ type: 'setProfile', name: e.name });
+      }),
+      gameEvents.on('ServerColorRequested', (e) => {
+        this.send({ type: 'setColor', colorIndex: e.colorIndex });
+      }),
       () => {
         this.stopped = true;
         this.socket?.close();
@@ -191,6 +198,7 @@ export class ServerLinkSystem extends createSystem({}) {
     socket.addEventListener('close', () => {
       log('warn', 'net', 'game server connection closed', {});
       this.socket = null;
+      serverShownColors.current = null;
       this.side = null;
       this.settingsSystem.releaseMatchGameMode();
       this.leaveMatch();
@@ -303,6 +311,36 @@ export class ServerLinkSystem extends createSystem({}) {
           longestFellingThrowM: message.longestFellingThrowM,
           roundDurationS: message.roundDurationS,
           timeS: this.nowS,
+        });
+        return;
+      case 'profile':
+        gameEvents.emit('ServerProfile', {
+          name: message.name,
+          colorIndex: message.colorIndex,
+          stats: message.stats,
+          headToHead: message.headToHead,
+        });
+        return;
+      case 'colors':
+        serverShownColors.current = {
+          host: message.host,
+          guest: message.guest,
+        };
+        gateLog('room colors', { host: message.host, guest: message.guest });
+        // HUD digits and the avatar retint on this (they read
+        // shownColorsFor, which now follows the server).
+        gameEvents.emit('AvatarColorChanged', {
+          colorIndex: settingsState.current.avatarColorIndex,
+        });
+        return;
+      case 'notice':
+        gateLog('foot fault', {
+          side: message.side,
+          mine: message.side === this.side,
+        });
+        gameEvents.emit('FootFault', {
+          side: message.side,
+          mine: message.side === this.side,
         });
         return;
       case 'rejected':

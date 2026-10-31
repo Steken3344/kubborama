@@ -51,3 +51,22 @@ export function behindLineCorrectionZ(
   const limit = lineZ + leanAllowanceM;
   return headZ > limit ? limit - headZ : 0;
 }
+
+/**
+ * Foot fault (Erik, 2026-10-31: "känns som man kan göra övertramp"): a
+ * stick released more than `reachM` past the thrower's line (its
+ * baseline, or advantage line while throwing from it). The reach is the
+ * lean allowance plus an arm, so a throw from behind the line never
+ * trips it. Judged by the server on the release position the client
+ * reports. Side A faces -z, side B +z.
+ */
+export function isFootFault(
+  releaseZ: number,
+  side: MatchSide,
+  lineZ: number,
+  reachM: number,
+): boolean {
+  return side === 'host'
+    ? releaseZ < lineZ - reachM
+    : releaseZ > lineZ + reachM;
+}

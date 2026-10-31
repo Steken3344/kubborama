@@ -8,7 +8,13 @@ import {
 import type { Entity } from '@iwsdk/core';
 import { Resettable } from '../components/resettable.js';
 import { StickPhase, StickState } from '../components/stick-state.js';
-import { audio, avatarPalette, avatarPaletteEntry, ui } from '../config.js';
+import {
+  audio,
+  avatarPalette,
+  avatarPaletteEntry,
+  profileNames,
+  ui,
+} from '../config.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { accuracy } from '../core/stats.js';
 import { gameEvents } from '../core/events.js';
@@ -50,7 +56,8 @@ const TOTAL_PIECES = KUBB_COUNT * 2 + 1;
 /** null = the default "Spelare"/"Player" placeholder — cycled through
  * on the profile-name button since real text entry in VR wasn't
  * attempted this session (see docs/DECISIONS.md). */
-const PROFILE_NAME_OPTIONS: Array<string | null> = [null, 'Erik', 'Gast'];
+/** No name, then the fixed names the game server also accepts. */
+const PROFILE_NAME_OPTIONS: Array<string | null> = [null, ...profileNames];
 
 /**
  * B button (right controller) toggles a small pause menu with three
@@ -195,6 +202,11 @@ export class MenuSystem extends createSystem({
         PROFILE_NAME_OPTIONS[(current + 1) % PROFILE_NAME_OPTIONS.length] ??
         null;
       this.settingsSystem.setProfileName(next);
+      if (isServerModeOn()) {
+        // The profile (colour, stats) lives on the server: it answers
+        // with that name's profile (ServerProfile below).
+        gameEvents.emit('ServerProfileRequested', { name: next });
+      }
       this.refreshLabels();
     });
     this.wireButton('court-lines-button', () => {
@@ -218,6 +230,11 @@ export class MenuSystem extends createSystem({
         event: 'sent',
         colorIndex: settingsState.current.avatarColorIndex,
       });
+      if (isServerModeOn()) {
+        gameEvents.emit('ServerColorRequested', {
+          colorIndex: settingsState.current.avatarColorIndex,
+        });
+      }
       this.refreshLabels();
       // The HUD tints my score digit with this color and has no settings
       // subscription of its own (code review, 2026-09-05).
@@ -257,6 +274,14 @@ export class MenuSystem extends createSystem({
       }),
       gameEvents.on('LanguageChanged', () => {
         this.refreshLabels();
+      }),
+      // The server's copy of this player's profile: name and colour
+      // follow it (a chosen name brings that profile's colour along).
+      gameEvents.on('ServerProfile', (profile) => {
+        this.settingsSystem.setProfileName(profile.name);
+        this.settingsSystem.setAvatarColorIndex(profile.colorIndex);
+        this.refreshLabels();
+        this.refreshStats();
       }),
       // The court can change from outside (the server's `room`, a
       // borrowed mode on joining) — keep the button's label true.
@@ -430,6 +455,24 @@ export class MenuSystem extends createSystem({
       text: t('statsAccuracy', {
         value: Math.round(accuracy(stats) * 100),
       }),
+    });
+    // Server mode (2026-10-31): results against each opponent, from the
+    // server-kept profile; hidden in serverless play.
+    const headToHead = this.statsSystem.headToHead;
+    this.menuPanel.requireElementById('stats-head-to-head').setProperties({
+      display: isServerModeOn() ? 'flex' : 'none',
+      text:
+        headToHead.length === 0
+          ? t('statsHeadToHeadEmpty')
+          : headToHead
+              .map((r) =>
+                t('statsHeadToHead', {
+                  name: r.opponentName ?? t('statsOpponentDefault'),
+                  won: r.won,
+                  lost: r.lost,
+                }),
+              )
+              .join('  '),
     });
   }
 

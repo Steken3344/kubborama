@@ -2,7 +2,9 @@
 import type { Server as HttpServer } from 'node:http';
 import type { Http2SecureServer } from 'node:http2';
 import { SERVER_PATH } from '../src/core/serverProtocol.js';
+import { resolve } from 'node:path';
 import { GameServer } from './gameServer.js';
+import { fileProfileRepository, PROFILES_FILE } from './profileRepository.js';
 import { attachGameWebSocket } from './wsServer.js';
 
 /** Started by the `kubb-game-server` Vite plugin (vite.config.ts) via
@@ -10,7 +12,9 @@ import { attachGameWebSocket } from './wsServer.js';
 export function startDevGameServer(
   httpServer: HttpServer | Http2SecureServer,
 ): GameServer {
-  const game = new GameServer();
+  const game = new GameServer({
+    profiles: fileProfileRepository(resolve(PROFILES_FILE)),
+  });
   const wss = attachGameWebSocket(httpServer, game);
   game.start();
   // Vite restarts (config edits) close this httpServer and build a new

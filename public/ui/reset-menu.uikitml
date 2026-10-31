@@ -181,5 +181,8 @@
     <span id="stats-streak" class="stat-line">Kungsvit: 0</span>
     <span id="stats-rounds-played" class="stat-line">Rundor spelade: 0</span>
     <span id="stats-accuracy" class="stat-line">Precision: 0%</span>
+    <span id="stats-head-to-head" class="stat-line" style="display: none"
+      >Mot andra: inga matcher än</span
+    >
   </div>
 </Panel>

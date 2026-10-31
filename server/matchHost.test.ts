@@ -66,9 +66,11 @@ function host(mode: 'simple' | 'advanced' = 'simple') {
   const states: Array<MatchState | null> = [];
   const rounds: RoundReport[] = [];
   const gates: Array<{ message: string; data: Record<string, unknown> }> = [];
+  const notices: Array<{ kind: string; side: string }> = [];
   const mh = new MatchHost(world, mode, {
     matchState: (s) => states.push(s),
     roundEnded: (r) => rounds.push(r),
+    notice: (kind, side) => notices.push({ kind, side }),
     gate: (message, data) => gates.push({ message, data }),
   });
   const run = (seconds: number) => {
@@ -88,6 +90,7 @@ function host(mode: 'simple' | 'advanced' = 'simple') {
     states,
     rounds,
     gates,
+    notices,
     run,
     throwStick,
     last: () => states.at(-1) ?? null,
@@ -407,5 +410,47 @@ describe('MatchHost — stability scenarios (2026-10-31)', () => {
     expect(toss('host', 'kubb-0')).toBe(false); // not the thrower
     expect(toss('guest', 'kubb-0')).toBe(true);
     expect(toss('guest', 'kubb-0')).toBe(false); // already in the air
+  });
+});
+
+describe('MatchHost — foot faults', () => {
+  const release = (z: number) => ({
+    pieceId: 'stick-0',
+    position: [0, 1, z] as [number, number, number],
+    quaternion: UP,
+    linearVelocity: [0, 3, -6] as [number, number, number],
+    angularVelocity: [-20, 0, 0] as [number, number, number],
+  });
+
+  it('a release within the reach of the baseline is a normal throw', () => {
+    const h = host();
+    h.mh.setPlayers(['host']);
+    expect(h.mh.onThrow('host', release(-0.5))).toBe(true);
+    expect(h.notices).toEqual([]);
+  });
+
+  it('a release far over the line counts, does nothing, and is announced', () => {
+    const h = host();
+    h.mh.setPlayers(['host']);
+    expect(h.mh.onThrow('host', release(-2))).toBe(true);
+    expect(h.notices).toEqual([{ kind: 'footFault', side: 'host' }]);
+    expect(h.gates.some((g) => g.message === 'foot fault')).toBe(true);
+    // Laid beside the court (the sin bin), not flying at the kubbs.
+    const pose = h.world.poses.get('stick-0');
+    expect(pose?.position[0]).toBeGreaterThan(3);
+    // Thrown and settled: it cannot be thrown again this round.
+    expect(h.mh.onThrow('host', release(-0.3))).toBe(false);
+  });
+
+  it('side B is judged from its own (far) baseline', () => {
+    const h = host();
+    h.mh.setPlayers(['host', 'guest']);
+    throwTurn(h, 'host');
+    h.run(4);
+    // The guest's line is the far baseline (-6 on the backyard court).
+    const guestRelease = { ...release(-4), pieceId: 'stick-1' };
+    expect(h.last()).toMatchObject({ currentTurn: 'guest', phase: 'throwing' });
+    expect(h.mh.onThrow('guest', guestRelease)).toBe(true);
+    expect(h.notices).toEqual([{ kind: 'footFault', side: 'guest' }]);
   });
 });

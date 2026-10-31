@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { getCertificate } from '@vitejs/plugin-basic-ssl';
 import multiplayerConfig from '../src/data/multiplayer.json' with { type: 'json' };
 import { startKubbServer } from './kubbServer.js';
+import { fileProfileRepository, PROFILES_FILE } from './profileRepository.js';
 
 /**
  * `npm start`: the whole game from one address on the home network —
@@ -33,6 +34,7 @@ try {
     staticDir: repo('dist'),
     logPath: repo('.iwsdk/runtime/logs/kubb-debug.ndjson'),
     room: multiplayerConfig.devRoomId,
+    game: { profiles: fileProfileRepository(repo(PROFILES_FILE)) },
   });
 } catch (error) {
   const code = (error as { code?: string }).code;

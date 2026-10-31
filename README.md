@@ -103,6 +103,14 @@ throwing line), the right thumbstick snap-turns 45°. When you
 throw from the advantage line you are teleported onto it, and back to
 your baseline when your turn ends.
 
+**Profiles and foot faults:** pick your name in the menu (Alternativ →
+Namn) and the server remembers your colour, statistics and results
+against the other player, even if the headset's browser storage is
+cleared — just pick the name again. A stick released more than about
+an arm's length past your throwing line is a foot fault ("Övertramp!"):
+it counts as thrown and does nothing. Profiles are stored on the server
+machine in `.kubb-server/profiles.json` (not committed).
+
 ## Debug mode (live logs from a headset)
 
 The Quest browser's console is unreachable from outside, so the app can

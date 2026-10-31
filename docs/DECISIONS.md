@@ -5360,3 +5360,31 @@ back after 1 s. `TICK_HZ`/`SNAPSHOT_EVERY_TICKS` moved into
 59.5 fps against a protocol bot's throw: the opponent's stick changed
 in 108 of 119 frames, ~20° per frame. The own-throw handover is covered
 by unit tests only.
+
+## 2026-10-31 — Server-owned profiles, device cookie, foot faults
+
+Spec: `docs/superpowers/specs/2026-10-31-server-profiles-and-foot-faults-design.md`
+(Erik: "servern dömer övertramp" + "färg + namn + statistik").
+
+- **Device identity**: the server sets an HttpOnly `kubb_device` cookie
+  (random UUID) on `/__kubb/config.json` (Erik suggested cookies).
+  Cookies belong to the host, not the port, so it survives moving
+  between 8081 and 8443 — the page's localStorage clientId did not. The
+  WebSocket upgrade carries it; without one the clientId is used.
+- **Profiles** live in `.kubb-server/profiles.json` (git-ignored; names
+  only from `src/data/profile-names.json`, which the server enforces).
+  Choosing a name claims that profile on any device, so lost browser
+  storage is fixed by picking the name again. The server keeps colour,
+  lifetime stats (records each round for its thrower, logs `round
+recorded`) and head-to-head results, and hands out the room's shown
+  colours (`colors`). In server mode the headset no longer records stats
+  locally; the gate's gh16 checks read the server's `round recorded`.
+  Protocol v3.
+- **Foot faults**: walk/lean allowance 0.5 → 0.2 m; the server judges a
+  release more than `footFaultReachM` 0.9 m past the thrower's line
+  (`standingLineZ`) a foot fault: counted, never simulated, laid in the
+  sin bin; both headsets show "Övertramp!" (the thrower also feels it).
+  New gate check `foot-fault`.
+- `npm run check:server` now waits until both players are seated and
+  the match is on before A throws (a slow headless page had A throw
+  while still alone, in practice).

@@ -99,4 +99,9 @@
     <span id="end-reason-label" class="label"></span>
     <span id="end-reason-value" class="value">-</span>
   </div>
+  <!-- A server notice (a foot fault), shown for a couple of seconds. -->
+  <div id="notice-row" class="row" style="display: none">
+    <span id="notice-label" class="label"></span>
+    <span id="notice-value" class="value">-</span>
+  </div>
 </Panel>

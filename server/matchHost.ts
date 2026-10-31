@@ -1,11 +1,13 @@
 import {
   courtPresetForMode,
+  footFaultReachM,
   getCourtPreset,
   getGameMode,
   inkast,
   match,
   pieces,
   round,
+  sinBin,
   windVectorForMode,
 } from '../src/config.js';
 import { farBaselineZ } from '../src/core/court-layout.js';
@@ -20,6 +22,7 @@ import {
   initialMatchState,
   isFinished,
   otherSide,
+  standingLineZ,
   withInkastLanded,
   withKingFelled,
   withKubbFelled,
@@ -56,7 +59,9 @@ import {
   percentToReal,
   tuningParams,
 } from '../src/core/tuning.js';
+import { sinBinSlotPosition } from '../src/core/sinBin.js';
 import { sub } from '../src/core/vec3.js';
+import { isFootFault } from '../src/core/walkArea.js';
 import type { Vec3 } from '../src/core/vec3.js';
 import { computeWindForce } from '../src/core/wind.js';
 import type { Pose, ThrowInput } from './physicsWorld.js';
@@ -85,6 +90,8 @@ export interface MatchHostOutput {
   /** The match state changed (null = no match: practice). */
   matchState(state: MatchState | null): void;
   roundEnded(report: RoundReport): void;
+  /** Both players should see it: `side` made a foot fault. */
+  notice(kind: 'footFault', side: MatchSide): void;
   /** A gate-report line (docs/superpowers/specs/2026-09-26-gate-report-design.md). */
   gate(message: string, data: Record<string, unknown>): void;
 }
@@ -143,6 +150,8 @@ export class MatchHost {
   private restartInS: number | null = null;
   private graceUntilS = 0;
   private timeS = 0;
+  /** Foot-faulted sticks laid beside the court this round. */
+  private footFaults = 0;
 
   constructor(
     private readonly world: MatchWorld,
@@ -202,11 +211,14 @@ export class MatchHost {
           this.matchState.phase === 'throwing' &&
           !isFinished(this.matchState)
         : side === this.practiceSide;
-      if (
-        !onTurn ||
-        stick.phase !== 'racked' ||
-        !this.world.applyThrow(input)
-      ) {
+      if (!onTurn || stick.phase !== 'racked') {
+        return false;
+      }
+      if (this.isFootFaultRelease(side, input.position[2])) {
+        this.footFault(input.pieceId, stick, side, input.position);
+        return true;
+      }
+      if (!this.world.applyThrow(input)) {
         return false;
       }
       stick.phase = 'flying';
@@ -233,6 +245,42 @@ export class MatchHost {
     }
     this.tosses.set(input.pieceId, { sinceS: this.timeS, restS: 0 });
     return true;
+  }
+
+  /** The thrower's line: its baseline, or its advantage line while
+   * throwing from it (the same line the headset holds it behind). */
+  private isFootFaultRelease(side: MatchSide, releaseZ: number): boolean {
+    const lineZ = this.matchActive
+      ? standingLineZ(this.matchState, side, this.halves)
+      : side === 'host'
+        ? this.halves.nearBaselineZ
+        : this.farZ;
+    return isFootFault(releaseZ, side, lineZ, footFaultReachM);
+  }
+
+  /** Kubb rules: a foot-faulted stick counts as thrown and does nothing
+   * — it is never simulated, just laid in the sin bin beside the court. */
+  private footFault(
+    id: string,
+    stick: StickTrack,
+    side: MatchSide,
+    position: Vec3,
+  ): void {
+    stick.releasePosition = [...position];
+    this.roundState = scoringReducer(this.roundState, { type: 'StickThrown' });
+    const home = this.world.homePose(id);
+    this.world.setPose(id, {
+      position: sinBinSlotPosition(
+        this.footFaults,
+        pieces.kubb.heightM,
+        sinBin,
+      ),
+      quaternion: home?.quaternion ?? [0, 0, 0, 1],
+    });
+    this.footFaults += 1;
+    this.out.gate('foot fault', { side, stickId: id, releaseZ: position[2] });
+    this.out.notice('footFault', side);
+    this.settle(id, stick, position);
   }
 
   /** "Ny runda": everything home, a fresh match (or practice). */
@@ -675,6 +723,7 @@ export class MatchHost {
     this.longestThrowM = 0;
     this.longestFellingThrowM = null;
     this.causedFelling.clear();
+    this.footFaults = 0;
   }
 
   private fullReset(): void {

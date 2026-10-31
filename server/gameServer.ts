@@ -1,6 +1,20 @@
-import { courtPresetForMode } from '../src/config.js';
-import type { MatchSide } from '../src/core/match.js';
+import {
+  avatarPalette,
+  courtPresetForMode,
+  profileNames,
+} from '../src/config.js';
+import { shownAvatarColors } from '../src/core/avatarColors.js';
+import type { MatchSide, MatchState } from '../src/core/match.js';
 import { NETWORKED_PIECE_IDS } from '../src/core/pieceSync.js';
+import {
+  claimProfile,
+  clientProfile,
+  profileKeyFor,
+  recordMatchResult,
+  recordRoundFor,
+  setProfileColor,
+} from '../src/core/profiles.js';
+import type { ProfileStore } from '../src/core/profiles.js';
 import {
   parseClientMessage,
   SERVER_PROTOCOL_VERSION,
@@ -13,6 +27,9 @@ import type {
 } from '../src/core/serverProtocol.js';
 import type { Settings } from '../src/core/settings.js';
 import { MatchHost } from './matchHost.js';
+import type { RoundReport } from './matchHost.js';
+import { memoryProfileRepository } from './profileRepository.js';
+import type { ProfileRepository } from './profileRepository.js';
 import { createPhysicsWorld } from './physicsWorld.js';
 import type { PhysicsWorld } from './physicsWorld.js';
 import { appendServerLog } from './serverLog.js';
@@ -38,6 +55,13 @@ export interface ClientConnection {
 }
 
 /** What the game server gives back for each connection. */
+/** What the transport knows about a connection before any message. */
+export interface ConnectionInfo {
+  /** The server's device cookie (httpRoutes.ts), when the browser sent
+   * one — it survives a port change, unlike the page's clientId. */
+  deviceId?: string;
+}
+
 export interface ClientHandle {
   /** One decoded JSON message from the client (untrusted). Resolves to
    * whether it was accepted and acted on. */
@@ -50,6 +74,9 @@ interface Seat {
   side: MatchSide;
   clientId: string;
   connection: ClientConnection | null;
+  /** The device behind the seat: its cookie, else its clientId. */
+  deviceId: string;
+  profileKey: string;
   /** Set while the player is away; the seat is freed after the grace. */
   leftAtMs: number | null;
   recentThrowsMs: number[];
@@ -62,6 +89,8 @@ const SIDES: readonly MatchSide[] = ['host', 'guest'];
 export interface GameServerOptions {
   nowMs?: () => number;
   log?: ServerLog;
+  /** Player profiles (colour, name, stats); in memory if omitted. */
+  profiles?: ProfileRepository;
 }
 
 /**
@@ -87,13 +116,26 @@ export class GameServer {
   private peersGeneration = 0;
   private gameMode: Settings['gameMode'] = 'simple';
   private timer: ReturnType<typeof setInterval> | null = null;
+  private readonly profileRepo: ProfileRepository;
+  private profiles: ProfileStore;
+  private readonly deviceIds = new WeakMap<ClientConnection, string>();
+  /** The current finished match is already in the profiles. */
+  private matchRecorded = false;
 
   constructor(options: GameServerOptions = {}) {
     this.nowMs = options.nowMs ?? (() => performance.now());
     this.log = options.log ?? appendServerLog;
+    this.profileRepo = options.profiles ?? memoryProfileRepository();
+    this.profiles = this.profileRepo.load();
   }
 
-  connect(connection: ClientConnection): ClientHandle {
+  connect(
+    connection: ClientConnection,
+    info: ConnectionInfo = {},
+  ): ClientHandle {
+    if (info.deviceId) {
+      this.deviceIds.set(connection, info.deviceId);
+    }
     return {
       receive: (data) => this.onMessage(connection, data),
       close: () => this.onClose(connection),
@@ -207,6 +249,30 @@ export class GameServer {
       }
       return this.changeGameMode(message.gameMode, seat.side);
     }
+    if (message.type === 'setProfile') {
+      if (message.name !== null && !profileNames.includes(message.name)) {
+        return false; // only the menu's fixed names
+      }
+      this.updateProfiles(
+        claimProfile(this.profiles, seat.deviceId, message.name),
+      );
+      seat.profileKey = profileKeyFor(this.profiles, seat.deviceId).key;
+      this.log('info', 'gate', 'profile chosen', {
+        side: seat.side,
+        named: message.name !== null,
+      });
+      this.sendProfile(seat);
+      this.broadcastColors();
+      return true;
+    }
+    if (message.type === 'setColor') {
+      this.updateProfiles(
+        setProfileColor(this.profiles, seat.profileKey, message.colorIndex),
+      );
+      this.sendProfile(seat);
+      this.broadcastColors();
+      return true;
+    }
     if (message.type === 'reset') {
       if (!this.roomActionAllowed('reset')) {
         return false;
@@ -251,11 +317,16 @@ export class GameServer {
       return false;
     }
     this.expireSeats();
+    const deviceId = this.deviceIds.get(connection) ?? message.clientId;
+    const found = profileKeyFor(this.profiles, deviceId);
+    this.updateProfiles(found.store);
     let seat = this.seats.find((s) => s.clientId === message.clientId);
     if (seat) {
       seat.connection?.close(); // a second tab of the same browser wins
       seat.connection = connection;
       seat.leftAtMs = null;
+      seat.deviceId = deviceId;
+      seat.profileKey = found.key;
     } else {
       const taken = new Set(this.seats.map((s) => s.side));
       const side = SIDES.find((s) => !taken.has(s));
@@ -268,6 +339,8 @@ export class GameServer {
         side,
         clientId: message.clientId,
         connection,
+        deviceId,
+        profileKey: found.key,
         leftAtMs: null,
         recentThrowsMs: [],
         lastPresenceMs: -Infinity,
@@ -286,8 +359,99 @@ export class GameServer {
     if (this.lastMatch) {
       connection.send(this.lastMatch);
     }
+    this.sendProfile(seat);
     this.broadcastPeers();
+    this.broadcastColors();
     return true;
+  }
+
+  // --- profiles ------------------------------------------------------------
+
+  private updateProfiles(next: ProfileStore): void {
+    if (next === this.profiles) {
+      return;
+    }
+    this.profiles = next;
+    try {
+      this.profileRepo.save(next);
+    } catch (error) {
+      // A full disk must not stop the game; the profiles stay in memory.
+      this.log('warn', 'net', 'profile save failed', { error: String(error) });
+    }
+  }
+
+  private sendProfile(seat: Seat): void {
+    seat.connection?.send({
+      type: 'profile',
+      ...clientProfile(this.profiles, seat.profileKey),
+    });
+  }
+
+  /** The colours the room shows: each seat's choice, a clash resolved
+   * in side B's disfavour (core/avatarColors.ts). */
+  private broadcastColors(): void {
+    const choice = (side: MatchSide): number | null => {
+      const seat = this.seats.find((s) => s.side === side);
+      return seat
+        ? clientProfile(this.profiles, seat.profileKey).colorIndex
+        : null;
+    };
+    const host = choice('host');
+    const guest = choice('guest');
+    let shown = { host, guest };
+    if (host !== null && guest !== null) {
+      const fromHost = shownAvatarColors({
+        mine: host,
+        theirs: guest,
+        mySide: 'host',
+        paletteSize: avatarPalette.length,
+      });
+      shown = { host: fromHost.mine, guest: fromHost.theirs };
+    }
+    this.broadcast({ type: 'colors', ...shown });
+  }
+
+  /** gh#16 semantics on the server: a round counts for its thrower. */
+  private recordRound(report: RoundReport): void {
+    const seat = this.seats.find((s) => s.side === report.side);
+    if (!seat) {
+      return;
+    }
+    this.updateProfiles(
+      recordRoundFor(this.profiles, seat.profileKey, {
+        result: report.result,
+        sticksThrownThisRound: report.sticksThrownThisRound,
+        longestThrowThisRoundM: report.longestThrowM,
+        longestFellingThrowThisRoundM: report.longestFellingThrowM,
+        roundDurationS: report.roundDurationS,
+      }),
+    );
+    // gh#16 on the server: the round lands in its THROWER's profile.
+    this.log('info', 'gate', 'round recorded', { side: report.side });
+    this.sendProfile(seat);
+  }
+
+  /** A finished match goes into both players' head-to-head, once. */
+  private recordMatch(state: MatchState | null): void {
+    if (!state || state.winner === null) {
+      this.matchRecorded = false; // a new match (or practice)
+      return;
+    }
+    if (this.matchRecorded) {
+      return;
+    }
+    const winner = this.seats.find((s) => s.side === state.winner);
+    const loser = this.seats.find((s) => s.side !== state.winner);
+    if (!winner || !loser) {
+      return;
+    }
+    this.matchRecorded = true;
+    this.updateProfiles(
+      recordMatchResult(this.profiles, winner.profileKey, loser.profileKey),
+    );
+    this.log('info', 'gate', 'match result recorded', { winner: state.winner });
+    this.sendProfile(winner);
+    this.sendProfile(loser);
   }
 
   private async ensureWorld(gameMode: Settings['gameMode']): Promise<void> {
@@ -323,9 +487,14 @@ export class GameServer {
       matchState: (state) => {
         this.lastMatch = { type: 'match', state };
         this.broadcast(this.lastMatch);
+        this.recordMatch(state);
       },
       roundEnded: (report) => {
         this.broadcast({ type: 'round', ...report });
+        this.recordRound(report);
+      },
+      notice: (kind, side) => {
+        this.broadcast({ type: 'notice', kind, side });
       },
       gate: (gateMessage, data) => {
         this.log('info', 'gate', gateMessage, data);
@@ -388,6 +557,7 @@ export class GameServer {
     }
     this.host?.setPlayers(this.seats.map((s) => s.side));
     this.broadcastPeers();
+    this.broadcastColors();
   }
 
   private broadcastPeers(): void {

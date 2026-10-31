@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { matchStateSchema } from './matchSync.js';
-import { presenceMessageSchema } from './presence.js';
+import { MAX_COLOR_INDEX, presenceMessageSchema } from './presence.js';
 import { gameModeSchema } from './settings.js';
+import { statsSchema } from './stats.js';
 
 /**
  * MP5 (docs/superpowers/specs/2026-09-26-authoritative-server-design.md):
@@ -11,8 +12,10 @@ import { gameModeSchema } from './settings.js';
  * treats a malformed server message as a bug to drop, never a crash.
  * One JSON object per WebSocket message, discriminated by `type`.
  */
-/** v2 (MP6): join carries a clientId; reset, match and round messages. */
-export const SERVER_PROTOCOL_VERSION = 2;
+/** v2 (MP6): join carries a clientId; reset, match and round messages.
+ * v3 (2026-10-31): server-owned profiles (setProfile, setColor →
+ * profile, colors) and notices (foot faults). */
+export const SERVER_PROTOCOL_VERSION = 3;
 /** The server's fixed simulation rate, and every how many ticks it
  * sends a snapshot (→ 20 Hz). Shared: the client interpolates in ticks
  * (core/snapshotBuffer.ts). */
@@ -35,6 +38,10 @@ const quat = z.tuple([finite, finite, finite, finite]);
 // Scene ids are short (`stick-5`, `kubb-9`, `king`); a long one is garbage.
 const pieceId = z.string().min(1).max(32);
 const side = z.enum(['host', 'guest']);
+const colorIndex = z.number().int().min(0).max(MAX_COLOR_INDEX);
+/** A profile name from the menu's fixed list (the server checks the
+ * list itself) — short, never free text. */
+const profileName = z.string().min(1).max(24);
 /** WebRTC voice signaling, relayed by the server between the two seats
  * (the server "introduces" the headsets — no Trystero/Nostr). Bounded:
  * an audio-only SDP is a few kB. */
@@ -76,6 +83,10 @@ const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('signal'), data: voiceSignal }),
   /** A room setting both players share: the court (game mode). */
   z.object({ type: z.literal('setGameMode'), gameMode: gameModeSchema }),
+  /** Play as this named profile (null: this device's anonymous one). */
+  z.object({ type: z.literal('setProfile'), name: profileName.nullable() }),
+  /** This player's chosen avatar colour, kept in their profile. */
+  z.object({ type: z.literal('setColor'), colorIndex }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
 
@@ -136,6 +147,35 @@ const serverMessageSchema = z.discriminatedUnion('type', [
     longestThrowM: finite,
     longestFellingThrowM: finite.nullable(),
     roundDurationS: finite,
+  }),
+  /** This player's own profile (on join, and after every change). */
+  z.object({
+    type: z.literal('profile'),
+    name: profileName.nullable(),
+    colorIndex,
+    stats: statsSchema,
+    headToHead: z
+      .array(
+        z.object({
+          opponentName: profileName.nullable(),
+          won: z.number().int().nonnegative(),
+          lost: z.number().int().nonnegative(),
+        }),
+      )
+      .max(64),
+  }),
+  /** The colours the room SHOWS for each side — a clash already
+   * resolved (core/avatarColors.ts); null for an empty seat. */
+  z.object({
+    type: z.literal('colors'),
+    host: colorIndex.nullable(),
+    guest: colorIndex.nullable(),
+  }),
+  /** Something both players should see — a foot fault by `side`. */
+  z.object({
+    type: z.literal('notice'),
+    kind: z.literal('footFault'),
+    side,
   }),
   /** The room is full or the protocol does not match. */
   z.object({

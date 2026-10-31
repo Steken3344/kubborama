@@ -50,3 +50,6 @@ artifacts/
 .vscode/mcp.json
 .codex/config.toml
 dist-server/
+
+# Game server player profiles (names from a fixed list + stats) — local only
+.kubb-server/

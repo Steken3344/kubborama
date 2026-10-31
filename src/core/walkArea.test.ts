@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { behindLineCorrectionZ, clampToWalkArea } from './walkArea.js';
+import {
+  behindLineCorrectionZ,
+  clampToWalkArea,
+  isFootFault,
+} from './walkArea.js';
 
 const area = { halfWidthM: 5, minZ: -10, maxZ: 3 };
 
@@ -40,5 +44,23 @@ describe('behindLineCorrectionZ', () => {
     expect(behindLineCorrectionZ(-9, 'guest', -8, lean)).toBe(0);
     expect(behindLineCorrectionZ(-7.5, 'guest', -8, lean)).toBe(0);
     expect(behindLineCorrectionZ(-5, 'guest', -8, lean)).toBeCloseTo(-2.5);
+  });
+});
+
+describe('isFootFault', () => {
+  it('side A: a release within the reach past its line is fine', () => {
+    expect(isFootFault(0.3, 'host', 0, 0.9)).toBe(false);
+    expect(isFootFault(-0.8, 'host', 0, 0.9)).toBe(false);
+    expect(isFootFault(-1.2, 'host', 0, 0.9)).toBe(true);
+  });
+
+  it('measures from the advantage line when throwing from it', () => {
+    expect(isFootFault(-2.5, 'host', -2, 0.9)).toBe(false);
+    expect(isFootFault(-3.1, 'host', -2, 0.9)).toBe(true);
+  });
+
+  it('side B is mirrored', () => {
+    expect(isFootFault(-7.5, 'guest', -8, 0.9)).toBe(false);
+    expect(isFootFault(-6.9, 'guest', -8, 0.9)).toBe(true);
   });
 });
