@@ -611,3 +611,190 @@ describe('GameServer — spectators (2026-10-31)', () => {
     });
   });
 });
+
+describe('GameServer — bot opponent and time limit (2026-11-01)', () => {
+  it('seats a bot in the free seat; it plays its turn from the far end', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const ha = server.connect(a.connection);
+    await ha.receive(join());
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    expect(await ha.receive({ type: 'setBot', level: 'hard' })).toBe(true);
+    expect(a.received).toContainEqual({
+      type: 'roomSettings',
+      timeLimitMin: 0,
+      bot: 'hard',
+    });
+    expect(a.received).toContainEqual(
+      expect.objectContaining({ type: 'peers', count: 2 }),
+    );
+    expect(a.received).toContainEqual(
+      expect.objectContaining({
+        type: 'players',
+        guest: expect.objectContaining({ bot: 'hard' }),
+      }),
+    );
+    const matches = a.received.filter((m) => m.type === 'match');
+    expect(matches.at(-1)).toEqual(
+      expect.objectContaining({
+        state: expect.objectContaining({ currentTurn: 'host' }),
+      }),
+    );
+    // The bot's avatar stands at the far end.
+    for (let i = 0; i < 6; i++) server.tick();
+    expect(a.received).toContainEqual(
+      expect.objectContaining({ type: 'presence', side: 'guest' }),
+    );
+    // A throws all six sticks away to the side; the turn passes.
+    for (let i = 0; i < 6; i++) {
+      await ha.receive({
+        type: 'throw',
+        pieceId: `stick-${String(i)}`,
+        position: [0.2, 1, -0.3],
+        quaternion: [0, 0, 0, 1],
+        linearVelocity: [4, 2, -1],
+        angularVelocity: [0, 0, 0],
+      });
+      clock.now += 1000;
+      for (let t = 0; t < 30; t++) server.tick();
+    }
+    let guestTurnAt = -1;
+    let botThrew = false;
+    for (let t = 0; t < 60 * 40 && !botThrew; t++) {
+      server.tick();
+      const last = a.received.at(-1);
+      if (
+        guestTurnAt < 0 &&
+        a.received.some(
+          (m) => m.type === 'match' && m.state?.currentTurn === 'guest',
+        )
+      ) {
+        guestTurnAt = t;
+      }
+      if (guestTurnAt >= 0 && last?.type === 'snapshot') {
+        // A guest stick flying towards +z, off the far rack.
+        botThrew = last.pieces.some(
+          (p) => p.id.startsWith('stick-') && p.position[1] > 0.6,
+        );
+      }
+    }
+    expect(guestTurnAt).toBeGreaterThanOrEqual(0);
+    expect(botThrew).toBe(true);
+  });
+
+  it('a person joining takes the seat from the bot', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const ha = server.connect(a.connection);
+    await ha.receive(join());
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    await ha.receive({ type: 'setBot', level: 'easy' });
+    await server.connect(b.connection).receive(join());
+    expect(b.received).toContainEqual(
+      expect.objectContaining({ type: 'welcome', side: 'guest' }),
+    );
+    expect(a.received.filter((m) => m.type === 'roomSettings').at(-1)).toEqual({
+      type: 'roomSettings',
+      timeLimitMin: 0,
+      bot: null,
+    });
+  });
+
+  it('a time limit is shared with the room and the clock counts down', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const ha = server.connect(a.connection);
+    await ha.receive(join());
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    expect(await ha.receive({ type: 'setTimeLimit', minutes: 7 })).toBe(false);
+    expect(await ha.receive({ type: 'setTimeLimit', minutes: 20 })).toBe(true);
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    await ha.receive({ type: 'setBot', level: 'medium' });
+    expect(a.received).toContainEqual({
+      type: 'roomSettings',
+      timeLimitMin: 20,
+      bot: 'medium',
+    });
+    for (let i = 0; i < 120; i++) server.tick();
+    const clocks = a.received.filter((m) => m.type === 'clock');
+    expect(clocks.length).toBeGreaterThan(0);
+    const last = clocks.at(-1);
+    expect(last?.type === 'clock' && last.remainingS).toBeLessThan(1200);
+    expect(last?.type === 'clock' && last.timeUp).toBe(false);
+  });
+});
+
+describe('GameServer — bot seat lifecycle (review, 2026-11-01)', () => {
+  const tick = (server: GameServer, n: number) => {
+    for (let i = 0; i < n; i++) server.tick();
+  };
+  const airborneStick = (c: ReturnType<typeof fakeClient>) => {
+    const last = c.received.filter((m) => m.type === 'snapshot').at(-1);
+    return (
+      last?.type === 'snapshot' &&
+      last.pieces.some((p) => p.id.startsWith('stick-') && p.position[1] > 0.6)
+    );
+  };
+
+  it('a bot playing side A starts its turn over after Ny runda', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const ha = server.connect(a.connection);
+    const hb = server.connect(b.connection);
+    await ha.receive(join());
+    await hb.receive(join());
+    ha.close();
+    clock.now += REJOIN_GRACE_MS + 1;
+    server.tick(); // A's seat expires: B plays on alone
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    expect(await hb.receive({ type: 'setBot', level: 'medium' })).toBe(true);
+    expect(b.received).toContainEqual(
+      expect.objectContaining({
+        type: 'players',
+        host: expect.objectContaining({ bot: 'medium' }),
+      }),
+    );
+    // Let the bot throw a few sticks, then Ny runda mid-turn.
+    tick(server, 60 * 9);
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    await hb.receive({ type: 'reset' });
+    let threw = false;
+    for (let t = 0; t < 60 * 8 && !threw; t++) {
+      server.tick();
+      threw = airborneStick(b);
+    }
+    expect(threw).toBe(true);
+  });
+
+  it('the bot is refused while two people play; the room resets when only the bot is left', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const tv = fakeClient();
+    const ha = server.connect(a.connection);
+    const hb = server.connect(b.connection);
+    await ha.receive(join());
+    await hb.receive(join());
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    expect(await ha.receive({ type: 'setBot', level: 'easy' })).toBe(false);
+    // B leaves for good; A seats a bot and a limit, then leaves too.
+    hb.close();
+    clock.now += REJOIN_GRACE_MS + 1;
+    server.tick();
+    await server
+      .connect(tv.connection)
+      .receive({ type: 'watch', protocol: SERVER_PROTOCOL_VERSION });
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    await ha.receive({ type: 'setTimeLimit', minutes: 30 });
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    expect(await ha.receive({ type: 'setBot', level: 'easy' })).toBe(true);
+    ha.close();
+    clock.now += REJOIN_GRACE_MS + 1;
+    server.tick();
+    expect(tv.received.filter((m) => m.type === 'roomSettings').at(-1)).toEqual(
+      { type: 'roomSettings', timeLimitMin: 0, bot: null },
+    );
+  });
+});

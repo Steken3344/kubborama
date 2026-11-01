@@ -39,6 +39,7 @@ import type { Vec3 } from '../core/vec3.js';
 import { debugContext } from '../debug/debugContext.js';
 import { gateLog } from '../debug/gateLog.js';
 import { isServerModeOn } from '../serverMode.js';
+import { roomState } from '../roomState.js';
 import { settingsState } from '../settingsState.js';
 import { activeFarBaselineZ } from './activeCourt.js';
 import { localPoseOf } from './objectPose.js';
@@ -148,6 +149,12 @@ export class ServerLinkSystem extends createSystem({}) {
       gameEvents.on('ServerColorRequested', (e) => {
         this.send({ type: 'setColor', colorIndex: e.colorIndex });
       }),
+      gameEvents.on('ServerTimeLimitRequested', (e) => {
+        this.send({ type: 'setTimeLimit', minutes: e.minutes });
+      }),
+      gameEvents.on('ServerBotRequested', (e) => {
+        this.send({ type: 'setBot', level: e.level });
+      }),
       () => {
         this.stopped = true;
         this.socket?.close();
@@ -251,6 +258,10 @@ export class ServerLinkSystem extends createSystem({}) {
       log('warn', 'net', 'game server connection closed', {});
       this.socket = null;
       serverShownColors.current = null;
+      // The next room tells us its own settings on joining.
+      roomState.timeLimitMin = 0;
+      roomState.bot = null;
+      roomState.clock = null;
       this.side = null;
       if (this.spectating) {
         this.spectating = false;
@@ -372,6 +383,13 @@ export class ServerLinkSystem extends createSystem({}) {
         });
         return;
       case 'match':
+        // No clock outside a running match: a decided or new match must
+        // not show the last one's "Sista varvet" (review, 2026-11-01).
+        if (message.state === null || message.state.winner !== null) {
+          roomState.clock = null;
+        } else if (roomState.clock && !message.state.timeUp) {
+          roomState.clock = { ...roomState.clock, timeUp: false };
+        }
         gameEvents.emit('BroadcastMatchState', { state: message.state });
         if (message.state === null) {
           this.leaveMatch();
@@ -419,6 +437,31 @@ export class ServerLinkSystem extends createSystem({}) {
         // shownColorsFor, which now follows the server).
         gameEvents.emit('AvatarColorChanged', {
           colorIndex: settingsState.current.avatarColorIndex,
+        });
+        return;
+      case 'roomSettings':
+        roomState.timeLimitMin = message.timeLimitMin;
+        roomState.bot = message.bot;
+        if (message.timeLimitMin === 0) {
+          roomState.clock = null;
+        }
+        gateLog('room settings', {
+          timeLimitMin: message.timeLimitMin,
+          bot: message.bot,
+        });
+        gameEvents.emit('RoomSettings', {
+          timeLimitMin: message.timeLimitMin,
+          bot: message.bot,
+        });
+        return;
+      case 'clock':
+        roomState.clock = {
+          remainingS: message.remainingS,
+          timeUp: message.timeUp,
+        };
+        gameEvents.emit('MatchClock', {
+          remainingS: message.remainingS,
+          timeUp: message.timeUp,
         });
         return;
       case 'notice':

@@ -5594,3 +5594,47 @@ its edge (y ≈ -0.03). The collider is now 60 × 60 m (it is invisible;
 the visual lawn and the walk area are unchanged). The server reads the
 scene at start, so its half of the fix lands on the next server
 restart. Findings for Erik are in docs/IMPROVEMENTS.md.
+
+## 2026-11-01 — Bot opponent, match time limit, backyard inkast guide
+
+Erik approved all three ideas from the 20-match series.
+
+- **Time limit** — a room setting (`setTimeLimit`, choices in
+  src/data/match.json: off/20/30/45 min, off by default). The server's
+  MatchHost counts match time (only while a match is being played) and
+  sets `MatchState.timeUp`. The pair of turns is then finished (the host
+  always opens, so the decision is taken when the guest's turn ends):
+  fewer kubbs left to knock down — the opponent's standing kubbs, field
+  and baseline — wins, `endReason: 'timeLimit'`. **House rule:** a level
+  count plays on pair by pair (sudden death) instead of the king-throw
+  shoot-out I first proposed: same fairness, no new throwing mode to
+  build and teach. The clock goes out as a `clock` message about once a
+  second; the HUD shows it in the round row (the board has no room for
+  a sixth row) and the TV scoreboard under the players. Switching the
+  limit off after time ran out lifts the tiebreak.
+- **Bot opponent** — runs on the game server as a seat without a
+  connection (`setBot` easy/medium/hard → aim spread 0.6/0.3/0.15 m,
+  src/data/bot.json). The bot-match policy moved to
+  src/core/botPolicy.ts; src/core/botBrain.ts adds human pacing (2.5 s
+  to start a turn and between sticks, 3 s after a toss). The server
+  sends the bot's avatar as ordinary `presence`. A person joining takes
+  the seat (the bot leaves); a room with only the bot left starts over.
+  The bot keeps no profile and a match against it is not recorded in
+  head-to-head (the human's own rounds still count). Server mode only:
+  the serverless GitHub Pages build has no bot.
+- **Inkast guide** — backyard court only (src/data/inkast-guide.json):
+  a faint fill and outline over the opponent's half during the local
+  player's own inkast (core/inkastGuide.ts → InkastGuideSystem).
+- Protocol stays v3: the new messages are additions that an older peer
+  ignores, and server and client are deployed together.
+- Review fixes (same day): the bot reads which sticks are still racked
+  from the server instead of counting its own throws (a restart on the
+  same turn/phase left it waiting forever as side A), and its memory
+  starts over on every fresh match. A limit raised past the time played
+  lifts time-up; match time always counts, so switching the limit off
+  and on keeps it. The clock stops once the match is decided. Protocol
+  bumped to v4 (an old client would drop a `timeLimit` result).
+- Accepted as is: either player may change the time limit mid-match
+  (two people in the same garden — no lock, like "Ny runda"), and the
+  bot keeps playing through its opponent's 60 s rejoin grace (nothing
+  is recorded against a bot).

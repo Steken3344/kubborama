@@ -17,7 +17,10 @@ import { statsSchema } from './stats.js';
  * v3 (2026-10-31): server-owned profiles (setProfile, setColor →
  * profile, colors), notices (foot faults) and spectators (watch →
  * watching, players). */
-export const SERVER_PROTOCOL_VERSION = 3;
+/** v4 (2026-11-01): room settings (setTimeLimit, setBot → roomSettings),
+ * the match clock, `players.bot` and endReason 'timeLimit' — an old
+ * client would drop a time-limit result, so it must reload. */
+export const SERVER_PROTOCOL_VERSION = 4;
 /** The server's fixed simulation rate, and every how many ticks it
  * sends a snapshot (→ 20 Hz). Shared: the client interpolates in ticks
  * (core/snapshotBuffer.ts). */
@@ -44,6 +47,11 @@ const colorIndex = z.number().int().min(0).max(MAX_COLOR_INDEX);
 /** A profile name from the menu's fixed list (the server checks the
  * list itself) — short, never free text. */
 const profileName = z.string().min(1).max(24);
+/** The single-player bot's level (src/data/bot.json). */
+export const botLevelSchema = z.enum(['easy', 'medium', 'hard']);
+export type BotLevelName = z.infer<typeof botLevelSchema>;
+/** A room time limit in whole minutes; 0 = none (src/data/match.json). */
+const timeLimitMin = z.number().int().min(0).max(120);
 /** WebRTC voice signaling, relayed by the server between the two seats
  * (the server "introduces" the headsets — no Trystero/Nostr). Bounded:
  * an audio-only SDP is a few kB. */
@@ -100,6 +108,10 @@ const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('setProfile'), name: profileName.nullable() }),
   /** This player's chosen avatar colour, kept in their profile. */
   z.object({ type: z.literal('setColor'), colorIndex }),
+  /** Room setting: the match time limit (0 = none). */
+  z.object({ type: z.literal('setTimeLimit'), minutes: timeLimitMin }),
+  /** Room setting: a bot in the free seat at this level, or none. */
+  z.object({ type: z.literal('setBot'), level: botLevelSchema.nullable() }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
 
@@ -193,8 +205,33 @@ const serverMessageSchema = z.discriminatedUnion('type', [
   /** Who is seated, for the spectators' scoreboard (shown colours). */
   z.object({
     type: z.literal('players'),
-    host: z.object({ name: profileName.nullable(), colorIndex }).nullable(),
-    guest: z.object({ name: profileName.nullable(), colorIndex }).nullable(),
+    host: z
+      .object({
+        name: profileName.nullable(),
+        colorIndex,
+        bot: botLevelSchema.optional(),
+      })
+      .nullable(),
+    guest: z
+      .object({
+        name: profileName.nullable(),
+        colorIndex,
+        bot: botLevelSchema.optional(),
+      })
+      .nullable(),
+  }),
+  /** The room's own settings beside the court: sent on joining/watching
+   * and whenever one changes. */
+  z.object({
+    type: z.literal('roomSettings'),
+    timeLimitMin,
+    bot: botLevelSchema.nullable(),
+  }),
+  /** The match clock under a time limit, about once a second. */
+  z.object({
+    type: z.literal('clock'),
+    remainingS: z.number().min(0).max(7200),
+    timeUp: z.boolean(),
   }),
   /** Something both players should see — a foot fault by `side`. */
   z.object({

@@ -12,9 +12,14 @@ import {
   audio,
   avatarPalette,
   avatarPaletteEntry,
+  BOT_LEVELS,
+  match,
   profileNames,
   ui,
 } from '../config.js';
+import type { BotLevel } from '../config.js';
+import { BOT_LEVEL_KEYS } from '../botLevelKeys.js';
+import { roomState } from '../roomState.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { accuracy } from '../core/stats.js';
 import { gameEvents } from '../core/events.js';
@@ -58,6 +63,15 @@ const TOTAL_PIECES = KUBB_COUNT * 2 + 1;
  * attempted this session (see docs/DECISIONS.md). */
 /** No name, then the fixed names the game server also accepts. */
 const PROFILE_NAME_OPTIONS: Array<string | null> = [null, ...profileNames];
+/** The opponent button: a person (no bot), then each bot level. */
+const OPPONENT_CYCLE: Array<BotLevel | null> = [null, ...BOT_LEVELS];
+
+/** The choice after `current` in `choices`, wrapping; the first when
+ * `current` is not among them. */
+function nextInCycle<T>(choices: readonly T[], current: T): T {
+  const i = choices.indexOf(current);
+  return choices[(i + 1) % choices.length] ?? current;
+}
 
 /**
  * B button (right controller) toggles a small pause menu with three
@@ -169,6 +183,21 @@ export class MenuSystem extends createSystem({
       }
       this.settingsSystem.toggleGameMode();
       this.refreshLabels();
+    });
+    // Room settings (2026-11-01): each press asks the server for the
+    // next choice; the label follows the server's roomSettings reply.
+    this.wireButton('time-limit-button', () => {
+      const minutes = nextInCycle(
+        match.timeLimitChoicesMin,
+        roomState.timeLimitMin,
+      );
+      gateLog('time limit pressed', { minutes });
+      gameEvents.emit('ServerTimeLimitRequested', { minutes });
+    });
+    this.wireButton('opponent-button', () => {
+      const level = nextInCycle(OPPONENT_CYCLE, roomState.bot);
+      gateLog('opponent pressed', { level });
+      gameEvents.emit('ServerBotRequested', { level });
     });
     this.wireButton('haptics-button', () => {
       this.settingsSystem.setHapticsEnabled(
@@ -288,6 +317,9 @@ export class MenuSystem extends createSystem({
       gameEvents.on('GameModeChanged', () => {
         this.refreshLabels();
       }),
+      gameEvents.on('RoomSettings', () => {
+        this.refreshLabels();
+      }),
       // MP3a: MatchRulesSystem (auto-restart, room emptied) and a
       // guest's relayed "Ny runda" all ask for a full reset here.
       gameEvents.on('ResetRequested', () => {
@@ -369,6 +401,25 @@ export class MenuSystem extends createSystem({
         // say so on the label rather than styling a "disabled" look
         // UIKitML may not honour.
         (this.isGameModeLocked() ? t('lockedDuringMatch') : ''),
+    });
+    const server = isServerModeOn();
+    this.menuPanel
+      .requireElementById('time-limit-button')
+      .setProperties({ display: server ? 'flex' : 'none' });
+    this.menuPanel
+      .requireElementById('opponent-button')
+      .setProperties({ display: server ? 'flex' : 'none' });
+    this.menuPanel.requireElementById('time-limit-label').setProperties({
+      text:
+        roomState.timeLimitMin === 0
+          ? t('timeLimitOff')
+          : t('timeLimitMinutes', { n: roomState.timeLimitMin }),
+    });
+    this.menuPanel.requireElementById('opponent-label').setProperties({
+      text:
+        roomState.bot === null
+          ? t('opponentPerson')
+          : t('opponentBot', { level: t(BOT_LEVEL_KEYS[roomState.bot]) }),
     });
     this.menuPanel.requireElementById('haptics-button-label').setProperties({
       text: s.hapticsEnabled ? t('hapticsOn') : t('hapticsOff'),

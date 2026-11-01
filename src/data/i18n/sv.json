@@ -70,5 +70,18 @@
   "scoreInkast": "inkast",
   "bannerKingFelled": "Kungen fälld!",
   "bannerWinner": "{name} vinner!",
-  "bannerFootFault": "Övertramp! {name}"
+  "bannerFootFault": "Övertramp! {name}",
+  "timeLimitOff": "Tidsgräns: Av",
+  "timeLimitMinutes": "Tidsgräns: {n} min",
+  "opponentPerson": "Motståndare: Person",
+  "opponentBot": "Motståndare: Bot, {level}",
+  "botLevelEasy": "lätt",
+  "botLevelMedium": "medel",
+  "botLevelHard": "svår",
+  "botName": "Bot ({level})",
+  "clockLabel": "Tid kvar",
+  "clockTimeUp": "Sista varvet",
+  "matchEndTimeLimit": "Tiden ute, färst kvar",
+  "spectatorClock": "{time} kvar",
+  "spectatorTimeUp": "Tiden är ute: sista varvet"
 }

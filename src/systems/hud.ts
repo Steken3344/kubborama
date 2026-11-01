@@ -1,3 +1,5 @@
+import { clockText } from '../core/matchClock.js';
+import { roomState } from '../roomState.js';
 import { createSystem, UIKitMLAsset } from '@iwsdk/core';
 import type { GameEvents } from '../core/events.js';
 import type { ThrowStyle } from '../core/underhandClassifier.js';
@@ -28,6 +30,7 @@ export class HudSystem extends createSystem({}) {
   private statsSystem!: StatsSystem;
   private lastThrowStyle: ThrowStyle | null = null;
   private lastMatchState: GameEvents['MatchStateChanged'] | null = null;
+  private roundText = '1';
   private unsubscribeRoundEnded?: () => void;
   private unsubscribeThrown?: () => void;
   private unsubscribeLanguageChanged?: () => void;
@@ -59,9 +62,8 @@ export class HudSystem extends createSystem({}) {
 
     this.unsubscribeRoundEnded = gameEvents.on('RoundEnded', (e) => {
       const felled = e.result.kubbsFelled + (e.result.kingFelled ? 1 : 0);
-      this.hudPanel
-        .requireElementById('round-number')
-        .setProperties({ text: String(e.result.roundNumber + 1) });
+      this.roundText = String(e.result.roundNumber + 1);
+      this.updateRoundRow();
       this.hudPanel
         .requireElementById('last-round-felled')
         .setProperties({ text: `${felled}/11` });
@@ -79,7 +81,18 @@ export class HudSystem extends createSystem({}) {
       (e) => {
         this.lastMatchState = e;
         this.updateMatchRow();
+        this.updateRoundRow();
       },
+    );
+    // A timed match (2026-11-01) shows its clock in the round row: the
+    // board has no room for a sixth row.
+    this.cleanupFuncs.push(
+      gameEvents.on('MatchClock', () => {
+        this.updateRoundRow();
+      }),
+      gameEvents.on('RoomSettings', () => {
+        this.updateRoundRow();
+      }),
     );
     // gh#10 (code review, 2026-09-02): without this, match-row/role-row
     // stayed visible with stale text once the opponent disconnected —
@@ -154,9 +167,7 @@ export class HudSystem extends createSystem({}) {
 
   private refreshLabels(): void {
     const t = i18nState.t;
-    this.hudPanel
-      .requireElementById('round-label')
-      .setProperties({ text: t('hudRoundLabel') });
+    this.updateRoundRow();
     this.hudPanel
       .requireElementById('felled-label')
       .setProperties({ text: t('hudFelledLabel') });
@@ -268,7 +279,9 @@ export class HudSystem extends createSystem({}) {
             ? t('matchEndKing')
             : state.endReason === 'kingFelledByInkast'
               ? t('matchEndKingByInkast')
-              : t('matchEndKingEarly'),
+              : state.endReason === 'timeLimit'
+                ? t('matchEndTimeLimit')
+                : t('matchEndKingEarly'),
       });
     } else {
       this.hudPanel
@@ -288,6 +301,27 @@ export class HudSystem extends createSystem({}) {
       this.hudPanel.requireElementById(id).setProperties({ display: 'none' });
     }
     this.showPracticeRows(true);
+    this.updateRoundRow();
+  }
+
+  /** The round number — or, in a match under a time limit, the time
+   * left ("Sista varvet" once it has run out). */
+  private updateRoundRow(): void {
+    const t = i18nState.t;
+    const clock =
+      this.lastMatchState && roomState.timeLimitMin > 0
+        ? roomState.clock
+        : null;
+    this.hudPanel.requireElementById('round-label').setProperties({
+      text: clock ? t('clockLabel') : t('hudRoundLabel'),
+    });
+    this.hudPanel.requireElementById('round-number').setProperties({
+      text: clock
+        ? clock.timeUp
+          ? t('clockTimeUp')
+          : clockText(clock.remainingS)
+        : this.roundText,
+    });
   }
 
   private showPracticeRows(visible: boolean): void {

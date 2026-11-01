@@ -70,5 +70,18 @@
   "scoreInkast": "inkast",
   "bannerKingFelled": "King down!",
   "bannerWinner": "{name} wins!",
-  "bannerFootFault": "Foot fault! {name}"
+  "bannerFootFault": "Foot fault! {name}",
+  "timeLimitOff": "Time limit: Off",
+  "timeLimitMinutes": "Time limit: {n} min",
+  "opponentPerson": "Opponent: Person",
+  "opponentBot": "Opponent: Bot, {level}",
+  "botLevelEasy": "easy",
+  "botLevelMedium": "medium",
+  "botLevelHard": "hard",
+  "botName": "Bot ({level})",
+  "clockLabel": "Time left",
+  "clockTimeUp": "Last pair",
+  "matchEndTimeLimit": "Time up, fewest left",
+  "spectatorClock": "{time} left",
+  "spectatorTimeUp": "Time up: last pair of turns"
 }

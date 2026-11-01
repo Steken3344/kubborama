@@ -1,5 +1,7 @@
+import { BOT_LEVELS, match } from '../config.js';
 import { describe, expect, it } from 'vitest';
 import {
+  botLevelSchema,
   buildServerMessage,
   parseClientMessage,
   parseServerMessage,
@@ -168,5 +170,49 @@ describe('serverProtocol — room settings', () => {
       type: 'room',
       gameMode: 'simple',
     });
+  });
+});
+
+describe('room settings (2026-11-01)', () => {
+  it('the protocol knows exactly the bot levels src/data/bot.json defines', () => {
+    expect([...botLevelSchema.options].sort()).toEqual([...BOT_LEVELS].sort());
+  });
+
+  it('accepts every time-limit choice and setBot null; rejects nonsense', () => {
+    for (const minutes of match.timeLimitChoicesMin) {
+      expect(
+        parseClientMessage({ type: 'setTimeLimit', minutes }),
+      ).not.toBeNull();
+    }
+    expect(
+      parseClientMessage({ type: 'setTimeLimit', minutes: 1.5 }),
+    ).toBeNull();
+    expect(parseClientMessage({ type: 'setBot', level: null })).not.toBeNull();
+    expect(parseClientMessage({ type: 'setBot', level: 'godlike' })).toBeNull();
+  });
+});
+
+describe('room settings server messages (review, 2026-11-01)', () => {
+  it('parses roomSettings, clock and a bot player', () => {
+    expect(
+      parseServerMessage({
+        type: 'roomSettings',
+        timeLimitMin: 20,
+        bot: 'easy',
+      }),
+    ).not.toBeNull();
+    expect(
+      parseServerMessage({ type: 'clock', remainingS: 61.5, timeUp: false }),
+    ).not.toBeNull();
+    expect(
+      parseServerMessage({ type: 'clock', remainingS: -1, timeUp: false }),
+    ).toBeNull();
+    expect(
+      parseServerMessage({
+        type: 'players',
+        host: { name: null, colorIndex: 0 },
+        guest: { name: null, colorIndex: 4, bot: 'hard' },
+      }),
+    ).not.toBeNull();
   });
 });

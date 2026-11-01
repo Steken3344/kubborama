@@ -454,3 +454,64 @@ describe('MatchHost — foot faults', () => {
     expect(h.notices).toEqual([{ kind: 'footFault', side: 'guest' }]);
   });
 });
+
+describe('MatchHost — time limit (2026-11-01)', () => {
+  it('runs the clock only in a match, marks time up, and plays on while level', () => {
+    const h = host();
+    h.mh.setTimeLimit(1);
+    h.mh.setPlayers(['host']);
+    expect(h.mh.clock()).toBeNull(); // practice: no clock
+    h.mh.setPlayers(['host', 'guest']);
+    h.run(30);
+    expect(h.mh.clock()?.remainingS).toBeCloseTo(30, 0);
+    h.run(31);
+    expect(h.last()?.timeUp).toBe(true);
+    expect(h.gates.some((g) => g.message === 'time up')).toBe(true);
+    expect(h.mh.clock()).toEqual({ remainingS: 0, timeUp: true });
+    // Nothing felled on either side: level after the pair → sudden death.
+    throwTurn(h, 'host');
+    h.run(2);
+    throwTurn(h, 'guest');
+    h.run(2);
+    expect(h.last()?.winner).toBeNull();
+    expect(h.last()?.currentTurn).toBe('host');
+  });
+
+  it('switching the limit off lifts the tiebreak; a new match restarts the clock', () => {
+    const h = host();
+    h.mh.setTimeLimit(1);
+    h.mh.setPlayers(['host', 'guest']);
+    h.run(61);
+    h.mh.setTimeLimit(0);
+    expect(h.last()?.timeUp).toBe(false);
+    expect(h.mh.clock()).toBeNull();
+    h.mh.setTimeLimit(20);
+    h.mh.reset();
+    expect(h.mh.clock()?.remainingS).toBe(1200);
+  });
+});
+
+describe('MatchHost — time limit changes (review, 2026-11-01)', () => {
+  it('a limit raised past the time played lifts time-up; the clock keeps counting with no limit', () => {
+    const h = host();
+    h.mh.setTimeLimit(1);
+    h.mh.setPlayers(['host', 'guest']);
+    h.run(61);
+    expect(h.last()?.timeUp).toBe(true);
+    h.mh.setTimeLimit(20);
+    expect(h.last()?.timeUp).toBe(false);
+    expect(h.mh.clock()?.remainingS).toBeCloseTo(1200 - 61, 0);
+    h.mh.setTimeLimit(0);
+    h.run(60);
+    h.mh.setTimeLimit(20);
+    expect(h.mh.clock()?.remainingS).toBeCloseTo(1200 - 121, 0);
+  });
+
+  it('reports the racked sticks', () => {
+    const h = host();
+    h.mh.setPlayers(['host', 'guest']);
+    expect(h.mh.rackedSticks()).toHaveLength(6);
+    h.throwStick('host', 'stick-0');
+    expect(h.mh.rackedSticks()).not.toContain('stick-0');
+  });
+});

@@ -1,15 +1,21 @@
+import { bot as botTuning } from '../../src/config.js';
+import { inkastSpreadM } from '../../src/core/botBrain.js';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { aimRelease, flightTimeFor } from '../../src/core/aim.js';
-import type { CourtHalves } from '../../src/core/inkast.js';
 import type { MatchSide } from '../../src/core/match.js';
 import type { Vec3 } from '../../src/core/vec3.js';
 import { BrowserPlayer } from './browserPlayer.js';
-import { isFreshMatch, jitter, planInkast, planStick } from './policy.js';
+import {
+  isFreshMatch,
+  jitter,
+  planInkast,
+  planStick,
+} from '../../src/core/botPolicy.js';
 import { createRng } from '../../src/core/rng.js';
-import type { PolicyView, ThrowPlan } from './policy.js';
+import type { PolicyView, ThrowPlan } from '../../src/core/botPolicy.js';
 import { ProtocolBot, throwMessage } from './protocolBot.js';
 import { SCENARIOS } from './scenarios.js';
 import type { Evidence, Scenario } from './scenarios.js';
@@ -64,23 +70,6 @@ if (
 /** The debug relay batches client lines: wait this long after a state
  * change before trusting the log has caught up. */
 const RELAY_LAG_MS = 1500;
-/** Legal inkast tosses land within this of the half's middle (m) — at
- * most, and never closer than half a metre to a line: the default
- * backyard court's half is only 3 m wide and 3 m deep, and kubbs roll
- * after landing (review, 2026-10-31). */
-const INKAST_SPREAD_MAX_M = 1.2;
-const INKAST_LINE_MARGIN_M = 0.5;
-function inkastSpreadM(halves: CourtHalves): number {
-  const halfDepthM = Math.abs(halves.centreZ - halves.nearBaselineZ);
-  return Math.max(
-    0,
-    Math.min(
-      INKAST_SPREAD_MAX_M,
-      halves.halfWidthM - INKAST_LINE_MARGIN_M,
-      halfDepthM / 2 - INKAST_LINE_MARGIN_M,
-    ),
-  );
-}
 const OUT = arg('out', join(tmpdir(), 'kubb-botmatch', String(Date.now())));
 const STICKS = [
   'stick-0',
@@ -215,7 +204,11 @@ async function runScenario(
         legal
           ? {
               ...plan,
-              target: jitter(plan.target, rng, inkastSpreadM(bot.halves)),
+              target: jitter(
+                plan.target,
+                rng,
+                inkastSpreadM(bot.halves, botTuning),
+              ),
             }
           : plan,
       );

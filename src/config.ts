@@ -16,6 +16,7 @@ import gameModesData from './data/game-modes.json' with { type: 'json' };
 import piecesData from './data/pieces.json' with { type: 'json' };
 import cameraPosesData from './data/camera-poses.json' with { type: 'json' };
 import inkastData from './data/inkast.json' with { type: 'json' };
+import inkastGuideData from './data/inkast-guide.json' with { type: 'json' };
 import sinBinData from './data/sin-bin.json' with { type: 'json' };
 import stickRackData from './data/stick-rack.json' with { type: 'json' };
 import multiplayerData from './data/multiplayer.json' with { type: 'json' };
@@ -28,6 +29,7 @@ import uiData from './data/ui.json' with { type: 'json' };
 import spectatorData from './data/spectator.json' with { type: 'json' };
 import staticBatchData from './data/static-batch.json' with { type: 'json' };
 import confettiData from './data/confetti.json' with { type: 'json' };
+import botData from './data/bot.json' with { type: 'json' };
 import profileNamesData from './data/profile-names.json' with { type: 'json' };
 
 export const courtPresets = courtPresetsData.presets;
@@ -88,6 +90,8 @@ export const lineLeanAllowanceM = locomotionData.lineLeanAllowanceM;
 export const footFaultReachM = locomotionData.footFaultReachM;
 /** MP4 inkast tunables (docs/superpowers/specs/2026-09-26-field-kubbs-design.md). */
 export const inkast = inkastData;
+/** The backyard inkast aid: the target half outlined on the grass. */
+export const inkastGuide = inkastGuideData;
 export const stickRack = stickRackData;
 export const multiplayer = multiplayerData;
 /** MP3a match rules: king-decision grace and the auto-restart delay. */
@@ -158,3 +162,8 @@ export function courtLayout(
 export function stickRackLayout(): StickSpawn[] {
   return computeStickRackPositions(stickRack, pieces.stick.radiusM);
 }
+
+/** The single-player bot opponent (core/botBrain.ts): levels, pacing. */
+export const bot = botData;
+export type BotLevel = keyof typeof botData.levels;
+export const BOT_LEVELS = Object.keys(botData.levels) as BotLevel[];

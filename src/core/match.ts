@@ -10,7 +10,7 @@ import type { CourtHalves, CourtPoint } from './inkast.js';
 export type MatchSide = 'host' | 'guest';
 export type MatchPhase = 'inkast' | 'throwing';
 export type MatchEndReason =
-  'allKubbsAndKing' | 'kingFelledEarly' | 'kingFelledByInkast';
+  'allKubbsAndKing' | 'kingFelledEarly' | 'kingFelledByInkast' | 'timeLimit';
 /** Why a kubb is stood up again — carried to the gate log. */
 export type RaiseReason =
   'inkast' | 'inkastClamped' | 'inkastHit' | 'earlyBaseline' | 'rebound';
@@ -43,6 +43,10 @@ export interface MatchState {
   inkastQueue: InkastItem[];
   winner: MatchSide | null;
   endReason: MatchEndReason | null;
+  /** The room's time limit ran out (core/matchClock.ts): the current
+   * pair of turns is finished, then fewer kubbs left to knock down wins
+   * (withTurnAdvanced). Never set in a match without a limit. */
+  timeUp: boolean;
 }
 
 /** Physical instructions for the host's MatchRulesSystem: the reducer
@@ -95,6 +99,7 @@ export function initialMatchState(
     inkastQueue: [],
     winner: null,
     endReason: null,
+    timeUp: false,
   };
 }
 
@@ -333,10 +338,18 @@ export function withKingFelled(
   };
 }
 
-/** Rule 10: the felled kubbs become the next thrower's inkast queue. */
+/** Rule 10: the felled kubbs become the next thrower's inkast queue.
+ * With time up, a finished PAIR of turns (the guest's turn ending: the
+ * host always opens) decides the match — see timeLimitWinner. */
 export function withTurnAdvanced(state: MatchState): MatchState {
   if (isFinished(state)) {
     return state;
+  }
+  if (state.timeUp && state.currentTurn === 'guest') {
+    const winner = timeLimitWinner(state);
+    if (winner !== null) {
+      return { ...state, winner, endReason: 'timeLimit' };
+    }
   }
   const inkastQueue: InkastItem[] = state.felledThisTurn.map((kubbId) => ({
     kubbId,
@@ -349,6 +362,24 @@ export function withTurnAdvanced(state: MatchState): MatchState {
     felledThisTurn: [],
     inkastQueue,
   };
+}
+
+/** The room's time limit ran out. Nothing is decided here: play goes on
+ * until the pair of turns is complete. */
+export function withTimeUp(state: MatchState): MatchState {
+  return isFinished(state) || state.timeUp ? state : { ...state, timeUp: true };
+}
+
+/** Tournament tiebreak: whoever has fewer kubbs left to knock down (the
+ * opponent's standing kubbs, field and baseline) wins; level → null, and
+ * play goes on pair by pair until one pulls ahead (sudden death — our
+ * house rule in place of a king-throw shoot-out, docs/DECISIONS.md). */
+export function timeLimitWinner(state: MatchState): MatchSide | null {
+  const standing = standingKubbs(state);
+  const hostToFell = standing.guest;
+  const guestToFell = standing.host;
+  if (hostToFell === guestToFell) return null;
+  return hostToFell < guestToFell ? 'host' : 'guest';
 }
 
 /** Rule 8: the z of `side`'s own-half field kubb closest to the centre

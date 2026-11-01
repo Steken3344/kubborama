@@ -1,3 +1,6 @@
+import { BOT_LEVEL_KEYS } from '../botLevelKeys.js';
+import { clockText } from '../core/matchClock.js';
+import { roomState } from '../roomState.js';
 import { createSystem, LocomotionSystem, Vector3 } from '@iwsdk/core';
 import type { Object3D } from '@iwsdk/core';
 import { avatarPaletteEntry, spectator } from '../config.js';
@@ -89,6 +92,12 @@ export class SpectatorSystem extends createSystem({}) {
       }),
       gameEvents.on('BroadcastPlayers', (players) => {
         this.players = players;
+        this.renderScoreboard();
+      }),
+      gameEvents.on('MatchClock', () => {
+        this.renderScoreboard();
+      }),
+      gameEvents.on('RoomSettings', () => {
         this.renderScoreboard();
       }),
       gameEvents.on('KubbFelled', ({ position }) => {
@@ -334,6 +343,12 @@ export class SpectatorSystem extends createSystem({}) {
   }
 
   private nameOf(side: MatchSide): string {
+    const bot = this.players[side]?.bot;
+    if (bot) {
+      return i18nState.t('botName', {
+        level: i18nState.t(BOT_LEVEL_KEYS[bot]),
+      });
+    }
     return (
       this.players[side]?.name ??
       i18nState.t(side === 'host' ? 'rolePlayerA' : 'rolePlayerB')
@@ -446,7 +461,16 @@ export class SpectatorSystem extends createSystem({}) {
     };
     const boardEl = root.querySelector<HTMLElement>('[data-kubb="board"]');
     if (boardEl) {
-      boardEl.innerHTML = row('host') + row('guest');
+      const clock =
+        this.lastState && roomState.timeLimitMin > 0 ? roomState.clock : null;
+      const clockLine = clock
+        ? `<div style="padding-top:4px;font-size:.8em;opacity:.85">${
+            clock.timeUp
+              ? t('spectatorTimeUp')
+              : t('spectatorClock', { time: clockText(clock.remainingS) })
+          }</div>`
+        : '';
+      boardEl.innerHTML = row('host') + row('guest') + clockLine;
     }
   }
 }

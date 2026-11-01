@@ -55,6 +55,7 @@ describe('initialMatchState', () => {
       inkastQueue: [],
       winner: null,
       endReason: null,
+      timeUp: false,
     });
     expect(standingKubbs(initialMatchState())).toEqual({ host: 5, guest: 5 });
   });

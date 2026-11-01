@@ -10,6 +10,7 @@ import { WalkAreaSystem } from './systems/walkArea.js';
 import { SpectatorSystem } from './systems/spectator.js';
 import { StaticBatchSystem } from './systems/staticBatch.js';
 import { ConfettiSystem } from './systems/confetti.js';
+import { InkastGuideSystem } from './systems/inkastGuide.js';
 import { CourtLayoutSystem } from './systems/courtLayout.js';
 import { CourtLinesSystem } from './systems/courtLines.js';
 import { GateProbeSystem } from './systems/gateProbe.js';
@@ -150,6 +151,8 @@ void loadServerConfig()
     world.registerSystem(InkastSystem);
     // MP4: the advantage line (shown, not enforced).
     world.registerSystem(AdvantageLineSystem);
+    // Backyard inkast aid: the target half outlined during my inkast.
+    world.registerSystem(InkastGuideSystem);
     // Thumbstick locomotion: walkable ground, kept inside the garden.
     world.registerSystem(WalkAreaSystem);
     // The TV view for a browser that watches instead of playing.

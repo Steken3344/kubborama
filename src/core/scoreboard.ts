@@ -1,5 +1,6 @@
 import { isFinished, otherSide, standingKubbs } from './match.js';
 import type { MatchPhase, MatchSide, MatchState } from './match.js';
+import type { BotLevelName } from './serverProtocol.js';
 
 /** One side as the spectator's scoreboard shows it. */
 export interface ScoreboardSide {
@@ -22,7 +23,11 @@ export interface Scoreboard {
 
 export type PlayersInfo = Record<
   MatchSide,
-  { name: string | null; colorIndex: number } | null
+  {
+    name: string | null;
+    colorIndex: number;
+    bot?: BotLevelName | undefined;
+  } | null
 >;
 
 /** What the TV scoreboard shows (docs/superpowers/specs/2026-10-31-

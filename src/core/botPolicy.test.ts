@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { courtHalves } from '../../src/core/inkast.js';
-import { initialMatchState } from '../../src/core/match.js';
-import type { Vec3 } from '../../src/core/vec3.js';
+import { courtHalves } from './inkast.js';
+import { initialMatchState } from './match.js';
+import type { Vec3 } from './vec3.js';
 import {
   chooseTarget,
   isFreshMatch,
@@ -9,9 +9,9 @@ import {
   planInkast,
   planStick,
   releasePoint,
-} from './policy.js';
-import { createRng } from '../../src/core/rng.js';
-import type { PolicyView } from './policy.js';
+} from './botPolicy.js';
+import { createRng } from './rng.js';
+import type { PolicyView } from './botPolicy.js';
 
 const halves = courtHalves({ widthM: 5, lengthM: 8 });
 const start = initialMatchState();

@@ -111,6 +111,18 @@ an arm's length past your throwing line is a foot fault ("Övertramp!"):
 it counts as thrown and does nothing. Profiles are stored on the server
 machine in `.kubb-server/profiles.json` (not committed).
 
+**Playing alone against a bot, and time limits:** in the menu (Meny),
+"Motståndare" puts a bot in the empty seat — easy, medium or hard (how
+far its aim strays) — and it plays the other end of the court with an
+avatar of its own. Someone entering VR takes the seat back from the
+bot. Matches against the bot don't count in head-to-head. "Tidsgräns"
+(off, 20, 30 or 45 min) limits a match: the HUD shows the time left;
+when it runs out the pair of turns is finished, and whoever has fewer
+kubbs left to knock down wins (level: one more pair at a time). Both
+are room settings, kept until the room empties. On the backyard court
+the half you toss your inkast into is outlined on the grass while it is
+your inkast.
+
 **Watching on a TV or computer:** open the same address in an ordinary
 browser (no headset). You get a live broadcast: a camera tour while
 nobody plays, then an automatic director cutting between angles and a
@@ -122,7 +134,9 @@ Spectators never take a seat.
 cases against its game server: player A is the real app in a browser,
 player B a protocol bot, and a spectator films (screenshots at every
 camera cut). Scenarios: `foot-fault`, `early-king`, `inkast-miss`,
-`advantage`, `win`, `room` (`-- --scenario <name>`, default all). Each
+`advantage`, `win`, `room` (`-- --scenario <name>`, default all).
+`npm run botmatch:series` plays 20 whole matches with different skill
+levels, courts and languages and writes a summary table. Each
 row is PASS (it happened and the server's and player A's logs prove
 it), FAIL (it happened but a proof is missing) or NOT SEEN (physics
 didn't get there in the time box).

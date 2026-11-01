@@ -22,12 +22,15 @@ import {
   initialMatchState,
   isFinished,
   otherSide,
+  standingKubbs,
   standingLineZ,
   withInkastLanded,
   withKingFelled,
   withKubbFelled,
+  withTimeUp,
   withTurnAdvanced,
 } from '../src/core/match.js';
+import { remainingS } from '../src/core/matchClock.js';
 import type {
   MatchEffect,
   MatchPhase,
@@ -152,6 +155,10 @@ export class MatchHost {
   private timeS = 0;
   /** Foot-faulted sticks laid beside the court this round. */
   private footFaults = 0;
+  /** The room's time limit (null = none) and the match time so far —
+   * counted only while a match is being played. */
+  private timeLimitS: number | null = null;
+  private matchElapsedS = 0;
 
   constructor(
     private readonly world: MatchWorld,
@@ -283,6 +290,43 @@ export class MatchHost {
     this.settle(id, stick, position);
   }
 
+  /** The room's time limit in minutes; 0 = none. Takes effect on the
+   * running match (its elapsed time is kept — it always counts); a limit
+   * switched off, or raised past the time played, lifts the tiebreak. */
+  setTimeLimit(minutes: number): void {
+    this.timeLimitS = minutes > 0 ? minutes * 60 : null;
+    const timeLeft =
+      this.timeLimitS === null || this.matchElapsedS < this.timeLimitS;
+    if (timeLeft && this.matchState.timeUp && !isFinished(this.matchState)) {
+      this.setMatchState({ ...this.matchState, timeUp: false });
+    }
+  }
+
+  /** Sticks still in the rack (the bot reads them, not its own count). */
+  rackedSticks(): string[] {
+    const racked: string[] = [];
+    for (const [id, stick] of this.sticks) {
+      if (stick.phase === 'racked') racked.push(id);
+    }
+    return racked;
+  }
+
+  /** What the clients' clock shows; null without a limit, outside a
+   * match, and once the match is decided (the end row says it all). */
+  clock(): { remainingS: number; timeUp: boolean } | null {
+    if (
+      this.timeLimitS === null ||
+      !this.matchActive ||
+      isFinished(this.matchState)
+    ) {
+      return null;
+    }
+    return {
+      remainingS: remainingS(this.timeLimitS, this.matchElapsedS),
+      timeUp: this.matchState.timeUp,
+    };
+  }
+
   /** "Ny runda": everything home, a fresh match (or practice). */
   reset(): void {
     this.fullReset();
@@ -290,6 +334,7 @@ export class MatchHost {
 
   tick(dtS: number): void {
     this.timeS += dtS;
+    this.tickClock(dtS);
     this.tickSticks(dtS);
     if (this.timeS >= this.graceUntilS) {
       this.tickTopple(dtS);
@@ -311,6 +356,24 @@ export class MatchHost {
         this.restartInS = null;
         this.fullReset();
       }
+    }
+  }
+
+  private tickClock(dtS: number): void {
+    if (!this.matchActive || isFinished(this.matchState)) {
+      return;
+    }
+    this.matchElapsedS += dtS;
+    if (
+      this.timeLimitS !== null &&
+      this.matchElapsedS >= this.timeLimitS &&
+      !this.matchState.timeUp
+    ) {
+      this.out.gate('time up', {
+        turn: this.matchState.currentTurn,
+        standing: standingKubbs(this.matchState),
+      });
+      this.setMatchState(withTimeUp(this.matchState));
     }
   }
 
@@ -552,7 +615,16 @@ export class MatchHost {
       this.placeEverythingHome();
       return;
     }
+    const before = this.matchState;
     this.setMatchState(withTurnAdvanced(this.matchState));
+    if (!isFinished(before) && isFinished(this.matchState)) {
+      // Only the time-limit tiebreak finishes a match at a turn change.
+      this.out.gate('time limit decision', {
+        winner: this.matchState.winner,
+        standing: standingKubbs(this.matchState),
+      });
+      this.restartInS = match.restartDelayS;
+    }
     this.placeSticksFor(this.matchState.currentTurn);
   }
 
@@ -727,6 +799,7 @@ export class MatchHost {
   }
 
   private fullReset(): void {
+    this.matchElapsedS = 0;
     this.kingFelledAtS = null;
     this.restartInS = null;
     this.startRound(initialRoundState());

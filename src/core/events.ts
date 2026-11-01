@@ -1,6 +1,6 @@
 import type { Language } from './i18n.js';
 import type { MatchEffect, MatchSide, MatchState } from './match.js';
-import type { VoiceSignal } from './serverProtocol.js';
+import type { BotLevelName, VoiceSignal } from './serverProtocol.js';
 import type { PresenceMessage } from './presence.js';
 import type { ClientProfile } from './profiles.js';
 import type { PlayersInfo } from './scoreboard.js';
@@ -201,6 +201,24 @@ export interface GameEvents {
    * the court for both players (2026-10-31). */
   ServerGameModeRequested: {
     gameMode: Settings['gameMode'];
+  };
+  /** Room setting buttons (2026-11-01): the match time limit (0 = none)
+   * and the single-player bot (null = a person plays the other seat). */
+  ServerTimeLimitRequested: {
+    minutes: number;
+  };
+  ServerBotRequested: {
+    level: BotLevelName | null;
+  };
+  /** The room's settings beside the court, as the server last sent them. */
+  RoomSettings: {
+    timeLimitMin: number;
+    bot: BotLevelName | null;
+  };
+  /** The match clock under a time limit (about once a second). */
+  MatchClock: {
+    remainingS: number;
+    timeUp: boolean;
   };
   /** How many players the game server has seated, and our side
    * (ServerLinkSystem) — VoiceLinkSystem starts or ends the call on it. */

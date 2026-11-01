@@ -1,0 +1,8 @@
+{
+  "gameModes": ["simple"],
+  "color": "#fff3b0",
+  "lineWidthM": 0.05,
+  "lineOpacity": 0.85,
+  "fillOpacity": 0.12,
+  "heightM": 0.012
+}

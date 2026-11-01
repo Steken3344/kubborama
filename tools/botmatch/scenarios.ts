@@ -1,5 +1,5 @@
 import type { MatchSide } from '../../src/core/match.js';
-import type { Intent } from './policy.js';
+import type { Intent } from '../../src/core/botPolicy.js';
 import type { ProtocolBot } from './protocolBot.js';
 
 /** A room action at the start of a scenario (the `room` scenario). */

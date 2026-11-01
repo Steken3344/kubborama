@@ -47,8 +47,14 @@ export const matchStateSchema = z.object({
     .max(KUBB_COUNT * 2),
   winner: matchSideSchema.nullable(),
   endReason: z
-    .enum(['allKubbsAndKing', 'kingFelledEarly', 'kingFelledByInkast'])
+    .enum([
+      'allKubbsAndKing',
+      'kingFelledEarly',
+      'kingFelledByInkast',
+      'timeLimit',
+    ])
     .nullable(),
+  timeUp: z.boolean().default(false),
 });
 
 const matchSyncMessageSchema = z.object({

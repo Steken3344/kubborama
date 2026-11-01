@@ -1,8 +1,23 @@
 import {
   avatarPalette,
+  bot as botTuning,
   courtPresetForMode,
+  getCourtPreset,
+  match as matchTuning,
   profileNames,
 } from '../src/config.js';
+import type { BotLevel } from '../src/config.js';
+import {
+  botStep,
+  forgetBotToss,
+  freshBotMemory,
+} from '../src/core/botBrain.js';
+import type { BotMemory } from '../src/core/botBrain.js';
+import { botPresence, isFreshMatch } from '../src/core/botPolicy.js';
+import { courtHalves } from '../src/core/inkast.js';
+import type { CourtHalves } from '../src/core/inkast.js';
+import { createRng } from '../src/core/rng.js';
+import type { Vec3 } from '../src/core/vec3.js';
 import { shownAvatarColors } from '../src/core/avatarColors.js';
 import type { MatchSide, MatchState } from '../src/core/match.js';
 import { NETWORKED_PIECE_IDS } from '../src/core/pieceSync.js';
@@ -89,6 +104,8 @@ interface Seat {
   lastPresenceMs: number;
   recentSignalsMs: number[];
   lastProfileChangeMs: number;
+  /** A server-run bot (no connection, never expires, no profile). */
+  bot: boolean;
 }
 
 const SIDES: readonly MatchSide[] = ['host', 'guest'];
@@ -112,7 +129,10 @@ export interface GameServerOptions {
  */
 export class GameServer {
   private readonly nowMs: () => number;
-  private readonly lastRoomActionMs = new Map<'reset' | 'court', number>();
+  private readonly lastRoomActionMs = new Map<
+    'reset' | 'court' | 'settings',
+    number
+  >();
   private readonly log: ServerLog;
   private seats: Seat[] = [];
   private readonly spectators = new Set<ClientConnection>();
@@ -129,6 +149,14 @@ export class GameServer {
   private readonly deviceIds = new WeakMap<ClientConnection, string>();
   /** The current finished match is already in the profiles. */
   private matchRecorded = false;
+  /** Room settings beside the court (reset when the room empties). */
+  private timeLimitMin = 0;
+  private botLevel: BotLevel | null = null;
+  private botMemory: BotMemory = freshBotMemory();
+  private botRng: () => number = createRng(1);
+  private matchState: MatchState | null = null;
+  private readonly botPositions = new Map<string, Vec3>();
+  private halvesCache: { gameMode: string; halves: CourtHalves } | null = null;
 
   constructor(options: GameServerOptions = {}) {
     this.nowMs = options.nowMs ?? (() => performance.now());
@@ -159,6 +187,13 @@ export class GameServer {
     this.world.step(1 / TICK_HZ);
     this.host.tick(1 / TICK_HZ);
     this.tickCount += 1;
+    this.tickBot();
+    if (this.tickCount % matchTuning.clockEveryTicks === 0) {
+      const clock = this.host.clock();
+      if (clock) {
+        this.broadcast({ type: 'clock', ...clock });
+      }
+    }
     if (this.tickCount % SNAPSHOT_EVERY_TICKS === 0) {
       this.broadcast({
         type: 'snapshot',
@@ -264,6 +299,12 @@ export class GameServer {
       }
       return this.changeGameMode(message.gameMode, seat.side);
     }
+    if (message.type === 'setTimeLimit') {
+      return this.changeTimeLimit(message.minutes, seat.side);
+    }
+    if (message.type === 'setBot') {
+      return this.changeBot(message.level, seat.side);
+    }
     if (message.type === 'setProfile' || message.type === 'setColor') {
       // Each change writes the whole file: a click rate, not a flood.
       const now = this.nowMs();
@@ -311,7 +352,7 @@ export class GameServer {
   }
 
   /** ROOM_ACTION_COOLDOWN_MS per kind of room action. */
-  private roomActionAllowed(kind: 'reset' | 'court'): boolean {
+  private roomActionAllowed(kind: 'reset' | 'court' | 'settings'): boolean {
     const now = this.nowMs();
     const last = this.lastRoomActionMs.get(kind);
     if (last !== undefined && now - last < ROOM_ACTION_COOLDOWN_MS) {
@@ -354,6 +395,7 @@ export class GameServer {
       protocol: SERVER_PROTOCOL_VERSION,
       gameMode: this.gameMode,
     });
+    connection.send(this.roomSettingsMessage());
     if (this.lastMatch) {
       connection.send(this.lastMatch);
     }
@@ -381,6 +423,10 @@ export class GameServer {
       seat.deviceId = deviceId;
       seat.profileKey = this.seatProfileKey(deviceId, message);
     } else {
+      // A person always beats the bot to a seat.
+      if (this.seats.length >= SIDES.length && this.seats.some((s) => s.bot)) {
+        this.removeBot('player joined');
+      }
       const taken = new Set(this.seats.map((s) => s.side));
       const side = SIDES.find((s) => !taken.has(s));
       if (!side) {
@@ -399,6 +445,7 @@ export class GameServer {
         recentThrowsMs: [],
         lastPresenceMs: -Infinity,
         recentSignalsMs: [],
+        bot: false,
       };
       this.seats.push(seat);
     }
@@ -409,6 +456,7 @@ export class GameServer {
       side: seat.side,
       gameMode: this.gameMode,
     });
+    connection.send(this.roomSettingsMessage());
     this.host?.setPlayers(this.seats.map((s) => s.side));
     if (this.lastMatch) {
       connection.send(this.lastMatch);
@@ -477,6 +525,9 @@ export class GameServer {
   private broadcastColors(): void {
     const choice = (side: MatchSide): number | null => {
       const seat = this.seats.find((s) => s.side === side);
+      if (seat?.bot) {
+        return botTuning.colorIndex;
+      }
       return seat
         ? clientProfile(this.profiles, seat.profileKey).colorIndex
         : null;
@@ -497,6 +548,9 @@ export class GameServer {
     // The spectators' scoreboard: names with those shown colours.
     const player = (side: MatchSide, colorIndex: number | null) => {
       const seat = this.seats.find((s) => s.side === side);
+      if (seat?.bot && colorIndex !== null && this.botLevel !== null) {
+        return { name: null, colorIndex, bot: this.botLevel };
+      }
       // A seat waiting out its rejoin grace is shown as empty (its
       // avatar would otherwise stand frozen on the spectators' screen).
       return seat?.connection && colorIndex !== null
@@ -516,8 +570,8 @@ export class GameServer {
   /** gh#16 semantics on the server: a round counts for its thrower. */
   private recordRound(report: RoundReport): void {
     const seat = this.seats.find((s) => s.side === report.side);
-    if (!seat) {
-      return;
+    if (!seat || seat.bot) {
+      return; // the bot keeps no profile
     }
     this.updateProfiles(
       recordRoundFor(this.profiles, seat.profileKey, {
@@ -545,6 +599,14 @@ export class GameServer {
     const winner = this.seats.find((s) => s.side === state.winner);
     const loser = this.seats.find((s) => s.side !== state.winner);
     if (!winner || !loser) {
+      return;
+    }
+    if (winner.bot || loser.bot) {
+      // Head-to-head is between people; a bot match is practice for it.
+      this.matchRecorded = true;
+      this.log('info', 'gate', 'bot match not recorded', {
+        winner: state.winner,
+      });
       return;
     }
     this.matchRecorded = true;
@@ -587,6 +649,12 @@ export class GameServer {
     this.world = world;
     this.host = new MatchHost(world, this.gameMode, {
       matchState: (state) => {
+        this.matchState = state;
+        if (isFreshMatch(state)) {
+          // A new match (restart, Ny runda, court): the bot starts over,
+          // with its turn-start pause.
+          this.botMemory = freshBotMemory();
+        }
         this.lastMatch = { type: 'match', state };
         this.broadcast(this.lastMatch);
         this.recordMatch(state);
@@ -602,6 +670,7 @@ export class GameServer {
         this.log('info', 'gate', gateMessage, data);
       },
     });
+    this.host.setTimeLimit(this.timeLimitMin);
   }
 
   /** A room setting: the court. Rebuild the world on the new preset and
@@ -625,6 +694,168 @@ export class GameServer {
     const host = this.host as MatchHost | null;
     host?.setPlayers(this.seats.map((s) => s.side));
     return true;
+  }
+
+  private roomSettingsMessage(): ServerMessage {
+    return {
+      type: 'roomSettings',
+      timeLimitMin: this.timeLimitMin,
+      bot: this.botLevel,
+    };
+  }
+
+  /** A room setting: the match time limit (src/data/match.json choices). */
+  private changeTimeLimit(minutes: number, by: MatchSide): boolean {
+    if (
+      !matchTuning.timeLimitChoicesMin.includes(minutes) ||
+      minutes === this.timeLimitMin ||
+      !this.roomActionAllowed('settings')
+    ) {
+      return false;
+    }
+    this.timeLimitMin = minutes;
+    this.host?.setTimeLimit(minutes);
+    this.log('info', 'gate', 'room time limit changed', { minutes, by });
+    this.broadcast(this.roomSettingsMessage());
+    return true;
+  }
+
+  /** A room setting: a bot in the free seat (or a new level for the one
+   * seated), or no bot. Refused while both seats hold people. */
+  private changeBot(level: BotLevel | null, by: MatchSide): boolean {
+    if (level === this.botLevel || !this.roomActionAllowed('settings')) {
+      return false;
+    }
+    if (level === null) {
+      this.removeBot('switched off');
+      return true;
+    }
+    const seated = this.seats.find((s) => s.bot);
+    if (!seated) {
+      const taken = new Set(this.seats.map((s) => s.side));
+      const side = SIDES.find((s) => !taken.has(s));
+      if (!side) {
+        this.log('info', 'gate', 'bot refused (room full)', { by });
+        return false;
+      }
+      this.seats.push({
+        side,
+        clientId: 'bot',
+        connection: null,
+        deviceId: 'bot',
+        profileKey: 'bot',
+        leftAtMs: null,
+        lastProfileChangeMs: -Infinity,
+        recentThrowsMs: [],
+        lastPresenceMs: -Infinity,
+        recentSignalsMs: [],
+        bot: true,
+      });
+      this.botMemory = freshBotMemory();
+      this.botRng = createRng(Math.floor(this.nowMs()) || 1);
+    }
+    this.botLevel = level;
+    this.log('info', 'gate', 'bot seated', {
+      level,
+      side: this.seats.find((s) => s.bot)?.side,
+      by,
+    });
+    this.host?.setPlayers(this.seats.map((s) => s.side));
+    this.broadcast(this.roomSettingsMessage());
+    this.broadcastPeers();
+    this.broadcastColors();
+    return true;
+  }
+
+  /** The court's halves, cached per court (read every tick). */
+  private botHalves(): CourtHalves {
+    if (this.halvesCache?.gameMode !== this.gameMode) {
+      this.halvesCache = {
+        gameMode: this.gameMode,
+        halves: courtHalves(getCourtPreset(courtPresetForMode(this.gameMode))),
+      };
+    }
+    return this.halvesCache.halves;
+  }
+
+  private removeBot(why: string): void {
+    const before = this.seats.length;
+    this.seats = this.seats.filter((s) => !s.bot);
+    this.botLevel = null;
+    if (this.seats.length === before) {
+      return;
+    }
+    this.log('info', 'gate', 'bot left', { why });
+    this.host?.setPlayers(this.seats.map((s) => s.side));
+    this.broadcast(this.roomSettingsMessage());
+    this.broadcastPeers();
+    this.broadcastColors();
+  }
+
+  /** One tick of the bot: its avatar now and then, and a release when
+   * core/botBrain.ts says it is time. */
+  private tickBot(): void {
+    const seat = this.seats.find((s) => s.bot);
+    if (!seat || !this.host || !this.world || this.botLevel === null) {
+      return;
+    }
+    const halves = this.botHalves();
+    if (this.tickCount % botTuning.presenceEveryTicks === 0) {
+      const relay: ServerMessage = {
+        type: 'presence',
+        side: seat.side,
+        message: botPresence(
+          seat.side,
+          halves.farBaselineZ,
+          botTuning.colorIndex,
+        ),
+      };
+      for (const other of this.seats) {
+        other.connection?.send(relay);
+      }
+      for (const spectator of this.spectators) {
+        spectator.send(relay);
+      }
+    }
+    const state = this.matchState;
+    if (!state) {
+      return;
+    }
+    const myTurn = state.currentTurn === seat.side;
+    this.botPositions.clear();
+    if (myTurn) {
+      for (const p of this.world.snapshot(NETWORKED_PIECE_IDS)) {
+        this.botPositions.set(p.id, p.position);
+      }
+    }
+    const step = botStep(
+      this.botMemory,
+      {
+        state,
+        side: seat.side,
+        halves,
+        positions: this.botPositions,
+        racked: myTurn ? this.host.rackedSticks() : [],
+        nowS: this.tickCount / TICK_HZ,
+      },
+      { ...botTuning, ...botTuning.levels[this.botLevel] },
+      this.botRng,
+    );
+    this.botMemory = step.memory;
+    const action = step.action;
+    if (!action) {
+      return;
+    }
+    const accepted = this.host.onThrow(seat.side, {
+      pieceId: action.pieceId,
+      position: action.from,
+      quaternion: [0, 0, 0, 1],
+      linearVelocity: action.velocity,
+      angularVelocity: action.spin,
+    });
+    if (!accepted) {
+      this.botMemory = forgetBotToss(this.botMemory, action.pieceId);
+    }
   }
 
   private onClose(connection: ClientConnection): void {
@@ -652,6 +883,14 @@ export class GameServer {
     if (this.seats.length === before) {
       return;
     }
+    if (this.seats.every((s) => s.bot)) {
+      // Nobody left to play the bot: the room starts over (spectators
+      // are told; they stay connected).
+      this.seats = [];
+      this.botLevel = null;
+      this.timeLimitMin = 0;
+      this.broadcast(this.roomSettingsMessage());
+    }
     if (this.seats.length === 0) {
       this.world?.dispose();
       this.world = null;
@@ -670,7 +909,7 @@ export class GameServer {
     this.peersGeneration += 1;
     this.broadcast({
       type: 'peers',
-      count: this.seats.filter((s) => s.connection !== null).length,
+      count: this.seats.filter((s) => s.connection !== null || s.bot).length,
       generation: this.peersGeneration,
     });
   }

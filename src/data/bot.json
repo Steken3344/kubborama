@@ -1,0 +1,15 @@
+{
+  "levels": {
+    "easy": { "aimSpreadM": 0.6 },
+    "medium": { "aimSpreadM": 0.3 },
+    "hard": { "aimSpreadM": 0.15 }
+  },
+  "turnStartDelayS": 2.5,
+  "betweenSticksS": 2.5,
+  "afterTossS": 3,
+  "colorIndex": 4,
+  "presenceEveryTicks": 3,
+  "inkastSpreadMaxM": 1.2,
+  "inkastLineMarginM": 0.5,
+  "stickSpinRadS": 22
+}

@@ -1,7 +1,9 @@
-import type { CourtHalves } from '../../src/core/inkast.js';
-import { otherSide, standingLineZ } from '../../src/core/match.js';
-import type { MatchSide, MatchState } from '../../src/core/match.js';
-import type { Vec3 } from '../../src/core/vec3.js';
+import type { CourtHalves } from './inkast.js';
+import { otherSide, standingLineZ } from './match.js';
+import type { MatchSide, MatchState } from './match.js';
+import { buildPresenceMessage } from './presence.js';
+import type { Pose, PresenceMessage } from './presence.js';
+import type { Vec3 } from './vec3.js';
 
 /**
  * The bot match's brain (docs/superpowers/specs/2026-10-31-bot-match-
@@ -148,4 +150,32 @@ export function isFreshMatch(state: MatchState | null): boolean {
     state.fieldKubbs.length === 0 &&
     state.baselineKubbs.host.length === state.baselineKubbs.guest.length
   );
+}
+
+/** Behind the line, as a player stands. */
+const STAND_BEHIND_M = 0.4;
+
+/** A body standing behind `side`'s baseline, facing the court — the
+ * bot's avatar. Poses are shared-world, as every headset sends them (no
+ * mirroring — PeerAvatarSystem). */
+export function botPresence(
+  side: MatchSide,
+  farZ: number,
+  colorIndex: number,
+): PresenceMessage {
+  const guest = side === 'guest';
+  const z = guest ? farZ - STAND_BEHIND_M : STAND_BEHIND_M;
+  // The guest faces +z: half a turn about y.
+  const facing: Pose['quaternion'] = guest ? [0, 1, 0, 0] : [0, 0, 0, 1];
+  const toCourtX = (x: number) => (guest ? -x : x);
+  const pose = (x: number, y: number): Pose => ({
+    position: [toCourtX(x), y, z],
+    quaternion: facing,
+  });
+  return buildPresenceMessage({
+    head: pose(0, 1.7),
+    leftHand: pose(-0.3, 1),
+    rightHand: pose(0.3, 1),
+    colorIndex,
+  });
 }
