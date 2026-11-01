@@ -156,12 +156,19 @@ export class BrowserPlayer {
 
   /** "Ny runda" / a court switch, through the events the menu emits. */
   async room(
-    action: { kind: 'reset' } | { kind: 'court'; gameMode: GameMode },
+    action:
+      | { kind: 'reset' }
+      | { kind: 'court'; gameMode: GameMode }
+      | { kind: 'timeLimit'; minutes: number },
   ): Promise<void> {
     await this.page.evaluate((a) => {
       const dev = (globalThis as unknown as { __kubbDev: DevHook }).__kubbDev;
       if (a.kind === 'reset') {
         dev.gameEvents.emit('ServerResetRequested', {});
+      } else if (a.kind === 'timeLimit') {
+        dev.gameEvents.emit('ServerTimeLimitRequested', {
+          minutes: a.minutes,
+        });
       } else {
         dev.gameEvents.emit('ServerGameModeRequested', {
           gameMode: a.gameMode,

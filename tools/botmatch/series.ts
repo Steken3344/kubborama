@@ -11,12 +11,16 @@ import { join } from 'node:path';
  * bot colour each time (a fixed schedule, so a series can be rerun), then
  * reads each match's window of the debug log into one table.
  *   npm run botmatch:series -- [--matches 20] [--out <dir>] [--first 0]
+ *     [--time-limit <min>] [--url <dev server>]
  */
 const arg = (name: string, fallback: string): string => {
   const i = process.argv.indexOf(`--${name}`);
   return (i > 0 ? process.argv[i + 1] : undefined) ?? fallback;
 };
 const MATCHES = Number(arg('matches', '20'));
+/** Room time limit per match in minutes (0 = none). */
+const TIME_LIMIT_MIN = arg('time-limit', '0');
+const URL_ARG = arg('url', '');
 const FIRST = Number(arg('first', '0'));
 const OUT = arg('out', join(tmpdir(), 'kubb-series', String(Date.now())));
 const LOG_PATH = '.iwsdk/runtime/logs/kubb-debug.ndjson';
@@ -203,6 +207,9 @@ function main(): void {
         String(plan.guestSpread),
         '--court',
         plan.court,
+        '--time-limit',
+        TIME_LIMIT_MIN,
+        ...(URL_ARG ? ['--url', URL_ARG] : []),
         '--language',
         plan.language,
         '--bot-color',

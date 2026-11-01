@@ -49,6 +49,8 @@ const SEED = Number(arg('seed', '1'));
 const COURT = arg('court', '');
 const LANGUAGE = arg('language', 'sv');
 const BOT_COLOR = Number(arg('bot-color', '4'));
+/** A room time limit in minutes (0 = none), set before the scenarios. */
+const TIME_LIMIT_MIN = Number(arg('time-limit', '0'));
 /** Write a JSON summary of the run here (the series reads it). */
 const SUMMARY = arg('summary', '');
 /** Shorter pauses between sticks and tosses, for long series. */
@@ -362,6 +364,12 @@ async function main(): Promise<void> {
       await sleep(250);
     }
     say(`court ${bot.gameMode}`);
+    await sleep(1500); // the room cooldown before the scenario's reset
+  }
+
+  if (TIME_LIMIT_MIN > 0) {
+    await host.room({ kind: 'timeLimit', minutes: TIME_LIMIT_MIN });
+    say(`time limit ${String(TIME_LIMIT_MIN)} min`);
     await sleep(1500); // the room cooldown before the scenario's reset
   }
 
