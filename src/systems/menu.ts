@@ -20,6 +20,7 @@ import {
 import type { BotLevel } from '../config.js';
 import { BOT_LEVEL_KEYS } from '../botLevelKeys.js';
 import { roomState } from '../roomState.js';
+import { nextInCycle } from '../core/cycle.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { accuracy } from '../core/stats.js';
 import { isMatchUnderway } from '../core/match.js';
@@ -67,13 +68,6 @@ const TOTAL_PIECES = KUBB_COUNT * 2 + 1;
 const PROFILE_NAME_OPTIONS: Array<string | null> = [null, ...profileNames];
 /** The opponent button: a person (no bot), then each bot level. */
 const OPPONENT_CYCLE: Array<BotLevel | null> = [null, ...BOT_LEVELS];
-
-/** The choice after `current` in `choices`, wrapping; the first when
- * `current` is not among them. */
-function nextInCycle<T>(choices: readonly T[], current: T): T {
-  const i = choices.indexOf(current);
-  return choices[(i + 1) % choices.length] ?? current;
-}
 
 /**
  * B button (right controller) toggles a small pause menu with three

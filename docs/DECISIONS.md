@@ -5723,3 +5723,8 @@ and "liten ljudeffekt när man fäller en kubb, något roligt".
   release grace starts when a grab ends (any piece, whatever its body
   state while held); groundY and the snapshot span come from config and
   the protocol.
+- From Erik's headset test (same day): the opponent button stuck on
+  "hard" — the cycle's `?? current` fallback took the null "person"
+  choice for missing (fixed, core/cycle.ts, tested). The easy bot felled
+  8 of 24 sticks (33 %) against Erik's 6: easy now aims with a 0.9 m
+  spread (was 0.6; medium 0.3, hard 0.15 unchanged).

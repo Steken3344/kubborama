@@ -1,7 +1,7 @@
 {
   "levels": {
     "easy": {
-      "aimSpreadM": 0.6,
+      "aimSpreadM": 0.9,
       "inkastSpreadFactor": 2.0
     },
     "medium": {
