@@ -68,6 +68,11 @@ export class ImpactSystem extends createSystem({
       );
     }
     this.grabSystem = grabSystem;
+    // Grabbing (the stick glides into the hand) and letting go both jump
+    // the body's velocity in a frame or two: neither is a hit.
+    this.queries.held.subscribe('qualify', (entity) => {
+      this.releasedAtS.set(entity.index, this.nowS);
+    });
     this.queries.held.subscribe('disqualify', (entity) => {
       this.releasedAtS.set(entity.index, this.nowS);
     });

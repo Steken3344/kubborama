@@ -1,4 +1,5 @@
 {
   "holdFromEndM": 0.04,
-  "pitchDownDeg": 20
+  "pitchDownDeg": 0,
+  "blendInS": 0.12
 }

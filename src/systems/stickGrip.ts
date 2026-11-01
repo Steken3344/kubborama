@@ -7,6 +7,7 @@ import {
 } from '@iwsdk/core';
 import { StickState } from '../components/stick-state.js';
 import { pieces, stickGrip } from '../config.js';
+import { slerpInto } from '../core/quat.js';
 import { stickInHand } from '../core/stickGrip.js';
 import type { Quat } from '../core/quat.js';
 import type { Vec3 } from '../core/vec3.js';
@@ -38,15 +39,43 @@ export class StickGripSystem extends createSystem({
     pitchDownDeg: stickGrip.pitchDownDeg,
   };
 
+  /** Where each held stick was when grabbed, and when: it glides into
+   * the hand over `blendInS` — a one-frame snap made the held body jump
+   * at ~20 m/s (an impact sound and a jolt on every grab, Erik's test). */
+  private readonly grabbedFrom = new Map<
+    number,
+    { atS: number; position: Vec3; quaternion: Quat }
+  >();
+  private nowS = 0;
+
   init(): void {
     const grabSystem = this.world.getSystem(GrabSystem);
     if (!grabSystem) {
       throw new Error('StickGripSystem requires GrabSystem');
     }
     this.grabSystem = grabSystem;
+    this.queries.held.subscribe('qualify', (entity) => {
+      const o = entity.object3D;
+      if (!o) return;
+      // Allocated per grab, not per frame.
+      this.grabbedFrom.set(entity.index, {
+        atS: this.nowS,
+        position: [o.position.x, o.position.y, o.position.z],
+        quaternion: [
+          o.quaternion.x,
+          o.quaternion.y,
+          o.quaternion.z,
+          o.quaternion.w,
+        ],
+      });
+    });
+    this.queries.held.subscribe('disqualify', (entity) => {
+      this.grabbedFrom.delete(entity.index);
+    });
   }
 
-  update(): void {
+  update(_delta: number, time: number): void {
+    this.nowS = time;
     for (const entity of this.queries.held.entities) {
       const object3D = entity.object3D;
       const hand = this.grabSystem.getHolderHand(entity);
@@ -67,6 +96,25 @@ export class StickGripSystem extends createSystem({
       this.gripQuaternion[2] = this.tmpQuat.z;
       this.gripQuaternion[3] = this.tmpQuat.w;
       stickInHand(this.gripPosition, this.gripQuaternion, this.opts, this.pose);
+      const from = this.grabbedFrom.get(entity.index);
+      if (from) {
+        const t = Math.min(1, (time - from.atS) / stickGrip.blendInS);
+        if (t >= 1) {
+          this.grabbedFrom.delete(entity.index);
+        } else {
+          const e = t * t * (3 - 2 * t); // smoothstep
+          for (let i = 0; i < 3; i++) {
+            const a = from.position[i] ?? 0;
+            this.pose.position[i] = a + ((this.pose.position[i] ?? 0) - a) * e;
+          }
+          slerpInto(
+            from.quaternion,
+            this.pose.quaternion,
+            e,
+            this.pose.quaternion,
+          );
+        }
+      }
       // Scene-level pieces: local = world (as PhysicsSystem also assumes).
       const [px, py, pz] = this.pose.position;
       const [qx, qy, qz, qw] = this.pose.quaternion;

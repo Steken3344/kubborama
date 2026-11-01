@@ -5744,6 +5744,15 @@ when grabbed. StickGripSystem (priority −2.5: after GrabSystem −3,
 before PhysicsSystem −2, which drives a Grabbed body toward the object's
 pose with SetTargetQTransform) lays the stick into the grip every frame:
 one end 4 cm inside the fist, the shaft along the controller's −Z,
-pitched 20° down (src/data/stick-grip.json, core/stickGrip.ts). The
+pitched 20° down at first — see below (src/data/stick-grip.json, core/stickGrip.ts). The
 throw maths is unchanged (it samples the grip; the release position is
 this pose).
+
+- From Erik's test of #223: the angle follows the controller's handle
+  ("vinkel på pinnen skall va samma som handkontrollens bas") — the
+  shaft lies along the grip space's −Z, which WebXR defines as the axis
+  of an object held in the fist, so `pitchDownDeg` is 0. The stick also
+  glides into the hand over 0.12 s: the one-frame snap drove the held
+  body at ~20 m/s, firing an impact sound and haptic on every grab (18 in
+  his session); the impact heuristic now also ignores 0.25 s after a
+  grab, as after a release.
