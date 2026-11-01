@@ -109,8 +109,15 @@ function analyse(plan: Plan, summaryPath: string): MatchRow | null {
     lines.filter(
       (e) => e.channel === 'gate' && e.role === role && e.message === message,
     );
-  const king = gate('server', 'king decision')[0]?.data ?? {};
-  const decidedAt = gate('server', 'king decision')[0]?.receivedAt ?? sc.toMs;
+  // A match ends on the king or, under a time limit, on the tiebreak.
+  const decision =
+    gate('server', 'king decision')[0] ??
+    gate('server', 'time limit decision')[0];
+  const king: Record<string, unknown> = {
+    endReason: decision?.message === 'time limit decision' ? 'timeLimit' : null,
+    ...(decision?.data ?? {}),
+  };
+  const decidedAt = decision?.receivedAt ?? sc.toMs;
   const sticks = { host: 0, guest: 0 };
   const felled = { host: 0, guest: 0 };
   // Player A logs a summary for EVERY round, its own and the bot's.

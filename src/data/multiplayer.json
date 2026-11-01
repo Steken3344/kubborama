@@ -5,5 +5,7 @@
   "devRoomId": "kubborama-dev",
   "snapshotInterpolationDelayTicks": 6,
   "ownThrowBlendS": 0.25,
-  "ownThrowHandoverTimeoutS": 1.0
+  "ownThrowHandoverTimeoutS": 1.0,
+  "ownThrowMaxAheadTicks": 12,
+  "ownThrowFollowMaxS": 8
 }

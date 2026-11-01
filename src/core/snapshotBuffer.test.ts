@@ -122,3 +122,103 @@ describe('InterpolationClock', () => {
     expect(clock.advance(0, 300, 60, 6)).toBe(294);
   });
 });
+
+describe('sampleAhead (own throw, 2026-11-01)', () => {
+  const opts = {
+    maxAheadTicks: 9,
+    gravityMps2: 9.81,
+    tickHz: 60,
+    groundY: 0.05,
+  };
+  const at = (z: number, y = 1): PieceTransform => ({
+    id: 'stick-0',
+    position: [0, y, z],
+    quaternion: [0, 0, 0, 1],
+  });
+
+  it('samples normally inside the history', () => {
+    const b = new SnapshotBuffer();
+    b.push(3, [at(0)]);
+    b.push(6, [at(-0.3)]);
+    const out = {
+      position: [0, 0, 0] as Vec3,
+      quaternion: [0, 0, 0, 1] as Quat,
+    };
+    expect(b.sampleAhead('stick-0', 4.5, out, opts)).toBe(true);
+    expect(out.position[2]).toBeCloseTo(-0.15);
+  });
+
+  it('extrapolates past the newest snapshot, with gravity while airborne', () => {
+    const b = new SnapshotBuffer();
+    b.push(3, [at(0)]);
+    b.push(6, [at(-0.3)]);
+    const out = {
+      position: [0, 0, 0] as Vec3,
+      quaternion: [0, 0, 0, 1] as Quat,
+    };
+    b.sampleAhead('stick-0', 12, out, opts);
+    expect(out.position[2]).toBeCloseTo(-0.9); // 0.1 m per tick, 6 ticks on
+    expect(out.position[1]).toBeLessThan(1);
+  });
+
+  it('looks only a little ahead at the ground, never below it', () => {
+    const b = new SnapshotBuffer();
+    b.push(3, [at(0, 0.06)]);
+    b.push(6, [at(-0.3, 0.06)]);
+    const out = {
+      position: [0, 0, 0] as Vec3,
+      quaternion: [0, 0, 0, 1] as Quat,
+    };
+    b.sampleAhead('stick-0', 100, out, opts);
+    expect(out.position[2]).toBeCloseTo(-0.6); // at the ground: 3 ticks
+    expect(out.position[1]).toBeGreaterThanOrEqual(0.05);
+  });
+});
+
+describe('sampleAhead at touchdown', () => {
+  it('a stick coming down is not extrapolated through the ground', () => {
+    const b = new SnapshotBuffer();
+    const pose = (y: number, z: number): PieceTransform => ({
+      id: 's',
+      position: [0, y, z],
+      quaternion: [0, 0, 0, 1],
+    });
+    b.push(3, [pose(0.5, -5)]);
+    b.push(6, [pose(0.03, -5.3)]);
+    const out = {
+      position: [0, 0, 0] as Vec3,
+      quaternion: [0, 0, 0, 1] as Quat,
+    };
+    b.sampleAhead('s', 12, out, {
+      maxAheadTicks: 9,
+      gravityMps2: 9.81,
+      tickHz: 60,
+      groundY: 0.05,
+    });
+    expect(out.position[1]).toBeCloseTo(0.03);
+  });
+});
+
+describe('sampleAhead in the air', () => {
+  it('never runs further ahead than maxAheadTicks', () => {
+    const b = new SnapshotBuffer();
+    const pose = (z: number): PieceTransform => ({
+      id: 's',
+      position: [0, 2, z],
+      quaternion: [0, 0, 0, 1],
+    });
+    b.push(3, [pose(0)]);
+    b.push(6, [pose(-0.3)]);
+    const out = {
+      position: [0, 0, 0] as Vec3,
+      quaternion: [0, 0, 0, 1] as Quat,
+    };
+    b.sampleAhead('s', 100, out, {
+      maxAheadTicks: 9,
+      gravityMps2: 9.81,
+      tickHz: 60,
+      groundY: 0.05,
+    });
+    expect(out.position[2]).toBeCloseTo(-1.2);
+  });
+});

@@ -37,9 +37,18 @@ export function playSfxVariant(
   const variants = SFX_CATEGORY[category];
   const index = pickVariantIndex(rng, variants.length);
   const src = variants[index];
-  if (!src) {
-    return;
+  if (src) {
+    playSfxSrc(world, src, volume, position);
   }
+}
+
+/** A one-shot sound from `src` (a file, or an in-memory blob URL). */
+export function playSfxSrc(
+  world: World,
+  src: string,
+  volume: number,
+  position?: Vec3,
+): void {
   const entity = position
     ? world.createTransformEntity()
     : world.createEntity();

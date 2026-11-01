@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectImpact } from './impactDetector.js';
+import { detectImpact, inReleaseGrace } from './impactDetector.js';
 
 describe('detectImpact', () => {
   it('flags no impact when velocity barely changes', () => {
@@ -25,5 +25,13 @@ describe('detectImpact', () => {
     const result = detectImpact([0, 0, 0], [3, 4, 0], 4.5);
     expect(result.deltaVMps).toBeCloseTo(5, 5);
     expect(result.isImpact).toBe(true);
+  });
+});
+
+describe('inReleaseGrace', () => {
+  it('ignores the release jump, then counts hits again', () => {
+    expect(inReleaseGrace(10, 10.05, 0.15)).toBe(true);
+    expect(inReleaseGrace(10, 10.2, 0.15)).toBe(false);
+    expect(inReleaseGrace(undefined, 10, 0.15)).toBe(false);
   });
 });

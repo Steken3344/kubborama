@@ -1,3 +1,4 @@
+import { encodeWav, synthChime } from '../core/chime.js';
 import { AudioSource, AudioUtils, createSystem } from '@iwsdk/core';
 import type { Entity } from '@iwsdk/core';
 import { audio } from '../config.js';
@@ -11,7 +12,7 @@ import {
 import type { HapticSequence } from '../core/haptics.js';
 import { createRng } from '../core/rng.js';
 import { playHapticSequence } from './hapticPlayer.js';
-import { playSfxVariant } from './playSfx.js';
+import { playSfxSrc, playSfxVariant } from './playSfx.js';
 import { AMBIENCE_SRC, MUSIC_SRC } from './sfxLibrary.js';
 import { settingsState } from '../settingsState.js';
 
@@ -38,6 +39,7 @@ export class SfxSystem extends createSystem({}) {
   private appliedSfxVolumePercent = -1;
   private appliedMusicVolumePercent = -1;
   private unsubscribeKubbFelled?: () => void;
+  private chimeUrl: string | null = null;
   private unsubscribeKingFelled?: () => void;
   private unsubscribeRoundEnded?: () => void;
   private unsubscribeFootFault?: () => void;
@@ -61,6 +63,14 @@ export class SfxSystem extends createSystem({}) {
       volume: 0,
     });
 
+    // A cheerful chime on top of the wooden knock (core/chime.ts),
+    // synthesised once into an in-memory WAV.
+    const chime = audio.felledChime;
+    this.chimeUrl = URL.createObjectURL(
+      new Blob([encodeWav(synthChime(chime), chime.sampleRateHz)], {
+        type: 'audio/wav',
+      }),
+    );
     this.unsubscribeKubbFelled = gameEvents.on('KubbFelled', ({ position }) => {
       playSfxVariant(
         this.world,
@@ -69,6 +79,14 @@ export class SfxSystem extends createSystem({}) {
         audio.volume.felledFixed,
         position,
       );
+      if (this.chimeUrl) {
+        playSfxSrc(
+          this.world,
+          this.chimeUrl,
+          audio.volume.felledChime,
+          position,
+        );
+      }
       this.pulseBothHands(kubbFelled);
     });
     this.unsubscribeKingFelled = gameEvents.on('KingFelled', ({ position }) => {
@@ -94,6 +112,10 @@ export class SfxSystem extends createSystem({}) {
   }
 
   destroy(): void {
+    if (this.chimeUrl) {
+      URL.revokeObjectURL(this.chimeUrl);
+      this.chimeUrl = null;
+    }
     this.unsubscribeKubbFelled?.();
     this.unsubscribeKingFelled?.();
     this.unsubscribeRoundEnded?.();

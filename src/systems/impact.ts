@@ -14,7 +14,7 @@ import { audio, pieces } from '../config.js';
 import { stickImpactTier } from '../core/audio.js';
 import { gameEvents } from '../core/events.js';
 import { impactRumble } from '../core/haptics.js';
-import { detectImpact } from '../core/impactDetector.js';
+import { detectImpact, inReleaseGrace } from '../core/impactDetector.js';
 import { log } from '../core/log.js';
 import { lerp, normalizedClamped } from '../core/mathUtils.js';
 import { createRng } from '../core/rng.js';
@@ -48,6 +48,9 @@ export class ImpactSystem extends createSystem({
   // mutated in place every frame after that — see docs/DECISIONS.md,
   // fresh-eyes M2 review nitpick about per-frame allocation here.
   private previousVelocity = new Map<number, Vec3>();
+  /** Sticks held last frame, and when each was let go (release grace). */
+  private heldSticks = new Set<number>();
+  private releasedAtS = new Map<number, number>();
   private tmpCurr: Vec3 = [0, 0, 0];
   private tmpPos = new Vector3();
   private sfxRng = createRng(IMPACT_SFX_SEED);
@@ -89,7 +92,9 @@ export class ImpactSystem extends createSystem({
       prev[1] = this.tmpCurr[1];
       prev[2] = this.tmpCurr[2];
 
-      if (!isImpact || !isPastGrace) {
+      // Tracked every frame (not only on a hit), so a release is seen.
+      const releasing = this.releasing(entity, time);
+      if (!isImpact || !isPastGrace || releasing) {
         continue;
       }
 
@@ -117,6 +122,27 @@ export class ImpactSystem extends createSystem({
       // instead of incorrectly appearing to come from world origin.
       this.playImpactSfx(entity, deltaVMps, object3D ? position : undefined);
     }
+  }
+
+  /** True for a stick in the moment after it left the hand. */
+  private releasing(entity: Entity, timeS: number): boolean {
+    if (!entity.hasComponent(StickState)) {
+      return false;
+    }
+    const index = entity.index;
+    if (entity.getValue(StickState, 'phase') === StickPhase.Held) {
+      this.heldSticks.add(index);
+      return false;
+    }
+    if (this.heldSticks.delete(index)) {
+      this.releasedAtS.set(index, timeS);
+    }
+    const releasedAt = this.releasedAtS.get(index);
+    if (inReleaseGrace(releasedAt, timeS, pieces.throw.releaseImpactGraceS)) {
+      return true;
+    }
+    this.releasedAtS.delete(index);
+    return false;
   }
 
   private pulseHapticForStick(entity: Entity, deltaVMps: number): void {

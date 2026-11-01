@@ -351,7 +351,16 @@ export class GameServer {
     if (!this.allowThrow(seat)) {
       return false;
     }
-    return this.host.onThrow(seat.side, message);
+    const accepted = this.host.onThrow(seat.side, message);
+    if (accepted) {
+      // Flying from the next step: tick N + k shows k ticks of flight.
+      seat.connection?.send({
+        type: 'thrown',
+        pieceId: message.pieceId,
+        tick: this.tickCount,
+      });
+    }
+    return accepted;
   }
 
   /** ROOM_ACTION_COOLDOWN_MS per kind of room action. */

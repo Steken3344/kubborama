@@ -25,8 +25,10 @@ import { InterpolationClock, SnapshotBuffer } from '../core/snapshotBuffer.js';
 import {
   advanceHandover,
   noteServerPose,
+  noteThrowStarted,
   startHandover,
 } from '../core/throwHandover.js';
+import { GRAVITY_MPS2 } from '../core/aim.js';
 import type { Handover } from '../core/throwHandover.js';
 import type {
   ClientMessage,
@@ -108,6 +110,17 @@ export class ServerLinkSystem extends createSystem({}) {
     quaternion: [0, 0, 0, 1] as Quat,
   };
   private currentQuat: Quat = [0, 0, 0, 1];
+  /** The own thrown stick on its throw's time line (sampleAhead). */
+  private sampledAhead = {
+    position: [0, 0, 0] as Vec3,
+    quaternion: [0, 0, 0, 1] as Quat,
+  };
+  private readonly aheadOpts = {
+    maxAheadTicks: multiplayer.ownThrowMaxAheadTicks,
+    gravityMps2: GRAVITY_MPS2,
+    tickHz: TICK_HZ,
+    groundY: 0.05,
+  };
   /** The last pose written per piece: unchanged ones are skipped
    * between snapshots. */
   private lastApplied = new Map<string, Float64Array>();
@@ -455,6 +468,13 @@ export class ServerLinkSystem extends createSystem({}) {
           bot: message.bot,
         });
         return;
+      case 'thrown': {
+        const handover = this.handovers.get(message.pieceId);
+        if (handover) {
+          noteThrowStarted(handover, message.tick);
+        }
+        return;
+      }
       case 'clock':
         roomState.clock = {
           remainingS: message.remainingS,
@@ -523,19 +543,65 @@ export class ServerLinkSystem extends createSystem({}) {
         const step = advanceHandover(handover, renderTick, dtS, {
           blendS: multiplayer.ownThrowBlendS,
           timeoutS: multiplayer.ownThrowHandoverTimeoutS,
+          tickHz: TICK_HZ,
+          latestTick: latest,
+          followMaxS: multiplayer.ownThrowFollowMaxS,
         });
         if (step.kind === 'local') {
           continue; // local physics keeps predicting the flight
         }
+        if (step.kind === 'done') {
+          this.handovers.delete(id);
+        } else if (step.tick !== null) {
+          // The throw's own time line, ahead of the render time.
+          this.buffer.sampleAhead(
+            id,
+            step.tick,
+            this.sampledAhead,
+            this.aheadOpts,
+          );
+          if (step.kind === 'follow' && this.aheadMatchesRender()) {
+            // At rest: both time lines agree — hand back seamlessly.
+            this.handovers.delete(id);
+          } else {
+            this.copyAheadIntoSampled();
+          }
+        }
         if (step.kind === 'blend') {
           this.blendFromCurrent(entity, step.t);
-        } else {
-          this.handovers.delete(id);
         }
       }
       this.applySampled(id, entity);
     }
     this.freshSnapshot = false;
+  }
+
+  /** The render-time and throw-time poses agree (the stick rests). */
+  private aheadMatchesRender(): boolean {
+    const a = this.sampled.position;
+    const b = this.sampledAhead.position;
+    const qa = this.sampled.quaternion;
+    const qb = this.sampledAhead.quaternion;
+    const dot = Math.abs(
+      qa[0] * qb[0] + qa[1] * qb[1] + qa[2] * qb[2] + qa[3] * qb[3],
+    );
+    return (
+      Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) < 0.005 && dot > 0.99995
+    );
+  }
+
+  private copyAheadIntoSampled(): void {
+    const p = this.sampled.position;
+    const q = this.sampled.quaternion;
+    const pa = this.sampledAhead.position;
+    const qa = this.sampledAhead.quaternion;
+    p[0] = pa[0];
+    p[1] = pa[1];
+    p[2] = pa[2];
+    q[0] = qa[0];
+    q[1] = qa[1];
+    q[2] = qa[2];
+    q[3] = qa[3];
   }
 
   /** Moves `sampled` back toward the piece's current pose by (1 − t):

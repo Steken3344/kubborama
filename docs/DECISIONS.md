@@ -5682,3 +5682,35 @@ Erik approved ("kör 1-6") after the bot opponent shipped.
   from ~30 % to 3 %). Flight damping is now set at the throw itself
   (server onThrow, client on becoming Flying);
   server/stickRoll.test.ts throws the same stick twice.
+
+## 2026-11-01 — Throw feel: no hitch at release, a chime when a kubb falls
+
+Erik: "precis när jag släpper pinnen så känns det som de laggar till"
+and "liten ljudeffekt när man fäller en kubb, något roligt".
+
+- **Root cause of the hitch** (simulated with the client's own handover,
+  snapshot buffer and clock): in server mode the own stick flew on local
+  physics, then blended onto the server pose at the _render_ time, which
+  runs ~100 ms behind plus half the round trip. At 6–7 m/s that pulled
+  the stick ~0.5 m back (−8 m/s) about 0.2 s after release, then it
+  flew on 1.25 m behind the throw. **Fix:** the server now tells the
+  thrower which tick started the flight (`thrown`, protocol additive),
+  and the client shows its own stick on that throw's time line — flight
+  time since release — extrapolated a few ticks past the newest snapshot
+  (SnapshotBuffer.sampleAhead: velocity + gravity, at most 12 ticks, 3
+  at the ground), until it rests and the render time has caught up.
+  Simulated: steady 6 m/s, within 10 cm of the ideal flight at 20–100 ms
+  round trips. In the browser: no backward step in flight; a hit can
+  pull back ≤ 0.11 m (reads as the bounce). Kubbs still react on the
+  render time line, ~0.1–0.15 s after the stick reaches them.
+- **A false impact at release:** the release jumps the stick from the
+  hand's speed to the throw's in one step (Δv ≈ 5 m/s), which the impact
+  heuristic took for a hit — an impact sound and a haptic jolt the
+  instant the stick left the hand, on about half the throws (logs back
+  to 2026-10-31). Impacts are now ignored for 0.15 s after a release;
+  knocks while held still count (gh#4).
+- **Felled chime:** a synthesised C–E–G bell arpeggio (core/chime.ts,
+  notes in src/data/audio.json) rendered once to an in-memory WAV and
+  played with the wooden knock — code, not a recording, so the
+  OGG-only asset rule and licensing are untouched.
+- The bot series now also reads time-limit decisions as results.

@@ -20,6 +20,8 @@ import type { Vec3 } from './vec3.js';
  * 60 Hz — no throw gets near it) is a teleport (rack reset, court
  * switch): jump, never sweep a stick through the air. */
 const TELEPORT_M_PER_TICK = 0.5;
+/** sampleAhead's look-ahead for a piece at the ground (ticks). */
+const NEAR_GROUND_AHEAD_TICKS = 3;
 
 interface Snapshot {
   tick: number;
@@ -112,6 +114,82 @@ export class SnapshotBuffer {
       return false;
     }
     copy(before, out); // past the newest snapshot: hold, never guess
+    return true;
+  }
+
+  /**
+   * Like `sample`, but a tick past the newest snapshot is EXTRAPOLATED
+   * (up to `maxAheadTicks`) from the two newest: the velocity between
+   * them, plus gravity while the piece is airborne. Only the local
+   * player's OWN thrown stick uses it (core/throwHandover.ts): it is
+   * shown on the time line of the throw itself, a few ticks ahead of the
+   * snapshots, instead of 100 ms in the past.
+   */
+  sampleAhead(
+    id: string,
+    tick: number,
+    out: { position: Vec3; quaternion: Quat },
+    opts: {
+      maxAheadTicks: number;
+      gravityMps2: number;
+      tickHz: number;
+      groundY: number;
+    },
+  ): boolean {
+    let newer: { tick: number; pose: PieceTransform } | null = null;
+    let older: { tick: number; pose: PieceTransform } | null = null;
+    for (let i = this.snapshots.length - 1; i >= 0 && !older; i--) {
+      const snapshot = this.snapshots[i];
+      const pose = snapshot?.pieces.get(id);
+      if (!snapshot || !pose) continue;
+      if (!newer) newer = { tick: snapshot.tick, pose };
+      else older = { tick: snapshot.tick, pose };
+    }
+    if (!newer || tick <= newer.tick || !older) {
+      return this.sample(id, tick, out);
+    }
+    const spanTicks = newer.tick - older.tick;
+    // Near the grass the stick lands, bounces and brakes: flight
+    // velocity would overshoot and the next snapshot pull it back, so
+    // only a short look ahead there.
+    const nearGround = (newer.pose.position[1] ?? 0) < 2 * opts.groundY;
+    const aheadTicks = Math.min(
+      tick - newer.tick,
+      nearGround ? NEAR_GROUND_AHEAD_TICKS : opts.maxAheadTicks,
+    );
+    const a = older.pose.position;
+    const b = newer.pose.position;
+    if (
+      Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) >
+      TELEPORT_M_PER_TICK * spanTicks
+    ) {
+      copy(newer.pose, out);
+      return true;
+    }
+    for (let i = 0; i < 3; i++) {
+      const pa = a[i] ?? 0;
+      const pb = b[i] ?? 0;
+      out.position[i] = pb + ((pb - pa) / spanTicks) * aheadTicks;
+    }
+    const lastY = b[1] ?? 0;
+    if (lastY > opts.groundY) {
+      // Airborne: gravity over the extrapolated stretch.
+      const dtS = aheadTicks / opts.tickHz;
+      out.position[1] =
+        (out.position[1] ?? 0) - 0.5 * opts.gravityMps2 * dtS * dtS;
+    }
+    // Never through the grass: a stick coming down stops at the ground
+    // (or where it lies, if lower).
+    out.position[1] = Math.max(
+      out.position[1] ?? 0,
+      Math.min(lastY, opts.groundY),
+    );
+    slerpInto(
+      older.pose.quaternion,
+      newer.pose.quaternion,
+      1 + aheadTicks / spanTicks,
+      out.quaternion,
+    );
     return true;
   }
 }

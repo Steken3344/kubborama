@@ -9,11 +9,34 @@
     "felledFixed": 0.7,
     "foley": 0.12,
     "uiClick": 0.35,
-    "ambienceBaseGain": 0.3
+    "ambienceBaseGain": 0.3,
+    "felledChime": 0.5
   },
   "positional": {
     "refDistanceM": 0.6,
     "rolloffFactor": 1.3,
     "maxDistanceM": 20
+  },
+  "felledChime": {
+    "sampleRateHz": 22050,
+    "notes": [
+      {
+        "freqHz": 1046.5,
+        "startS": 0
+      },
+      {
+        "freqHz": 1318.5,
+        "startS": 0.07
+      },
+      {
+        "freqHz": 1568,
+        "startS": 0.14
+      }
+    ],
+    "noteDurS": 0.45,
+    "decayPerS": 7,
+    "overtoneGain": 0.35,
+    "attackS": 0.004,
+    "peak": 0.8
   }
 }

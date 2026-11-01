@@ -229,6 +229,14 @@ const serverMessageSchema = z.discriminatedUnion('type', [
     timeLimitMin,
     bot: botLevelSchema.nullable(),
   }),
+  /** To the thrower: the server tick its release started flying on —
+   * the client shows its own stick on that time line
+   * (core/throwHandover.ts). */
+  z.object({
+    type: z.literal('thrown'),
+    pieceId,
+    tick: z.number().int().nonnegative(),
+  }),
   /** The match clock under a time limit, about once a second. */
   z.object({
     type: z.literal('clock'),
