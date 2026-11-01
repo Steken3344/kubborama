@@ -5640,3 +5640,17 @@ Erik approved all three ideas from the 20-match series.
   server refuses it otherwise and the button says "(låst under match)".
   Accepted as is: the bot keeps playing through its opponent's 60 s rejoin grace (nothing
   is recorded against a bot).
+
+## 2026-11-01 — Sticks on grass barely roll
+
+Erik: "pinnarna rullar … de är gräs, borde inte rulla så långt". Measured
+with real Havok: a stick landing sideways rolled 4.6 m at an almost
+constant 2 m/s (85–98 rad/s) — the ground brake never engaged, because
+"landed" also required < 3 rad/s and a rolling stick spins at v / r
+(45 rad/s at 1 m/s). "Landed" is now the stick's height alone
+(core/groundDamping.ts, centre < 6 cm), and a landed stick gets angular
+damping 20 and linear damping 6 (grass drag; src/data/pieces.json);
+airborne it keeps its flight values, so throws feel the same. Roll after
+touchdown: underhand 0.59 → 0.25 m, sideways 4.6 → 0.25 m
+(server/stickRoll.test.ts asserts < 0.35 m). Server (MatchHost) and the
+serverless client (StickGroundDampingSystem) share the rule.

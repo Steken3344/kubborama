@@ -1,9 +1,9 @@
 import { createSystem, eq, PhysicsBody, Vector3 } from '@iwsdk/core';
 import { StickPhase, StickState } from '../components/stick-state.js';
 import { pieces } from '../config.js';
+import { isStickOnGround } from '../core/groundDamping.js';
 import { activePreset, percentToReal, tuningParams } from '../core/tuning.js';
 import { presetBank } from '../tuningState.js';
-import { readBodySpeed } from './bodySpeed.js';
 
 /**
  * Erik's feedback (2026-08-28), addressed two different ways: raising
@@ -19,18 +19,11 @@ import { readBodySpeed } from './bodySpeed.js';
  * in-flight spin is untouched and only the post-landing roll is
  * shortened.
  *
- * Checks the FULL speed (readBodySpeed, shared with
- * ThrowingSystem/ToppleSystem's own rest checks — see
- * core/restState.ts) rather than vertical velocity alone: a fresh-eyes
- * review caught that a vertical-only check reads "grounded" at the low
- * point of any flat, fast throw the instant vertical velocity crosses
- * zero, even while the stick is still moving several m/s horizontally
- * and spinning — reintroducing the exact damped/sluggish feel this
- * system exists to avoid, just for flatter throws specifically.
- * Deliberately looser than core/restState.ts's `isResting` thresholds
- * (which mean "basically stopped," used to decide Settled) — this
- * needs to catch a stick that's landed but still visibly rolling, not
- * one that's already nearly at rest.
+ * 2026-11-01 (Erik: "pinnarna rullar … borde inte rulla så långt"):
+ * "landed" is now height alone (core/groundDamping.ts) — the old speed
+ * gates never let a ROLLING stick count as landed — and a landed stick
+ * gets grass drag on its linear damping too, restored once airborne.
+ * The server's MatchHost applies the same rule to its own bodies.
  */
 export class StickGroundDampingSystem extends createSystem({
   flyingSticks: {
@@ -39,13 +32,26 @@ export class StickGroundDampingSystem extends createSystem({
   },
 }) {
   private tmpPos = new Vector3();
-  private tmpSpeed: [number, number] = [0, 0];
+  /** Each stick's authored linear damping, restored once airborne. */
+  private flightLinear = new Map<number, number>();
+
+  init(): void {
+    this.queries.flyingSticks.subscribe('qualify', (entity) => {
+      if (!this.flightLinear.has(entity.index)) {
+        this.flightLinear.set(
+          entity.index,
+          entity.getValue(PhysicsBody, 'linearDamping') ?? 0,
+        );
+      }
+    });
+  }
 
   update(): void {
     const flightDamping = percentToReal(
       tuningParams.angularDampingInFlight,
       activePreset(presetBank).angularDampingInFlight,
     );
+    const t = pieces.throw;
     for (const entity of this.queries.flyingSticks.entities) {
       const object3D = entity.object3D;
       let heightM = Infinity;
@@ -53,16 +59,18 @@ export class StickGroundDampingSystem extends createSystem({
         object3D.getWorldPosition(this.tmpPos);
         heightM = this.tmpPos.y;
       }
-      readBodySpeed(entity, this.tmpSpeed);
-      const [linSpeedMps, angSpeedRadS] = this.tmpSpeed;
-      const grounded =
-        heightM < pieces.throw.groundHeightM &&
-        linSpeedMps < pieces.throw.groundLinearSpeedMps &&
-        angSpeedRadS < pieces.throw.groundAngularSpeedRadS;
+      const onGround = isStickOnGround(heightM, t);
       entity.setValue(
         PhysicsBody,
         'angularDamping',
-        grounded ? pieces.throw.groundAngularDamping : flightDamping,
+        onGround ? t.groundAngularDamping : flightDamping,
+      );
+      entity.setValue(
+        PhysicsBody,
+        'linearDamping',
+        onGround
+          ? t.groundLinearDamping
+          : (this.flightLinear.get(entity.index) ?? 0),
       );
     }
   }

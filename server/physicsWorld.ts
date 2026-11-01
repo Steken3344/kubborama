@@ -88,6 +88,8 @@ export interface PhysicsWorld {
   /** Teleport a body and stop it (a raise, a reset, a rack placement). */
   setPose(id: string, pose: Pose): void;
   setAngularDamping(id: string, damping: number): void;
+  /** Linear damping; null restores the body's authored value. */
+  setLinearDamping(id: string, damping: number | null): void;
   /** One-step impulse at the body's centre (wind: force × dt). */
   applyImpulse(id: string, impulse: Vec3): void;
   /** Advance by exactly `dtS` (the server runs a fixed timestep). */
@@ -172,6 +174,7 @@ export async function createPhysicsWorld(
   const bodies = new Map<string, HP_BodyId>();
   const shapes: HP_ShapeId[] = [];
   const homes = new Map<string, Pose>();
+  const authoredLinearDamping = new Map<string, number>();
   for (const node of nodes) {
     const shapeDef = node.components?.PhysicsShape;
     if (!shapeDef) {
@@ -208,10 +211,9 @@ export async function createPhysicsWorld(
       position: [...position],
       quaternion: [...quaternion],
     });
-    hk.HP_Body_SetLinearDamping(
-      body,
-      bodyDef.linearDamping ?? DEFAULTS.linearDamping,
-    );
+    const linearDamping = bodyDef.linearDamping ?? DEFAULTS.linearDamping;
+    authoredLinearDamping.set(node.id, linearDamping);
+    hk.HP_Body_SetLinearDamping(body, linearDamping);
     hk.HP_Body_SetAngularDamping(
       body,
       bodyDef.angularDamping ?? DEFAULTS.angularDamping,
@@ -285,6 +287,15 @@ export async function createPhysicsWorld(
       const body = bodies.get(id);
       if (body) {
         hk.HP_Body_SetAngularDamping(body, damping);
+      }
+    },
+    setLinearDamping(id, damping) {
+      const body = bodies.get(id);
+      if (body) {
+        hk.HP_Body_SetLinearDamping(
+          body,
+          damping ?? authoredLinearDamping.get(id) ?? DEFAULTS.linearDamping,
+        );
       }
     },
     applyImpulse(id, impulse) {

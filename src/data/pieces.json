@@ -1,9 +1,15 @@
 {
   "defaultMaterial": "birch",
   "materials": {
-    "pine": { "densityKgM3": 500 },
-    "birch": { "densityKgM3": 640 },
-    "rubberwood": { "densityKgM3": 750 }
+    "pine": {
+      "densityKgM3": 500
+    },
+    "birch": {
+      "densityKgM3": 640
+    },
+    "rubberwood": {
+      "densityKgM3": 750
+    }
   },
   "stick": {
     "radiusM": 0.022,
@@ -42,8 +48,7 @@
     "impactMaxForceForFullHapticMps": 10,
     "startupGraceS": 4,
     "groundHeightM": 0.06,
-    "groundLinearSpeedMps": 1.5,
-    "groundAngularSpeedRadS": 3,
-    "groundAngularDamping": 0.45
+    "groundAngularDamping": 20,
+    "groundLinearDamping": 6
   }
 }

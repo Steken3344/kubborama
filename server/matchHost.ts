@@ -31,6 +31,7 @@ import {
   withTurnAdvanced,
 } from '../src/core/match.js';
 import { remainingS } from '../src/core/matchClock.js';
+import { isStickOnGround } from '../src/core/groundDamping.js';
 import type {
   MatchEffect,
   MatchPhase,
@@ -76,6 +77,7 @@ export interface MatchWorld {
   setPose(id: string, pose: Pose): void;
   speeds(id: string): [number, number] | null;
   setAngularDamping(id: string, damping: number): void;
+  setLinearDamping(id: string, damping: number | null): void;
   applyImpulse(id: string, impulse: Vec3): void;
   applyThrow(input: ThrowInput): boolean;
 }
@@ -394,15 +396,13 @@ export class MatchHost {
       }
       const pose = this.world.pose(id);
       const [lin, ang] = this.world.speeds(id) ?? [0, 0];
-      // StickGroundDampingSystem: brake the roll once the stick is down.
-      const grounded =
-        (pose?.position[1] ?? Infinity) < t.groundHeightM &&
-        lin < t.groundLinearSpeedMps &&
-        ang < t.groundAngularSpeedRadS;
+      // Grass: brake a landed stick's roll and slide (core/groundDamping).
+      const onGround = isStickOnGround(pose?.position[1] ?? Infinity, t);
       this.world.setAngularDamping(
         id,
-        grounded ? t.groundAngularDamping : this.flightAngularDamping,
+        onGround ? t.groundAngularDamping : this.flightAngularDamping,
       );
+      this.world.setLinearDamping(id, onGround ? t.groundLinearDamping : null);
       stick.restS = isResting(lin, ang, t)
         ? accumulateHeldDuration(stick.restS, dtS)
         : 0;

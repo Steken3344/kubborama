@@ -45,6 +45,7 @@ function fakeWorld(): MatchWorld & {
     },
     speeds: (id) => (moving.has(id) ? [3, 3] : [0, 0]),
     setAngularDamping: () => undefined,
+    setLinearDamping: () => undefined,
     applyImpulse: () => undefined,
     applyThrow: (input) => {
       poses.set(input.pieceId, {
