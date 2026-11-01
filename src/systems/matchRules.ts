@@ -28,6 +28,8 @@ import { MenuSystem } from './menu.js';
 import { isServerModeOn } from '../serverMode.js';
 
 const UPRIGHT: [number, number, number, number] = [0, 0, 0, 1];
+/** Where retired kubbs lie (simplified rules), read once. */
+const RETIRED_LAYOUT = retiredKubbLayout();
 
 /**
  * The physical side of a multiplayer match — MP3a (docs/superpowers/
@@ -63,7 +65,7 @@ export class MatchRulesSystem extends createSystem({
   private restartInS: number | null = null;
   /** How many kubbs have been laid out of play (simplified rules) since
    * the last fresh match — the next one's slot beside the court. */
-  private retiredCount = 0;
+  private retired: readonly string[] = [];
 
   init(): void {
     const physicsSystem = this.world.getSystem(PhysicsSystem);
@@ -122,7 +124,7 @@ export class MatchRulesSystem extends createSystem({
       log('info', 'state', 'match rules active', {});
     }
     this.syncRack(event.state.currentTurn, event.state.inkastQueue);
-    this.retiredCount = event.state.retired.length;
+    this.retired = event.state.retired;
 
     if (isFinished(event.state)) {
       // The game server restarts its own match (MP6).
@@ -208,13 +210,13 @@ export class MatchRulesSystem extends createSystem({
     if (effect.type === 'retire') {
       // Only a simplified match emits it; serverless play has no rules
       // button, so this is for completeness (the server does the same).
-      // MatchEffects follows MatchStateChanged, so the count already
-      // includes this kubb.
+      // MatchEffects follows MatchStateChanged, so the list already
+      // holds this kubb; its slot is its place in it, as on the server.
       this.physicsSystem.setBodyTransform(entity, {
         position: retiredKubbPosition(
           activeCourtHalves(),
-          Math.max(0, this.retiredCount - 1),
-          retiredKubbLayout(),
+          Math.max(0, this.retired.indexOf(effect.kubbId)),
+          RETIRED_LAYOUT,
         ),
         quaternion: RETIRED_KUBB_QUATERNION,
       });

@@ -487,8 +487,15 @@ export class MatchHost {
 
   private tickTopple(dtS: number): void {
     for (const id of TOPPLEABLE_IDS) {
-      if (this.racked.has(id) || this.tosses.has(id)) {
-        continue; // in the inkast rack or in the air: not on the court
+      if (
+        this.racked.has(id) ||
+        this.tosses.has(id) ||
+        this.matchState.retired.includes(id)
+      ) {
+        // In the inkast rack, in the air, or out of play (simplified
+        // rules): not on the court — a stick knocking a retired kubb
+        // about must not count as a felling (review, 2026-11-01).
+        continue;
       }
       const pose = this.world.pose(id);
       const speeds = this.world.speeds(id);
@@ -713,7 +720,7 @@ export class MatchHost {
           Math.max(0, index),
           RETIRED_LAYOUT,
         ),
-        quaternion: RETIRED_KUBB_QUATERNION,
+        quaternion: [...RETIRED_KUBB_QUATERNION],
       });
       this.out.gate('kubb retired', {
         kubbId: effect.kubbId,

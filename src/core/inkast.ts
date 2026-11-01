@@ -157,12 +157,9 @@ export interface RetiredKubbLayout {
 }
 
 /** A kubb lying on its side: a quarter turn about z (sin 45°, cos 45°). */
-export const RETIRED_KUBB_QUATERNION: [number, number, number, number] = [
-  0,
-  0,
-  Math.SQRT1_2,
-  Math.SQRT1_2,
-];
+export const RETIRED_KUBB_QUATERNION: Readonly<
+  [number, number, number, number]
+> = Object.freeze([0, 0, Math.SQRT1_2, Math.SQRT1_2] as const);
 
 /**
  * Simplified rules (Erik, 2026-11-01): where the `index`-th retired kubb
