@@ -94,6 +94,94 @@
     },
     {
       "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [29.6, 12, 0.5],
+          "friction": 0.8,
+          "restitution": 0.1,
+          "shape": "Box"
+        }
+      },
+      "content": {
+        "type": "group"
+      },
+      "id": "boundary-collider-north",
+      "name": "Boundary collider north",
+      "transform": {
+        "position": [0, 6.0, -14.55]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [29.6, 12, 0.5],
+          "friction": 0.8,
+          "restitution": 0.1,
+          "shape": "Box"
+        }
+      },
+      "content": {
+        "type": "group"
+      },
+      "id": "boundary-collider-south",
+      "name": "Boundary collider south",
+      "transform": {
+        "position": [0, 6.0, 14.55]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.5, 12, 29.6],
+          "friction": 0.8,
+          "restitution": 0.1,
+          "shape": "Box"
+        }
+      },
+      "content": {
+        "type": "group"
+      },
+      "id": "boundary-collider-east",
+      "name": "Boundary collider east",
+      "transform": {
+        "position": [14.55, 6.0, 0]
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "density": 640,
+          "dimensions": [0.5, 12, 29.6],
+          "friction": 0.8,
+          "restitution": 0.1,
+          "shape": "Box"
+        }
+      },
+      "content": {
+        "type": "group"
+      },
+      "id": "boundary-collider-west",
+      "name": "Boundary collider west",
+      "transform": {
+        "position": [-14.55, 6.0, 0]
+      }
+    },
+    {
+      "components": {
         "DirectionalLight": {
           "castShadow": true,
           "color": [1, 0.9490196078431372, 0.8509803921568627, 1],

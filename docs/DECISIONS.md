@@ -5794,3 +5794,17 @@ Erik: "alla pinnar spawnar alltid på bordet … även när man får gå fram",
   kubb tables only (its pole sat 2 mm from the outermost stick).
   src/sceneTables.test.ts checks the scene's table nodes and colliders
   against kubb-table.json / stick-rack.json and the far mirror.
+
+## 2026-11-01 — Invisible boundary colliders on the stone wall
+
+Edge-case run (tools/botmatch/edgeCases.ts): a stick thrown hard
+backwards landed at z ≈ 19.6 m, outside the 0.6 m stone wall and over
+the void beyond the garden; one thrown sideways at the protocol's 30 m/s
+bound left the 60 m ground and fell (y ≈ −10). The wall itself has no
+collider. Four static boxes now stand on the wall's line, 12 m high
+(`colliderHeightM` in src/data/stone-wall.json) so only an absurd lob
+clears them. Scene JSON boxes are checked against the data
+(src/sceneWall.test.ts), and real-Havok wild throws stay inside
+(server/boundary.test.ts). Everything else in the run already held:
+put-backs and slow drops are not throws, out-of-turn / kubb / re-throws
+are refused, wild sticks are re-racked, rejoin keeps the seat.
