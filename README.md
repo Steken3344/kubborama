@@ -128,7 +128,7 @@ your inkast.
 **Watching on a TV or computer:** open the same address in an ordinary
 browser (no headset). You get a live broadcast: a camera tour while
 nobody plays, then an automatic director cutting between angles and a
-scoreboard. "Fri kamera" (or dragging) lets you look around yourself.
+scoreboard. "Fri kamera" (or dragging) lets you look around yourself. "Helskärm" (or the F key) fills the screen.
 Spectators never take a seat.
 
 **Testing without headsets:** with the dev server up

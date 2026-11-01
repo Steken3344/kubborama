@@ -39,6 +39,10 @@ const DIRECTOR_OPTS = {
   maxShotS: spectator.maxShotS,
 };
 
+/** The overlay's buttons (full screen, free camera). */
+const BUTTON_CSS =
+  'font-size:clamp(14px,1.6vw,20px);padding:8px 14px;border:0;border-radius:8px;background:rgba(10,18,14,.78);color:#fff;cursor:pointer';
+
 /**
  * The spectator's TV view (docs/superpowers/specs/2026-10-31-spectator-
  * tv-design.md): a browser that watches instead of playing gets an
@@ -51,6 +55,7 @@ const DIRECTOR_OPTS = {
  * above the grass); falls from ToppleSystem's KubbFelled/KingFelled;
  * turns and wins from the server's match state.
  */
+
 export class SpectatorSystem extends createSystem({}) {
   private active = false;
   private director: DirectorState = initialDirector();
@@ -385,7 +390,10 @@ export class SpectatorSystem extends createSystem({}) {
       </div>
       <div data-kubb="banner" style="position:absolute;top:18vh;left:0;right:0;text-align:center;font-size:clamp(24px,4vw,52px);font-weight:800;opacity:0;transition:opacity .4s;text-shadow:0 3px 12px rgba(0,0,0,.7)"></div>
       <div data-kubb="board" style="position:absolute;left:3vw;bottom:5vh;min-width:min(420px,80vw);background:rgba(10,18,14,.78);border-radius:10px;padding:10px 14px;font-size:clamp(16px,2.2vw,28px);box-shadow:0 4px 20px rgba(0,0,0,.4)"></div>
-      <button data-kubb="freecam" style="position:absolute;right:3vw;bottom:5vh;pointer-events:auto;font-size:clamp(14px,1.6vw,20px);padding:8px 14px;border:0;border-radius:8px;background:rgba(10,18,14,.78);color:#fff;cursor:pointer"></button>`;
+      <div style="position:absolute;right:3vw;bottom:5vh;display:flex;gap:8px;pointer-events:auto">
+        <button data-kubb="fullscreen" style="${BUTTON_CSS}"></button>
+        <button data-kubb="freecam" style="${BUTTON_CSS}"></button>
+      </div>`;
     document.body.appendChild(root);
     this.overlay = root;
     this.setFreeCamera(false);
@@ -394,10 +402,48 @@ export class SpectatorSystem extends createSystem({}) {
     );
     const onButton = () => this.setFreeCamera(!this.freeCamera);
     button?.addEventListener('click', onButton);
+    // Full screen for a TV or a laptop (Erik, 2026-11-01): a button and
+    // the F key; the label follows the state (Esc leaves it too).
+    const fullscreenButton = root.querySelector<HTMLButtonElement>(
+      '[data-kubb="fullscreen"]',
+    );
+    const toggleFullscreen = () => {
+      if (document.fullscreenElement) {
+        void document.exitFullscreen();
+      } else {
+        document.documentElement.requestFullscreen().catch(() => {
+          // Refused (no user gesture, or not allowed here): stay windowed.
+        });
+      }
+    };
+    const onFullscreenChange = () => {
+      if (fullscreenButton) {
+        fullscreenButton.textContent = i18nState.t(
+          document.fullscreenElement
+            ? 'spectatorExitFullscreen'
+            : 'spectatorFullscreen',
+        );
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      }
+    };
+    onFullscreenChange();
+    fullscreenButton?.addEventListener('click', toggleFullscreen);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    window.addEventListener('keydown', onKey);
+    this.cleanupOverlay.push(
+      () => fullscreenButton?.removeEventListener('click', toggleFullscreen),
+      () =>
+        document.removeEventListener('fullscreenchange', onFullscreenChange),
+      () => window.removeEventListener('keydown', onKey),
+    );
     let dragging = false;
     const onDown = (e: PointerEvent) => {
-      // A click on the button is a click, not the start of a drag.
-      dragging = e.target !== button;
+      // A click on a button is a click, not the start of a drag.
+      dragging = !(e.target instanceof Element && e.target.closest('button'));
     };
     const onUp = () => {
       dragging = false;

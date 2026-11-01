@@ -86,5 +86,7 @@
   "spectatorTimeUp": "Time up: last pair of turns",
   "statsVsBot": "Vs the bot: {results}",
   "statsVsBotEmpty": "Vs the bot: no matches yet",
-  "statsVsBotLevel": "{level} {won}-{lost}"
+  "statsVsBotLevel": "{level} {won}-{lost}",
+  "spectatorFullscreen": "Full screen",
+  "spectatorExitFullscreen": "Exit full screen"
 }

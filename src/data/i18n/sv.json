@@ -86,5 +86,7 @@
   "spectatorTimeUp": "Tiden är ute: sista varvet",
   "statsVsBot": "Mot boten: {results}",
   "statsVsBotEmpty": "Mot boten: inga matcher än",
-  "statsVsBotLevel": "{level} {won}-{lost}"
+  "statsVsBotLevel": "{level} {won}-{lost}",
+  "spectatorFullscreen": "Helskärm",
+  "spectatorExitFullscreen": "Avsluta helskärm"
 }
