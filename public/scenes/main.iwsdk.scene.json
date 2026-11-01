@@ -63,7 +63,7 @@
         },
         "PhysicsShape": {
           "density": 640,
-          "dimensions": [30, 1, 30],
+          "dimensions": [60, 1, 60],
           "friction": 0.8,
           "restitution": 0.1,
           "shape": "Box"

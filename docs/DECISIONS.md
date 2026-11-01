@@ -5581,3 +5581,16 @@ alternating overhead / opponent's end), so a throw in between neither
 repeats nor skips a view. Confetti uses the clash-resolved winner
 colour in serverless play too, ignores a win that was already over when
 a client joined, disposes its entity, and flutters in a small circle.
+
+## 2026-11-01 — 20-match bot series; ground collider 60 m
+
+`npm run botmatch:series` played 20 real matches (aim spread 0.15–0.6 m
+per side, backyard and tournament courts, sv/en, a clashing bot colour
+every fourth match). 14 ended with a winner (1.4–15 min), 6 hit the
+30-minute box with even or weak pairs. No page errors, no stalls, no
+rule faults. The only warnings were "stick below ground": misses thrown
+past z = -15 m slid off the 30 × 30 m ground collider and tipped over
+its edge (y ≈ -0.03). The collider is now 60 × 60 m (it is invisible;
+the visual lawn and the walk area are unchanged). The server reads the
+scene at start, so its half of the fix lands on the next server
+restart. Findings for Erik are in docs/IMPROVEMENTS.md.
