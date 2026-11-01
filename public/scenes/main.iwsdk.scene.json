@@ -57,6 +57,20 @@
       }
     },
     {
+      "content": {
+        "asset": "stone-wall",
+        "receiveShadow": true,
+        "type": "asset"
+      },
+      "id": "stone-wall",
+      "name": "Boundary stone wall",
+      "transform": {
+        "position": [0, 0, 0],
+        "rotationDeg": [0, 0, 0],
+        "scale": 1
+      }
+    },
+    {
       "components": {
         "PhysicsBody": {
           "state": "STATIC"

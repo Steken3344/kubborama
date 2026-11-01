@@ -1,0 +1,20 @@
+{
+  "outerSideM": 29.6,
+  "heightM": 0.6,
+  "thicknessM": 0.5,
+  "courseCount": 3,
+  "stoneLengthMinM": 0.35,
+  "stoneLengthMaxM": 0.75,
+  "sinkM": 0.05,
+  "jitterM": 0.035,
+  "seed": 20261101,
+  "colors": [
+    "#6e6b66",
+    "#5f5a52",
+    "#7d776c",
+    "#54504a",
+    "#76654f",
+    "#8a7f6c",
+    "#636a5a"
+  ]
+}

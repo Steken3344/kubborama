@@ -34,6 +34,7 @@ import confettiData from './data/confetti.json' with { type: 'json' };
 import botData from './data/bot.json' with { type: 'json' };
 import stickGripData from './data/stick-grip.json' with { type: 'json' };
 import profileNamesData from './data/profile-names.json' with { type: 'json' };
+import stoneWallData from './data/stone-wall.json' with { type: 'json' };
 
 export const courtPresets = courtPresetsData.presets;
 export type CourtPresetName = keyof typeof courtPresets;
@@ -112,6 +113,9 @@ export function inkastTableLayout(): InkastRackLayout {
     kubbHeightM: piecesData.kubb.heightM,
   };
 }
+/** The low dry-stone wall along the garden ground's edge
+ * (scene-assets/stone-wall.scene-asset.ts). */
+export const stoneWall = stoneWallData;
 export const multiplayer = multiplayerData;
 /** MP3a match rules: king-decision grace and the auto-restart delay. */
 export const match = matchData;
