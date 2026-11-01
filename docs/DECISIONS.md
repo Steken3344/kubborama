@@ -5928,6 +5928,7 @@ so the help never steers towards an early king. Per headset, in the menu
 (Kasthjälp: Av / Lite / Mycket = 0 / 0.4 / 0.75, pieces.json), "Lite" by
 default; applied in the client before the release is sent, so the server
 stays the judge of what happens.
+
 ## 2026-11-01 — Simplified rules (Förenklat)
 
 Erik: "ett förenklat spelläge där när kubben fälls på baslinjen, kastas
