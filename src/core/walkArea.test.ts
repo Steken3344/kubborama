@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   behindLineCorrectionZ,
   clampToWalkArea,
-  pushOutOfFootprints,
+  blockSlideIntoFootprints,
   isFootFault,
 } from './walkArea.js';
 
@@ -66,26 +66,36 @@ describe('isFootFault', () => {
   });
 });
 
-describe('pushOutOfFootprints (tables are solid, Erik 2026-11-01)', () => {
+describe('blockSlideIntoFootprints (tables are solid, Erik 2026-11-01)', () => {
   const table = { x: 0, z: 1, halfX: 0.25, halfZ: 0.2 };
 
-  it('leaves a body clear of the table alone', () => {
-    const p = { x: 0, z: 0.5 };
-    expect(pushOutOfFootprints(p, [table], 0.2)).toBe(false);
-    expect(p).toEqual({ x: 0, z: 0.5 });
+  it('lets a slide that stays clear of the table through', () => {
+    const slide = { x: 0, z: 0.01 };
+    expect(
+      blockSlideIntoFootprints({ x: 0, z: 0.5 }, slide, [table], 0.2),
+    ).toBe(false);
+    expect(slide).toEqual({ x: 0, z: 0.01 });
   });
 
-  it('pushes a body that slid into the table back out the near side', () => {
-    const p = { x: 0.05, z: 0.7 };
-    expect(pushOutOfFootprints(p, [table], 0.2)).toBe(true);
-    expect(p.z).toBeCloseTo(0.6);
-    expect(p.x).toBeCloseTo(0.05);
+  it('stops a slow slide into the table, however small the step', () => {
+    const slide = { x: 0, z: 0.0005 };
+    expect(
+      blockSlideIntoFootprints({ x: 0, z: 0.6002 }, slide, [table], 0.2),
+    ).toBe(true);
+    expect(slide.z).toBe(0);
   });
 
-  it('pushes sideways when that is the shorter way out', () => {
-    const p = { x: 0.4, z: 1.05 };
-    pushOutOfFootprints(p, [table], 0.2);
-    expect(p.x).toBeCloseTo(0.45);
-    expect(p.z).toBeCloseTo(1.05);
+  it('keeps the sideways part of a diagonal slide along the edge', () => {
+    const slide = { x: 0.02, z: 0.02 };
+    blockSlideIntoFootprints({ x: 0.1, z: 0.61 }, slide, [table], 0.2);
+    expect(slide).toEqual({ x: 0.02, z: 0 });
+  });
+
+  it('never shoves a head that leaned into the table in the room', () => {
+    const slide = { x: 0.01, z: 0 };
+    expect(
+      blockSlideIntoFootprints({ x: 0.01, z: 0.9 }, slide, [table], 0.2),
+    ).toBe(false);
+    expect(slide).toEqual({ x: 0.01, z: 0 });
   });
 });

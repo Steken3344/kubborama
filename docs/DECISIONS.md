@@ -5833,10 +5833,13 @@ thrower" entries.
   180° while gliding in. The stick is the same at both ends: the grip
   now keeps whichever end already pointed forward (stickEndsAgree /
   flipStickEnds, decided on the first held frame).
-- **Sliding through the tables:** the four tables' footprints are
-  solid for the head (0.2 m body radius) — but only when the thumbstick
-  moved the rig that frame, so leaning over a table in the room to
-  reach a stick never shoves the world.
+- **Sliding through the tables:** a thumbstick slide may not carry the
+  head (0.2 m body radius) into any of the four tables' footprints: the
+  entering axis of that frame's slide is cut back, so sliding along an
+  edge still works. Never a push (review: a push could shove the world
+  0.6 m at once, and a 1 mm "did it slide" threshold let a gentle stick
+  creep through) — a head that leaned over a table in the room is left
+  alone, and a one-frame jump over 0.5 m is a teleport, not a slide.
 - **Felling chime barely heard by the thrower:** it was positional at
   the kubb (6–8 m away). The wooden knock stays positional; the chime
   now plays from the listener, at 0.9 instead of 0.5.

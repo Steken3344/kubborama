@@ -79,32 +79,54 @@ export interface Footprint {
   halfZ: number;
 }
 
-/**
- * The tables are solid (Erik, 2026-11-01: "man inte kan flyta igenom
- * bordet"): a body of `radiusM` around `point` (the head, x/z) inside a
- * footprint is pushed out the shortest way, IN PLACE. Every frame —
- * allocates nothing. Returns whether it moved the point.
- */
-export function pushOutOfFootprints(
-  point: { x: number; z: number },
+/** Whether a body of `radiusM` at (x, z) overlaps any footprint. */
+function overlapsAny(
+  x: number,
+  z: number,
   footprints: readonly Footprint[],
   radiusM: number,
 ): boolean {
-  let moved = false;
   for (const f of footprints) {
-    const dx = point.x - f.x;
-    const dz = point.z - f.z;
-    const overX = f.halfX + radiusM - Math.abs(dx);
-    const overZ = f.halfZ + radiusM - Math.abs(dz);
-    if (overX <= 0 || overZ <= 0) {
-      continue;
+    if (
+      Math.abs(x - f.x) < f.halfX + radiusM &&
+      Math.abs(z - f.z) < f.halfZ + radiusM
+    ) {
+      return true;
     }
-    if (overX < overZ) {
-      point.x += dx >= 0 ? overX : -overX;
-    } else {
-      point.z += dz >= 0 ? overZ : -overZ;
-    }
-    moved = true;
   }
-  return moved;
+  return false;
+}
+
+/**
+ * The tables are solid (Erik, 2026-11-01: "man inte kan flyta igenom
+ * bordet"): a thumbstick slide of `slide` (x/z, m) that would carry a
+ * body of `radiusM` around `head` (x/z, after the slide) into a table is
+ * cut back, IN PLACE — first only the axis that enters, so the player
+ * can still slide along a table's edge. Never a push: a head already in
+ * a footprint before the slide (leaning over a table in the room) is
+ * left alone. Every frame — allocates nothing. Returns whether it cut.
+ */
+export function blockSlideIntoFootprints(
+  head: { x: number; z: number },
+  slide: { x: number; z: number },
+  footprints: readonly Footprint[],
+  radiusM: number,
+): boolean {
+  if (!overlapsAny(head.x, head.z, footprints, radiusM)) {
+    return false;
+  }
+  const fromX = head.x - slide.x;
+  const fromZ = head.z - slide.z;
+  if (overlapsAny(fromX, fromZ, footprints, radiusM)) {
+    return false; // already in it before this slide
+  }
+  if (!overlapsAny(head.x, fromZ, footprints, radiusM)) {
+    slide.z = 0; // keep the sideways part
+  } else if (!overlapsAny(fromX, head.z, footprints, radiusM)) {
+    slide.x = 0;
+  } else {
+    slide.x = 0;
+    slide.z = 0;
+  }
+  return true;
 }

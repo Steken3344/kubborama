@@ -12,7 +12,7 @@ import type { MatchSide } from '../core/match.js';
 import {
   behindLineCorrectionZ,
   clampToWalkArea,
-  pushOutOfFootprints,
+  blockSlideIntoFootprints,
 } from '../core/walkArea.js';
 import type { Footprint } from '../core/walkArea.js';
 import { gateLog } from '../debug/gateLog.js';
@@ -21,7 +21,8 @@ import { activeCourtHalves, activeFarBaselineZ } from './activeCourt.js';
 
 /** At most one gate line per this many seconds while held at a line. */
 const LINE_LOG_INTERVAL_S = 2;
-const SLIDE_EPSILON_M = 0.001;
+/** A rig move longer than this in one frame is a teleport. */
+const TELEPORT_JUMP_M = 0.5;
 
 /**
  * Thumbstick locomotion (Erik, 2026-10-31; iwsdk.config.json
@@ -52,9 +53,9 @@ export class WalkAreaSystem extends createSystem({}) {
   ];
   private tablesFarZ = Number.NaN;
   private head = { x: 0, z: 0 };
-  /** The rig at the end of last frame: the tables only stop a SLIDE
-   * (the thumbstick moved the rig) — leaning over a table in the room
-   * to reach a stick must never shove the world. */
+  private slide = { x: 0, z: 0 };
+  /** The rig at the end of last frame: its change is this frame's
+   * thumbstick slide (NaN until the first frame). */
   private lastRigX = Number.NaN;
   private lastRigZ = Number.NaN;
 
@@ -88,19 +89,29 @@ export class WalkAreaSystem extends createSystem({}) {
     let moved = clampToWalkArea(this.point, walkArea);
     this.layOutTables();
     this.player.head.getWorldPosition(this.headPos);
-    // The head (the body) against the tables; the rig follows the push.
-    this.head.x = this.headPos.x + (this.point.x - position.x);
-    this.head.z = this.headPos.z + (this.point.z - position.z);
-    const hx = this.head.x;
-    const hz = this.head.z;
-    // A millimetre, so locomotion's own per-frame float jitter isn't a slide.
-    const slid =
-      Math.hypot(position.x - this.lastRigX, position.z - this.lastRigZ) >
-      SLIDE_EPSILON_M;
-    if (slid && pushOutOfFootprints(this.head, this.tables, tableBodyRadiusM)) {
-      this.point.x += this.head.x - hx;
-      this.point.z += this.head.z - hz;
-      moved = true;
+    // The thumbstick's slide this frame may not carry the head into a
+    // table (core/walkArea.ts) — cut back, never pushed.
+    this.slide.x = this.point.x - this.lastRigX;
+    this.slide.z = this.point.z - this.lastRigZ;
+    // NaN before the first frame; a jump is a teleport (joining, a court
+    // switch), never a slide to undo.
+    if (Math.hypot(this.slide.x, this.slide.z) < TELEPORT_JUMP_M) {
+      this.head.x = this.headPos.x + (this.point.x - position.x);
+      this.head.z = this.headPos.z + (this.point.z - position.z);
+      const sx = this.slide.x;
+      const sz = this.slide.z;
+      if (
+        blockSlideIntoFootprints(
+          this.head,
+          this.slide,
+          this.tables,
+          tableBodyRadiusM,
+        )
+      ) {
+        this.point.x += this.slide.x - sx;
+        this.point.z += this.slide.z - sz;
+        moved = true;
+      }
     }
     if (this.side !== null && this.lineZ !== null) {
       const dz = behindLineCorrectionZ(
