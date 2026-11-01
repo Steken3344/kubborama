@@ -51,7 +51,7 @@ const settingsSchema = z.object({
   /** Throw assistance (core/aimAssist.ts, Erik 2026-11-01). On a
    * little by default — the game felt "jättesvårt"; `.default` for
    * settings saved before it existed. */
-  aimAssist: z.enum(['off', 'some', 'more']).default('some'),
+  aimAssist: z.enum(['off', 'some', 'more']).default('more'),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -71,7 +71,7 @@ export function defaultSettings(): Settings {
     debugRelay: false,
     roomId: null,
     serverChoice: 'auto',
-    aimAssist: 'some',
+    aimAssist: 'more',
   };
 }
 

@@ -5985,3 +5985,13 @@ match.json); the other four already wait on the guest's table, out of
 the turn (phase settled, so they can't be thrown), and the round is
 complete once those two have settled (RoundState.sticksThisRound).
 Every later turn has six. Server mode only: the P2P fallback keeps six.
+
+## 2026-11-01 — Throw help: "Mycket" by default, and in practice too
+
+Erik: "Kasthjälpen upplever jag bra, tycker vi tar 'mycket' som
+standard. Var roligare när man kändes som man kom närmare." The default
+is now "more" (0.75). His test was a practice session, where the help
+did not yet act (match turns only) — so it now also helps practice
+throws, aimed at a fresh match's far baseline kubbs (lying ones are
+skipped). A headset that already saved "some" keeps it until the button
+is pressed.

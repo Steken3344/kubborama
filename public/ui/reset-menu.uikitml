@@ -136,7 +136,7 @@
     </Button>
     <!-- Throw help, per headset (2026-11-01). -->
     <Button id="aim-assist-button" class="button">
-      <ButtonLabel id="aim-assist-label">Kasthjälp: Lite</ButtonLabel>
+      <ButtonLabel id="aim-assist-label">Kasthjälp: Mycket</ButtonLabel>
     </Button>
     <!-- Room settings, game server only (2026-11-01). -->
     <Button id="time-limit-button" class="button" style="display: none">

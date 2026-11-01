@@ -22,6 +22,7 @@ import type { Hand } from './hapticPlayer.js';
 import { pulseHaptic } from './hapticPlayer.js';
 import { playSfxVariant } from './playSfx.js';
 import { aimTargetIds, assistAim } from '../core/aimAssist.js';
+import { initialMatchState } from '../core/match.js';
 import type { MatchSide, MatchState } from '../core/match.js';
 import { settingsState } from '../settingsState.js';
 import { assistRelease } from '../core/throwAssist.js';
@@ -31,6 +32,11 @@ import { classifyThrow } from '../core/underhandClassifier.js';
 import { PoseSampler, releaseWindowFrames } from './poseSampler.js';
 import type { Vec3 } from '../core/vec3.js';
 import { presetBank } from '../tuningState.js';
+
+/** What practice throws aim at: a fresh match's far baseline. */
+const PRACTICE_STATE = initialMatchState();
+/** A standing kubb's centre is ~0.15 m up, a lying one's ~0.035 m. */
+const UPRIGHT_KUBB_MIN_Y = 0.09;
 
 /** Deterministic per-session foley-variant picker — not the physics RNG. */
 const FOLEY_SFX_SEED = 4242;
@@ -168,19 +174,23 @@ export class ThrowingSystem extends createSystem({
   }
 
   /** The throw help (core/aimAssist.ts): bend a near miss towards a
-   * kubb this player may aim at. Only in a match, on its own turn —
-   * once per release, so the target lookups may allocate. */
+   * kubb this player may aim at — once per release, so the target
+   * lookups may allocate. */
   private withAimAssist(from: Vec3, velocity: Vec3): Vec3 {
     const level = settingsState.current.aimAssist;
-    const state = this.matchState;
-    const side = this.mySide;
+    if (level === 'off') {
+      return velocity;
+    }
+    // In a match: only on my own throwing turn, at what the rules allow.
+    // Practice (no match): at the far baseline's kubbs, as in a fresh
+    // match — Erik practises alone, and that is where the help is learnt.
+    const state = this.matchState ?? PRACTICE_STATE;
+    const side = this.mySide ?? 'host';
     if (
-      level === 'off' ||
-      !state ||
-      !side ||
-      state.currentTurn !== side ||
-      state.phase !== 'throwing' ||
-      state.winner !== null
+      this.matchState &&
+      (state.currentTurn !== side ||
+        state.phase !== 'throwing' ||
+        state.winner !== null)
     ) {
       return velocity;
     }
@@ -189,6 +199,8 @@ export class ThrowingSystem extends createSystem({
       const object3D = this.world.getSceneEntity?.(id)?.object3D;
       if (object3D) {
         object3D.getWorldPosition(this.targetPos);
+        // Lying (felled in practice, not yet stood up): not a target.
+        if (this.targetPos.y < UPRIGHT_KUBB_MIN_Y) continue;
         targets.push([this.targetPos.x, this.targetPos.y, this.targetPos.z]);
       }
     }
