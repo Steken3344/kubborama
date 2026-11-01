@@ -240,7 +240,15 @@ export class ThrowingSystem extends createSystem({
       gameEvents.emit('StickPutBack', { entityIndex: entity.index });
       return;
     }
-    const linearVelocity = this.withAimAssist(releasePosition, handVelocity);
+    // The throw help may slow a soft throw; never below what counts as a
+    // throw, or the headset would fly a stick the server leaves racked.
+    const assistedVelocity = this.withAimAssist(releasePosition, handVelocity);
+    const linearVelocity = isThrowRelease(
+      Math.hypot(...assistedVelocity),
+      pieces.throw.minThrowSpeedMps,
+    )
+      ? assistedVelocity
+      : handVelocity;
     // The swing decides, not the wrist (core/throwAssist.ts): the spin
     // keeps its end-over-end part, the stick turns into the throw's plane.
     let angularVelocity = handSpin;
@@ -273,10 +281,12 @@ export class ThrowingSystem extends createSystem({
     entity.setValue(StickState, 'lastThrowerHand', hand);
     this.pulseHapticAndFoley(hand, releaseClick);
 
+    // Judged on the hand's own release, before any assist, so the style
+    // and flip score (HUD, tuning lab, telemetry) stay the player's.
     const classification = classifyThrow({
       poses: buffer,
-      releaseVelocity: linearVelocity,
-      angularVelocity,
+      releaseVelocity: handVelocity,
+      angularVelocity: handSpin,
     });
 
     gameEvents.emit('Thrown', {

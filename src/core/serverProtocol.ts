@@ -130,6 +130,11 @@ const pieceTransform = z.object({
 });
 export type ServerPieceTransform = z.infer<typeof pieceTransform>;
 
+/** An `impacts` message carries at most this many, each |Δv| at most
+ * this (the server clamps; one wild Havok value must not drop them all). */
+export const MAX_IMPACTS_PER_MESSAGE = 32;
+export const MAX_IMPACT_DELTA_V_MPS = 200;
+
 const serverMessageSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('welcome'),
@@ -254,11 +259,11 @@ const serverMessageSchema = z.discriminatedUnion('type', [
       .array(
         z.object({
           id: pieceId,
-          deltaVMps: z.number().min(0).max(200),
+          deltaVMps: z.number().min(0).max(MAX_IMPACT_DELTA_V_MPS),
           position: vec3,
         }),
       )
-      .max(32),
+      .max(MAX_IMPACTS_PER_MESSAGE),
   }),
   /** The match clock under a time limit, about once a second. */
   z.object({

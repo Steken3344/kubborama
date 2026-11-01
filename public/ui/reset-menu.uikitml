@@ -134,10 +134,11 @@
     <Button id="game-mode-button" class="button">
       <ButtonLabel id="game-mode-button-label">Enkelt</ButtonLabel>
     </Button>
-    <!-- Room settings, game server only (2026-11-01). -->
+    <!-- Throw help, per headset (2026-11-01). -->
     <Button id="aim-assist-button" class="button">
       <ButtonLabel id="aim-assist-label">Kasthjälp: Lite</ButtonLabel>
     </Button>
+    <!-- Room settings, game server only (2026-11-01). -->
     <Button id="time-limit-button" class="button" style="display: none">
       <ButtonLabel id="time-limit-label">Tidsgräns: Av</ButtonLabel>
     </Button>

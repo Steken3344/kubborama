@@ -725,6 +725,53 @@ describe('GameServer — bot opponent and time limit (2026-11-01)', () => {
     expect(again.received).toContainEqual({ type: 'rejected', reason: 'full' });
   });
 
+  it('a reloading opponent (rejoin grace) is not replaced within the idle time (review)', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const ha = server.connect(a.connection);
+    const hb = server.connect(b.connection);
+    await ha.receive(join());
+    const bId = 'client-reloading-xxxx';
+    await hb.receive(join('simple', bId));
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    await hb.receive({ type: 'presence', message: presence() });
+    hb.close(); // B's headset reloads
+    clock.now += 3000;
+    await ha.receive({ type: 'presence', message: presence() });
+    expect(await ha.receive({ type: 'setBot', level: 'easy' })).toBe(false);
+    // B is back within the grace and keeps its seat.
+    const b2 = fakeClient();
+    expect(
+      await server.connect(b2.connection).receive(join('simple', bId)),
+    ).toBe(true);
+    expect(b2.received).toContainEqual(
+      expect.objectContaining({ type: 'welcome', side: 'guest' }),
+    );
+  });
+
+  it('the idle-seat ban ends with the room (review)', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const ghost = fakeClient();
+    const ha = server.connect(a.connection);
+    await ha.receive(join());
+    const ghostId = 'client-ghost-two-xxxx';
+    await server.connect(ghost.connection).receive(join('simple', ghostId));
+    clock.now += SEAT_IDLE_MS + ROOM_ACTION_COOLDOWN_MS * 2;
+    await ha.receive({ type: 'presence', message: presence() });
+    expect(await ha.receive({ type: 'setBot', level: 'easy' })).toBe(true);
+    // A leaves for good: only the bot is left and the room starts over.
+    ha.close();
+    clock.now += REJOIN_GRACE_MS + 1;
+    server.tick();
+    // The old tab may now play again.
+    const back = fakeClient();
+    expect(
+      await server.connect(back.connection).receive(join('simple', ghostId)),
+    ).toBe(true);
+  });
+
   it('a present opponent is never replaced by the bot', async () => {
     const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
     const a = fakeClient();

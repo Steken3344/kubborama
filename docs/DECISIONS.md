@@ -5961,3 +5961,16 @@ tillbaka".
   It stays toppled, so the server never reports it felled again.
 - Serverless (P2P) play has no rules button and always plays standard;
   its MatchRulesSystem handles `retire` the same way for completeness.
+
+## 2026-11-01 — Review of the impacts / assist / bot-seat batch
+
+Fixed: a dropped player inside the rejoin grace was evictable at once
+when the other asked for the bot (now only after the same 10 s idle
+time as a connected one); the idle-seat ban is cleared when the room
+starts over; the throw help may never take a release below the throw
+floor (the headset would fly a stick the server leaves racked); the
+throw style/flip score is judged on the hand's own release again, so
+calibration data isn't flattened by the assists; impacts' 32 / 200 m/s
+limits are one constant and the server clamps |Δv|. Parked: server
+impacts play ~100 ms ahead of the interpolated view (add a tick later);
+the throw help only acts in a match on your own turn, not in practice.

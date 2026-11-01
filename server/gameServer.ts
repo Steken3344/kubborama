@@ -37,6 +37,8 @@ import {
 } from '../src/core/profiles.js';
 import type { ProfileStore } from '../src/core/profiles.js';
 import {
+  MAX_IMPACT_DELTA_V_MPS,
+  MAX_IMPACTS_PER_MESSAGE,
   parseClientMessage,
   SERVER_PROTOCOL_VERSION,
   SNAPSHOT_EVERY_TICKS,
@@ -62,10 +64,10 @@ import type { ServerLog } from './serverLog.js';
 const MAX_THROWS_PER_SECOND = 6;
 /** Server impacts (core/impactWatch.ts): a jump this much past a piece's
  * own reach in one step is a teleport, and one contact reports at most
- * once per cooldown; a snapshot carries at most this many. */
+ * once per cooldown. */
 const IMPACT_TELEPORT_M = 0.2;
 const IMPACT_COOLDOWN_S = 0.08;
-const MAX_IMPACTS_PER_SNAPSHOT = 32;
+
 /** A dropped player keeps its side this long: a reloading headset
  * rejoins with the same clientId and the match simply continues
  * (docs/QUESTIONS.md, option 1 — decided 2026-09-27). */
@@ -248,7 +250,12 @@ export class GameServer {
       if (this.pendingImpacts.length > 0) {
         this.broadcast({
           type: 'impacts',
-          items: this.pendingImpacts.slice(0, MAX_IMPACTS_PER_SNAPSHOT),
+          items: this.pendingImpacts
+            .slice(0, MAX_IMPACTS_PER_MESSAGE)
+            .map((i) => ({
+              ...i,
+              deltaVMps: Math.min(i.deltaVMps, MAX_IMPACT_DELTA_V_MPS),
+            })),
         });
         this.pendingImpacts = [];
       }
@@ -843,7 +850,8 @@ export class GameServer {
   }
 
   /** A room setting: a bot in the free seat (or a new level for the one
-   * seated), or no bot. Refused while both seats hold people. */
+   * seated), or no bot. Refused while both seats hold people who are
+   * there; a seat idle for SEAT_IDLE_MS is given to the bot. */
   private changeBot(level: BotLevel | null, by: MatchSide): boolean {
     if (level === this.botLevel || !this.roomActionAllowed('settings')) {
       return false;
@@ -859,8 +867,9 @@ export class GameServer {
         (s) =>
           !s.bot &&
           s.side !== by &&
-          (s.connection === null ||
-            now - Math.max(s.lastPresenceMs, s.seatedAtMs) > SEAT_IDLE_MS),
+          // A dropped seat counts too, but only after the same idle time:
+          // a reloading headset is back within seconds (REJOIN_GRACE_MS).
+          now - Math.max(s.lastPresenceMs, s.seatedAtMs) > SEAT_IDLE_MS,
       );
       if (this.seats.length >= SIDES.length && idle) {
         this.giveIdleSeatToBot(idle);
@@ -901,7 +910,6 @@ export class GameServer {
     return true;
   }
 
-  /** A person's seat is held for a rejoin: the match waits for them. */
   /** An idle seat is cleared for the bot; its client is told the room
    * is full and, while the bot sits, may not take a seat back. */
   private giveIdleSeatToBot(seat: (typeof this.seats)[number]): void {
@@ -914,6 +922,7 @@ export class GameServer {
     this.idleClientIds.add(seat.clientId);
   }
 
+  /** A person's seat is held for a rejoin: the match waits for them. */
   private playerAway(): boolean {
     return this.seats.some((s) => !s.bot && s.connection === null);
   }
@@ -1041,6 +1050,7 @@ export class GameServer {
       // are told; they stay connected).
       this.seats = [];
       this.botLevel = null;
+      this.idleClientIds.clear();
       this.timeLimitMin = 0;
       this.rules = 'standard';
       this.broadcast(this.roomSettingsMessage());
