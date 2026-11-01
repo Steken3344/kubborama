@@ -9,7 +9,7 @@ export function fromAxisAngle(axis: Vec3, angleRad: number): Quat {
   return [axis[0] * s, axis[1] * s, axis[2] * s, Math.cos(half)];
 }
 
-function multiply(a: Quat, b: Quat): Quat {
+export function multiply(a: Quat, b: Quat): Quat {
   const [ax, ay, az, aw] = a;
   const [bx, by, bz, bw] = b;
   return [

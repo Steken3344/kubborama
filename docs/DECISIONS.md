@@ -5872,3 +5872,17 @@ snapshot (additive server message, protocol unchanged); ImpactSystem
 plays the sound and the haptics. Held sticks are still detected
 locally. Played on receipt: up to ~100 ms before the interpolated view
 of someone else's stick — fine for now.
+
+## 2026-11-01 — The swing decides the throw, not the wrist
+
+Erik: "jag kastar lika men det är väldigt stor skillnad … ofta lite
+helikopterspinn fast jag inte vill … vinkeln på handen är avgörande men
+det borde vara svingen". The release spin was the controller's whole
+angular velocity, so a wrist twist or yaw at release became helicopter
+spin (not allowed in kubb anyway) and the stick left pointing wherever
+the hand was angled. core/throwAssist.ts now keeps only the spin about
+the throw's lateral axis (the swing's end-over-end) and turns the stick
+the shortest way into the throw's vertical plane, keeping its tilt.
+Both are 0…1 knobs (`spinAssist`, `alignAssist` in pieces.json, 1 by
+default) — a feel calibration for the headset (M2 human gate), not
+self-approved.

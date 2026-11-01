@@ -51,6 +51,8 @@
     "groundAngularDamping": 20,
     "groundLinearDamping": 6,
     "releaseImpactGraceS": 0.25,
-    "minThrowSpeedMps": 1.5
+    "minThrowSpeedMps": 1.5,
+    "spinAssist": 1,
+    "alignAssist": 1
   }
 }

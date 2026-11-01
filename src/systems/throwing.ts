@@ -4,6 +4,7 @@ import {
   Grabbed,
   GrabSystem,
   PhysicsManipulation,
+  PhysicsSystem,
   Quaternion,
   Vector3,
 } from '@iwsdk/core';
@@ -20,6 +21,7 @@ import { readBodySpeed } from './bodySpeed.js';
 import type { Hand } from './hapticPlayer.js';
 import { pulseHaptic } from './hapticPlayer.js';
 import { playSfxVariant } from './playSfx.js';
+import { assistRelease } from '../core/throwAssist.js';
 import { computeThrowRelease, isThrowRelease } from '../core/throwRelease.js';
 import { activePreset, percentToReal, tuningParams } from '../core/tuning.js';
 import { classifyThrow } from '../core/underhandClassifier.js';
@@ -61,6 +63,8 @@ export class ThrowingSystem extends createSystem({
   private tmpComPos = new Vector3();
   private tmpSpeed: [number, number] = [0, 0];
 
+  private physicsSystem: PhysicsSystem | null = null;
+
   init(): void {
     const grabSystem = this.world.getSystem(GrabSystem);
     if (!grabSystem) {
@@ -69,6 +73,7 @@ export class ThrowingSystem extends createSystem({
       );
     }
     this.grabSystem = grabSystem;
+    this.physicsSystem = this.world.getSystem(PhysicsSystem) ?? null;
     this.queries.heldSticks.subscribe('qualify', (entity) => {
       this.onGrabStart(entity);
     });
@@ -164,13 +169,16 @@ export class ThrowingSystem extends createSystem({
       tuningParams.angularMultiplier,
       preset.angularMultiplier,
     );
-    const { linearVelocity, angularVelocity, releaseSpeedMps } =
-      computeThrowRelease({
-        poses: buffer,
-        releasePosition,
-        velocityMultiplier,
-        angularMultiplier,
-      });
+    const {
+      linearVelocity,
+      angularVelocity: handSpin,
+      releaseSpeedMps,
+    } = computeThrowRelease({
+      poses: buffer,
+      releasePosition,
+      velocityMultiplier,
+      angularMultiplier,
+    });
 
     if (!isThrowRelease(releaseSpeedMps, pieces.throw.minThrowSpeedMps)) {
       // Put down or re-gripped, not thrown: back to the rack, uncounted.
@@ -181,6 +189,25 @@ export class ThrowingSystem extends createSystem({
       });
       gameEvents.emit('StickPutBack', { entityIndex: entity.index });
       return;
+    }
+    // The swing decides, not the wrist (core/throwAssist.ts): the spin
+    // keeps its end-over-end part, the stick turns into the throw's plane.
+    let angularVelocity = handSpin;
+    if (object3D) {
+      const q = object3D.quaternion;
+      const assisted = assistRelease(
+        linearVelocity,
+        handSpin,
+        [q.x, q.y, q.z, q.w],
+        pieces.throw,
+      );
+      angularVelocity = assisted.angularVelocity;
+      const [qx, qy, qz, qw] = assisted.quaternion;
+      object3D.quaternion.set(qx, qy, qz, qw);
+      this.physicsSystem?.setBodyTransform(entity, {
+        position: releasePosition,
+        quaternion: assisted.quaternion,
+      });
     }
     entity.addComponent(PhysicsManipulation, {
       force: [0, 0, 0],
