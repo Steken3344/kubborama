@@ -8,6 +8,12 @@ export const gameModeSchema = z.enum(['simple', 'advanced']);
 
 const roomIdSchema = z.string().min(1).max(64);
 
+/** Music at a quarter by default (Erik, 2026-11-01: "börjar bli lite
+ * tjatigt"); it was 70. */
+const DEFAULT_MUSIC_PERCENT = 25;
+/** Bumped when a default changes for settings already saved. */
+const DEFAULTS_REVISION = 1;
+
 const settingsSchema = z.object({
   version: z.literal(SETTINGS_SCHEMA_VERSION),
   language: z.enum(['sv', 'en']),
@@ -51,11 +57,13 @@ const settingsSchema = z.object({
   /** Throw assistance (core/aimAssist.ts, Erik 2026-11-01). On a
    * little by default — the game felt "jättesvårt"; `.default` for
    * settings saved before it existed. */
-  aimAssist: z.enum(['off', 'some', 'more']).default('more'),
+  aimAssist: z.enum(['off', 'some', 'more', 'max']).default('more'),
   /** Walking with the left thumbstick (Erik, 2026-11-01: "skulle kunna
    * stänga av funktionen att röra sig med joystick"); snap turning
    * stays. On by default, `.default` for older saved settings. */
   stickMove: z.boolean().default(true),
+  /** Which default changes a saved file has been through (migrate). */
+  defaultsRevision: z.number().int().min(0).default(0),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -64,7 +72,7 @@ export function defaultSettings(): Settings {
     version: SETTINGS_SCHEMA_VERSION,
     language: 'sv',
     gameMode: 'simple',
-    musicVolumePercent: 70,
+    musicVolumePercent: DEFAULT_MUSIC_PERCENT,
     sfxVolumePercent: 70,
     hapticsEnabled: true,
     hapticsIntensityPercent: 70,
@@ -77,6 +85,7 @@ export function defaultSettings(): Settings {
     serverChoice: 'auto',
     aimAssist: 'more',
     stickMove: true,
+    defaultsRevision: DEFAULTS_REVISION,
   };
 }
 
@@ -94,7 +103,27 @@ export function decodeSettings(json: string): Settings {
     return defaultSettings();
   }
   const result = settingsSchema.safeParse(parsed);
-  return result.success ? result.data : defaultSettings();
+  return result.success ? migrateDefaults(result.data) : defaultSettings();
+}
+
+/**
+ * A saved file still on an OLD default gets the new one; anything the
+ * player chose stays. Revision 1 (2026-11-01): music 70 % → 25 %, throw
+ * help "some" → "more" (both still the untouched old defaults).
+ */
+export function migrateDefaults(settings: Settings): Settings {
+  if (settings.defaultsRevision >= DEFAULTS_REVISION) {
+    return settings;
+  }
+  return {
+    ...settings,
+    musicVolumePercent:
+      settings.musicVolumePercent === 70
+        ? DEFAULT_MUSIC_PERCENT
+        : settings.musicVolumePercent,
+    aimAssist: settings.aimAssist === 'some' ? 'more' : settings.aimAssist,
+    defaultsRevision: DEFAULTS_REVISION,
+  };
 }
 
 /** `?room=<id>` and `?debug=1` from a URL search string — the values

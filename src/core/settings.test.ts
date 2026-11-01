@@ -3,6 +3,7 @@ import {
   decodeSettings,
   defaultSettings,
   encodeSettings,
+  migrateDefaults,
   nextGameMode,
   serverModeActive,
   urlSettingOverrides,
@@ -110,5 +111,44 @@ describe('nextGameMode', () => {
   it('flips between the two courts', () => {
     expect(nextGameMode('simple')).toBe('advanced');
     expect(nextGameMode('advanced')).toBe('simple');
+  });
+});
+
+describe('migrateDefaults (2026-11-01)', () => {
+  it('moves untouched old defaults to the new ones, once', () => {
+    const old = {
+      ...defaultSettings(),
+      musicVolumePercent: 70,
+      aimAssist: 'some' as const,
+      defaultsRevision: 0,
+    };
+    const m = migrateDefaults(old);
+    expect(m.musicVolumePercent).toBe(25);
+    expect(m.aimAssist).toBe('more');
+    expect(m.defaultsRevision).toBe(1);
+    // A later choice of 70 % is the player's own and stays.
+    expect(
+      migrateDefaults({ ...m, musicVolumePercent: 70 }).musicVolumePercent,
+    ).toBe(70);
+  });
+
+  it('keeps what the player chose', () => {
+    const chosen = {
+      ...defaultSettings(),
+      musicVolumePercent: 50,
+      aimAssist: 'off' as const,
+      defaultsRevision: 0,
+    };
+    const m = migrateDefaults(chosen);
+    expect(m.musicVolumePercent).toBe(50);
+    expect(m.aimAssist).toBe('off');
+  });
+
+  it('a file saved before the field existed is migrated on decode', () => {
+    const { defaultsRevision: _r, ...rest } = {
+      ...defaultSettings(),
+      musicVolumePercent: 70,
+    };
+    expect(decodeSettings(JSON.stringify(rest)).musicVolumePercent).toBe(25);
   });
 });

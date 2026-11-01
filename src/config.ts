@@ -87,6 +87,9 @@ export const confetti = confettiData;
 export const spectator = spectatorData;
 /** Menu buttons ignore a repeat click within this long (gh#27). */
 export const ui = uiData;
+/** Where the head is put at a turn's start, behind the baseline (m). */
+export const standBehindLineM = locomotionData.standBehindLineM;
+
 /** The player's body radius against the tables (core/walkArea.ts). */
 export const tableBodyRadiusM = locomotionData.tableBodyRadiusM;
 

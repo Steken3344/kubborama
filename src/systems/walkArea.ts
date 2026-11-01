@@ -8,6 +8,7 @@ import { settingsState } from '../settingsState.js';
 import {
   kubbTable,
   lineLeanAllowanceM,
+  standBehindLineM,
   stickRack,
   tableBodyRadiusM,
   walkArea,
@@ -19,6 +20,7 @@ import {
   behindLineCorrectionZ,
   clampToWalkArea,
   blockSlideIntoFootprints,
+  throwSpot,
 } from '../core/walkArea.js';
 import type { Footprint } from '../core/walkArea.js';
 import { gateLog } from '../debug/gateLog.js';
@@ -69,6 +71,9 @@ export class WalkAreaSystem extends createSystem({}) {
    * on; NaN until read. */
   private slideSpeed = Number.NaN;
   private appliedStickMove: boolean | null = null;
+  /** `turn/phase` I was last centred for; a new one of mine re-centres. */
+  private centredKey = '';
+  private recentrePending = false;
 
   init(): void {
     // The walkable surface is set here rather than in the scene JSON, so
@@ -80,6 +85,15 @@ export class WalkAreaSystem extends createSystem({}) {
       gameEvents.on('MatchStateChanged', ({ state, mySide }) => {
         this.side = mySide;
         this.lineZ = standingLineZ(state, mySide, activeCourtHalves());
+        // My turn (or its next phase) starts: put me on the throwing spot.
+        const key =
+          state.currentTurn === mySide && state.winner === null
+            ? `${state.currentTurn}/${state.phase}`
+            : '';
+        if (key !== '' && key !== this.centredKey) {
+          this.recentrePending = true;
+        }
+        this.centredKey = key;
       }),
       // No line until the next match state: a court switch moves the
       // baselines, and the room emptying ends the match.
@@ -95,6 +109,10 @@ export class WalkAreaSystem extends createSystem({}) {
 
   update(_delta: number, timeS: number): void {
     this.applyStickMove();
+    if (this.recentrePending) {
+      this.recentrePending = false;
+      this.recentre();
+    }
     const position = this.player.position;
     this.point.x = position.x;
     this.point.z = position.z;
@@ -201,5 +219,31 @@ export class WalkAreaSystem extends createSystem({}) {
     }
     locomotion.config.slidingSpeed.value = on ? this.slideSpeed : 0;
     this.appliedStickMove = on;
+  }
+
+  /** Moves the rig so the head stands on my throwing spot (throwSpot) —
+   * the room position the player happens to be at becomes the spot.
+   * Runs on the frame after the state, so placement on joining (which
+   * also arrives with a state) has happened first. */
+  private recentre(): void {
+    if (this.side === null) {
+      return;
+    }
+    const spot = throwSpot(this.side, activeCourtHalves(), standBehindLineM);
+    this.player.head.getWorldPosition(this.headPos);
+    const position = this.player.position;
+    this.target.set(
+      position.x + (spot.x - this.headPos.x),
+      position.y,
+      position.z + (spot.z - this.headPos.z),
+    );
+    movePlayerTo(this.world, this.player, this.target);
+    // A jump, not a slide: the table check must not undo it.
+    this.lastRigX = this.target.x;
+    this.lastRigZ = this.target.z;
+    gateLog('recentred on throwing spot', {
+      side: this.side,
+      z: spot.z,
+    });
   }
 }

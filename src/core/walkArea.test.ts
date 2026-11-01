@@ -3,6 +3,7 @@ import {
   behindLineCorrectionZ,
   clampToWalkArea,
   blockSlideIntoFootprints,
+  throwSpot,
   isFootFault,
 } from './walkArea.js';
 
@@ -97,5 +98,18 @@ describe('blockSlideIntoFootprints (tables are solid, Erik 2026-11-01)', () => {
       blockSlideIntoFootprints({ x: 0.01, z: 0.9 }, slide, [table], 0.2),
     ).toBe(false);
     expect(slide).toEqual({ x: 0.01, z: 0 });
+  });
+});
+
+describe('throwSpot (2026-11-01)', () => {
+  const halves = {
+    halfWidthM: 1.5,
+    nearBaselineZ: 0,
+    centreZ: -3,
+    farBaselineZ: -6,
+  };
+  it("just behind each side's own baseline, centred", () => {
+    expect(throwSpot('host', halves, 0.35)).toEqual({ x: 0, z: 0.35 });
+    expect(throwSpot('guest', halves, 0.35)).toEqual({ x: 0, z: -6.35 });
   });
 });

@@ -1,3 +1,4 @@
+import type { CourtHalves } from './inkast.js';
 import type { MatchSide } from './match.js';
 
 /**
@@ -129,4 +130,22 @@ export function blockSlideIntoFootprints(
     slide.z = 0;
   }
   return true;
+}
+
+/**
+ * Where a thrower's head is put when its turn starts (Erik, 2026-11-01:
+ * his partner, new to games, kept walking into the headset's boundary
+ * to throw and found the thumbstick hard): centred on the court, just
+ * behind its own baseline. The rig moves so the head lands here —
+ * wherever the player stands in the room becomes the throwing spot, so
+ * nobody has to walk to it. Side A faces −z, side B +z.
+ */
+export function throwSpot(
+  side: MatchSide,
+  halves: CourtHalves,
+  behindLineM: number,
+): { x: number; z: number } {
+  return side === 'host'
+    ? { x: 0, z: halves.nearBaselineZ + behindLineM }
+    : { x: 0, z: halves.farBaselineZ - behindLineM };
 }

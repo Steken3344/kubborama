@@ -98,5 +98,6 @@
   "matchNeedsServer": "Match settings need the game server",
   "tabPlayer": "Player",
   "stickMoveOn": "Stick walking: On",
-  "stickMoveOff": "Stick walking: Off"
+  "stickMoveOff": "Stick walking: Off",
+  "aimAssistMax": "Throw help: Max"
 }

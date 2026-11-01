@@ -55,9 +55,18 @@
     "spinAssist": 1,
     "alignAssist": 1,
     "aimAssist": {
-      "some": 0.4,
-      "more": 0.75,
-      "radiusM": 1.5,
+      "some": {
+        "strength": 0.4,
+        "radiusM": 1.0
+      },
+      "more": {
+        "strength": 0.75,
+        "radiusM": 1.5
+      },
+      "max": {
+        "strength": 1.0,
+        "radiusM": 2.5
+      },
       "aimHeightM": 0.15
     }
   }

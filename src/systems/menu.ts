@@ -68,11 +68,12 @@ const VOLUME_STEPS = [0, 25, 50, 75, 100] as const;
 /** Deterministic per-session UI-click-sfx-variant picker — not the physics RNG. */
 const UI_SFX_SEED = 24601;
 /** Throw help, in button order (core/aimAssist.ts). */
-const AIM_ASSIST_LEVELS = ['off', 'some', 'more'] as const;
+const AIM_ASSIST_LEVELS = ['off', 'some', 'more', 'max'] as const;
 const AIM_ASSIST_LABEL_KEYS = {
   off: 'aimAssistOff',
   some: 'aimAssistSome',
   more: 'aimAssistMore',
+  max: 'aimAssistMax',
 } as const;
 
 // 5 kubbs per baseline, 2 baselines, 1 king (docs/PLAN.md §2b).

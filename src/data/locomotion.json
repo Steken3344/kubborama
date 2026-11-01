@@ -4,5 +4,6 @@
   "walkAreaMaxZ": 3,
   "lineLeanAllowanceM": 0.2,
   "footFaultReachM": 0.9,
-  "tableBodyRadiusM": 0.2
+  "tableBodyRadiusM": 0.2,
+  "standBehindLineM": 0.35
 }

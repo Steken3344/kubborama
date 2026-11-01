@@ -6031,3 +6031,25 @@ whole level loading.
   panel fixed at A's end, and a tall tab reached into the ground.
 - "Gå med spaken: Av" sets the locomotion slide speed to 0 (snap turning
   stays), per headset.
+
+## 2026-11-01 — Easier for a first-time player
+
+Erik's partner (new to games — "en bra testperson") found moving hard,
+kept walking into the headset's boundary ("nätet") to throw, and throws
+went bad when a hand left it. So:
+
+- **Centred on your turn:** when my turn (or its next phase) starts the
+  rig moves so my head is on the throwing spot (core/walkArea.ts
+  throwSpot: centred, `standBehindLineM` 0.35 m behind my baseline) —
+  wherever I stand in the room becomes the spot; nobody has to walk.
+  Not a teleport to the advantage line (still declined), only the own
+  baseline.
+- **Tables within reach:** the stick table moved from straight behind
+  (z 1.09) to behind-left (x −0.35, z 0.75), the kubb table to
+  behind-right (x 0.95, z 0.75) — a turn, not a walk, and out of a right
+  hand's backswing. Far tables mirrored; scene and data checked by tests.
+- **Kasthjälp "Max":** strength 1 within 2.5 m (each level now has its
+  own radius: Lite 0.4/1 m, Mycket 0.75/1.5 m, Max 1/2.5 m).
+- **Music at 25 %** by default ("börjar bli lite tjatigt"); a saved
+  file still on the old defaults (music 70 %, Kasthjälp "Lite") is moved
+  to the new ones once (Settings.defaultsRevision); choices stay.

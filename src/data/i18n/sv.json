@@ -98,5 +98,6 @@
   "matchNeedsServer": "Matchinställningarna kräver spelservern",
   "tabPlayer": "Spelare",
   "stickMoveOn": "Gå med spaken: På",
-  "stickMoveOff": "Gå med spaken: Av"
+  "stickMoveOff": "Gå med spaken: Av",
+  "aimAssistMax": "Kasthjälp: Max"
 }

@@ -206,8 +206,8 @@ export class ThrowingSystem extends createSystem({
     }
     const help = pieces.throw.aimAssist;
     return assistAim(from, velocity, targets, {
-      strength: help[level],
-      radiusM: help.radiusM,
+      strength: help[level].strength,
+      radiusM: help[level].radiusM,
       aimHeightM: help.aimHeightM,
     });
   }
