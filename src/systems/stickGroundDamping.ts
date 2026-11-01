@@ -43,6 +43,21 @@ export class StickGroundDampingSystem extends createSystem({
           entity.getValue(PhysicsBody, 'linearDamping') ?? 0,
         );
       }
+      // Just thrown: drop any grass brake left from its last landing
+      // before the first physics step (review, 2026-11-01).
+      entity.setValue(
+        PhysicsBody,
+        'linearDamping',
+        this.flightLinear.get(entity.index) ?? 0,
+      );
+      entity.setValue(
+        PhysicsBody,
+        'angularDamping',
+        percentToReal(
+          tuningParams.angularDampingInFlight,
+          activePreset(presetBank).angularDampingInFlight,
+        ),
+      );
     });
   }
 

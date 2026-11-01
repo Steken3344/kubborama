@@ -5674,3 +5674,11 @@ Erik approved ("kör 1-6") after the bot opponent shipped.
 - **Bot tools find the dev server:** `--url` defaults to the running
   session's URL from `npx iwsdk dev status` (its port moved to 8083
   twice today).
+- **Regression found by the series, fixed:** the grass brake stayed on a
+  landed stick until its next throw, and the server took one physics
+  step with it before restoring the flight values — ~10 % of the release
+  speed lost on every throw after a stick's first (a re-thrown stick
+  0.29 m short after 0.5 s; bot hit rate on the tournament court fell
+  from ~30 % to 3 %). Flight damping is now set at the throw itself
+  (server onThrow, client on becoming Flying);
+  server/stickRoll.test.ts throws the same stick twice.

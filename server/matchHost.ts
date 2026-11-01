@@ -232,6 +232,11 @@ export class MatchHost {
       if (!this.world.applyThrow(input)) {
         return false;
       }
+      // Flight damping from the very first step: a stick that landed last
+      // round still carries the grass brake, and one step of it cost ~10%
+      // of the release speed (bot series, 2026-11-01: hits fell to 3%).
+      this.world.setAngularDamping(input.pieceId, this.flightAngularDamping);
+      this.world.setLinearDamping(input.pieceId, null);
       stick.phase = 'flying';
       stick.flyingSinceS = this.timeS;
       stick.restS = 0;
