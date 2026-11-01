@@ -16,8 +16,8 @@ import type { GameEvents } from '../core/events.js';
 import {
   initialMatchState,
   isFinished,
-  advantageLineZ,
   kubbIndexFromId,
+  stickTableShiftZ,
   withInkastLanded,
   withKingFelled,
   withKubbFelled,
@@ -1067,9 +1067,8 @@ export class MultiplayerSystem extends createSystem({}) {
    * stand). */
   private placeSticksForTurn(side: MatchSide): void {
     const farZ = activeFarBaselineZ();
-    const lineZ = advantageLineZ(this.matchState, side, activeCourtHalves());
-    const baselineZ = side === 'host' ? 0 : farZ;
-    const shiftZ = lineZ === null ? 0 : lineZ - baselineZ;
+    // The same shift the server and every table use (core/match.ts).
+    const shiftZ = stickTableShiftZ(this.matchState, side, activeCourtHalves());
     this.placeSticks((nearRackPose) => {
       const pose =
         side === 'host'

@@ -5783,3 +5783,14 @@ Erik: "alla pinnar spawnar alltid på bordet … även när man får gå fram",
   cedar boards with gaps, a Falu-red painted edge, apron, pale legs with
   stretchers and a small red pennant — for both tables, so both sides
   match.
+- Review fixes (same day): clients latch each table's shift per turn
+  (and on a fresh match) exactly as the server decides it at the turn
+  change — a mid-turn re-raised field kubb or a decided match no longer
+  moves the table out from under the sticks; the P2P path uses the same
+  `stickTableShiftZ`; a collider without its Havok body yet is retried
+  next frame; table entities are resolved once in init. Each table's
+  parts are merged into one mesh per material (core/meshMerge.ts):
+  ~80 draw calls for the four tables became ~14. The pennant is on the
+  kubb tables only (its pole sat 2 mm from the outermost stick).
+  src/sceneTables.test.ts checks the scene's table nodes and colliders
+  against kubb-table.json / stick-rack.json and the far mirror.

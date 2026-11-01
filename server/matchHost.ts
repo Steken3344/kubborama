@@ -4,6 +4,7 @@ import {
   getCourtPreset,
   getGameMode,
   inkast,
+  inkastTableLayout,
   match,
   pieces,
   round,
@@ -34,7 +35,6 @@ import {
   withTurnAdvanced,
 } from '../src/core/match.js';
 import { remainingS } from '../src/core/matchClock.js';
-import { inkastTableLayout } from '../src/config.js';
 import { isStickOnGround } from '../src/core/groundDamping.js';
 import { isThrowRelease } from '../src/core/throwRelease.js';
 import type {
@@ -788,7 +788,9 @@ export class MatchHost {
         });
       }
     }
-    const shiftZ = shift(side);
+    const shiftZ = this.matchActive
+      ? stickTableShiftZ(this.matchState, side, this.halves)
+      : 0;
     for (const [id, stick] of this.sticks) {
       const home = this.world.homePose(id);
       if (!home) {

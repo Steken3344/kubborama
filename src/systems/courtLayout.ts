@@ -20,7 +20,7 @@ import {
   STICK_TABLE_NODE_IDS,
   farBaselineZ,
 } from '../core/court-layout.js';
-import { stickTableShiftZ } from '../core/match.js';
+import { isFreshMatch, stickTableShiftZ } from '../core/match.js';
 import type { MatchSide, MatchState } from '../core/match.js';
 import type { Pose } from '../core/presence.js';
 import { activeCourtHalves, activeFarBaselineZ } from './activeCourt.js';
@@ -110,6 +110,18 @@ export class CourtLayoutSystem extends createSystem({}) {
   };
   private readonly nearTableBase: Partial<Record<'visual' | 'collider', Pose>> =
     {};
+  /** The stick tables' entities, resolved once in init. */
+  private tableEntities!: Record<
+    MatchSide,
+    Record<'visual' | 'collider', Entity>
+  >;
+  /** The turn the shifts were decided for: like the server, a table
+   * moves only when the turn changes (or the match restarts) — never
+   * mid-turn, when a re-raised field kubb or a decided match would move
+   * it out from under the sticks (review, 2026-11-01). */
+  private shiftTurnKey = '';
+  /** A collider had no Havok body yet: try again next frame. */
+  private tableShiftPending = false;
   private startupProbeEntities: Entity[] = [];
 
   init(): void {
@@ -131,11 +143,21 @@ export class CourtLayoutSystem extends createSystem({}) {
       this.pendingStartupMode = null;
       this.applyGameMode(e.gameMode);
     });
+    const tableEntity = (side: MatchSide, part: 'visual' | 'collider') =>
+      this.world.requireSceneEntity(STICK_TABLE_NODE_IDS[side][part]);
+    this.tableEntities = {
+      host: {
+        visual: tableEntity('host', 'visual'),
+        collider: tableEntity('host', 'collider'),
+      },
+      guest: {
+        visual: tableEntity('guest', 'visual'),
+        collider: tableEntity('guest', 'collider'),
+      },
+    };
     // The near stick table as authored: the base both tables shift from.
     for (const part of ['visual', 'collider'] as const) {
-      const object = this.world.requireSceneEntity(
-        STICK_TABLE_NODE_IDS.host[part],
-      ).object3D;
+      const object = this.tableEntities.host[part].object3D;
       if (object) {
         this.nearTableBase[part] = localPoseOf(object);
       }
@@ -144,16 +166,13 @@ export class CourtLayoutSystem extends createSystem({}) {
     // (core/match.ts stickTableShiftZ) — for players and spectators.
     this.cleanupFuncs.push(
       gameEvents.on('MatchStateChanged', ({ state }) => {
-        this.matchState = state;
-        this.applyTableShifts();
+        this.onMatchState(state);
       }),
       gameEvents.on('BroadcastMatchState', ({ state }) => {
-        this.matchState = state;
-        this.applyTableShifts();
+        this.onMatchState(state);
       }),
       gameEvents.on('MultiplayerPeerDisconnected', () => {
-        this.matchState = null;
-        this.applyTableShifts();
+        this.onMatchState(null);
       }),
     );
     const startupMode = settingsState.current.gameMode;
@@ -176,6 +195,9 @@ export class CourtLayoutSystem extends createSystem({}) {
   }
 
   update(): void {
+    if (this.tableShiftPending) {
+      this.applyTableShifts();
+    }
     if (this.pendingStartupMode === null) {
       return;
     }
@@ -277,9 +299,27 @@ export class CourtLayoutSystem extends createSystem({}) {
     }
   }
 
+  /** A new match state: the tables move only on a new turn or a fresh
+   * match (see shiftTurnKey). */
+  private onMatchState(state: MatchState | null): void {
+    const key =
+      state === null
+        ? 'none'
+        : isFreshMatch(state)
+          ? 'fresh'
+          : state.currentTurn;
+    if (key === this.shiftTurnKey) {
+      return;
+    }
+    this.shiftTurnKey = key;
+    this.matchState = state;
+    this.applyTableShifts();
+  }
+
   /** Moves each side's stick table (visual + static collider) to its
    * baseline spot plus its shift; only when a shift changes. */
   private applyTableShifts(): void {
+    this.tableShiftPending = false;
     const halves = activeCourtHalves();
     const farZ = activeFarBaselineZ();
     for (const side of ['host', 'guest'] as const) {
@@ -289,12 +329,15 @@ export class CourtLayoutSystem extends createSystem({}) {
       if (shift === this.tableShift[side]) {
         continue;
       }
+      const collider = this.tableEntities[side].collider;
+      if (!collider.getValue(PhysicsBody, '_engineBody')) {
+        this.tableShiftPending = true; // body not built yet: next frame
+        continue;
+      }
       this.tableShift[side] = shift;
       for (const part of ['visual', 'collider'] as const) {
         const near = this.nearTableBase[part];
-        const entity = this.world.requireSceneEntity(
-          STICK_TABLE_NODE_IDS[side][part],
-        );
+        const entity = this.tableEntities[side][part];
         if (!near || !entity.object3D) {
           continue;
         }

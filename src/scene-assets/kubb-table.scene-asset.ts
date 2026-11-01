@@ -13,4 +13,5 @@ export default buildGardenTable({
   widthM: kubbTable.widthM,
   depthM: kubbTable.depthM,
   topM: kubbTable.topM,
+  pennant: true,
 });
