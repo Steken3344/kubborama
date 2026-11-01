@@ -3,7 +3,9 @@
   kit. Toggled by the B button on the right controller — see
   src/systems/menu.ts. Hidden by default (display: none on the root).
 
-  Three tabs (Meny/Alternativ/Statistik), each a plain div shown/hidden
+  Four tabs (Spel/Match/Alternativ/Statistik — Erik, 2026-11-01: "det
+  börjar bli trångt … fler flikar och lägga två bredvid varandra"), the
+  buttons two to a row; each tab a plain div shown/hidden
   by MenuSystem — no native UIKitML tab component, so this is the same
   display:none toggle already used for the whole panel, just applied
   per-tab. Every control is a Button that shows its current value and
@@ -35,7 +37,7 @@
   .panel-root {
     flex-direction: column;
     font-family: "DM Sans";
-    width: 340px;
+    width: 500px;
   }
 
   .panel-content {
@@ -69,20 +71,44 @@
 
   .tab-button {
     justify-content: center;
-    width: 100px;
+    width: 112px;
   }
 
   .button {
     justify-content: center;
-    margin-left: 24px;
-    margin-right: 24px;
-    margin-top: 10px;
-    margin-bottom: 10px;
+    width: 220px;
+    margin-left: 8px;
+    margin-right: 8px;
+    margin-top: 8px;
+    margin-bottom: 8px;
   }
 
   .tab-content {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding-top: 8px;
+    padding-left: 12px;
+    padding-right: 12px;
     padding-bottom: 20px;
+  }
+
+  .tab-content-column {
+    flex-direction: column;
+    padding-top: 8px;
+    padding-bottom: 20px;
+  }
+
+  .hint-line {
+    font-size: 14px;
+    text-align: center;
+    color: #6a6a6a;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
+  .hint-line:dark {
+    color: rgba(255, 255, 255, 0.6);
   }
 
   .stat-line {
@@ -99,6 +125,7 @@
   }
 
   .version-line {
+    width: 470px;
     font-size: 11px;
     text-align: center;
     color: #9a9a9a;
@@ -113,7 +140,10 @@
 <Panel id="menu-root" class="panel-root" style="display: none">
   <div class="tab-bar">
     <Button id="tab-main-button" class="tab-button">
-      <ButtonLabel id="tab-main-label">Meny</ButtonLabel>
+      <ButtonLabel id="tab-main-label">Spel</ButtonLabel>
+    </Button>
+    <Button id="tab-match-button" class="tab-button">
+      <ButtonLabel id="tab-match-label">Match</ButtonLabel>
     </Button>
     <Button id="tab-settings-button" class="tab-button">
       <ButtonLabel id="tab-settings-label">Alternativ</ButtonLabel>
@@ -128,9 +158,6 @@
     <Button id="reset-button" class="button">
       <ButtonLabel id="reset-button-label">Ny runda</ButtonLabel>
     </Button>
-    <Button id="language-button" class="button">
-      <ButtonLabel id="language-button-label">Svenska</ButtonLabel>
-    </Button>
     <Button id="game-mode-button" class="button">
       <ButtonLabel id="game-mode-button-label">Enkelt</ButtonLabel>
     </Button>
@@ -138,27 +165,33 @@
     <Button id="aim-assist-button" class="button">
       <ButtonLabel id="aim-assist-label">Kasthjälp: Mycket</ButtonLabel>
     </Button>
-    <!-- Room settings, game server only (2026-11-01). -->
+    <Button id="language-button" class="button">
+      <ButtonLabel id="language-button-label">Svenska</ButtonLabel>
+    </Button>
+  </div>
+
+  <!-- Room settings, game server only (2026-11-01). -->
+  <div id="tab-match-content" class="tab-content" style="display: none">
+    <Button id="opponent-button" class="button" style="display: none">
+      <ButtonLabel id="opponent-label">Motståndare: Person</ButtonLabel>
+    </Button>
     <Button id="time-limit-button" class="button" style="display: none">
       <ButtonLabel id="time-limit-label">Tidsgräns: Av</ButtonLabel>
     </Button>
     <Button id="rules-button" class="button" style="display: none">
       <ButtonLabel id="rules-label">Regler: Vanliga</ButtonLabel>
     </Button>
-    <Button id="opponent-button" class="button" style="display: none">
-      <ButtonLabel id="opponent-label">Motståndare: Person</ButtonLabel>
-    </Button>
+    <span id="match-hint" class="hint-line"
+      >Matchinställningarna kräver spelservern</span
+    >
   </div>
 
   <div id="tab-settings-content" class="tab-content" style="display: none">
     <Button id="court-lines-button" class="button">
       <ButtonLabel id="court-lines-label">Planlinjer: Av</ButtonLabel>
     </Button>
-    <Button id="haptics-button" class="button">
-      <ButtonLabel id="haptics-button-label">Haptik: Pa</ButtonLabel>
-    </Button>
-    <Button id="haptics-strength-button" class="button">
-      <ButtonLabel id="haptics-strength-label">Styrka: 70%</ButtonLabel>
+    <Button id="mic-button" class="button">
+      <ButtonLabel id="mic-button-label">Mikrofon: Av</ButtonLabel>
     </Button>
     <Button id="music-volume-button" class="button">
       <ButtonLabel id="music-volume-label">Musik: 70%</ButtonLabel>
@@ -166,22 +199,25 @@
     <Button id="sfx-volume-button" class="button">
       <ButtonLabel id="sfx-volume-label">Ljud: 70%</ButtonLabel>
     </Button>
-    <Button id="mic-button" class="button">
-      <ButtonLabel id="mic-button-label">Mikrofon: Av</ButtonLabel>
+    <Button id="haptics-button" class="button">
+      <ButtonLabel id="haptics-button-label">Haptik: Pa</ButtonLabel>
+    </Button>
+    <Button id="haptics-strength-button" class="button">
+      <ButtonLabel id="haptics-strength-label">Styrka: 70%</ButtonLabel>
     </Button>
     <Button id="avatar-color-button" class="button">
       <ButtonLabel id="avatar-color-label">Färg: Röd</ButtonLabel>
     </Button>
-    <Button id="debug-button" class="button">
-      <ButtonLabel id="debug-button-label">Debug: Av</ButtonLabel>
-    </Button>
     <Button id="profile-name-button" class="button">
       <ButtonLabel id="profile-name-label">Namn: Spelare</ButtonLabel>
+    </Button>
+    <Button id="debug-button" class="button">
+      <ButtonLabel id="debug-button-label">Debug: Av</ButtonLabel>
     </Button>
     <span id="version-label" class="version-line">Version: dev</span>
   </div>
 
-  <div id="tab-stats-content" class="tab-content" style="display: none">
+  <div id="tab-stats-content" class="tab-content-column" style="display: none">
     <span id="stats-fewest-sticks" class="stat-line"
       >Minst kast till kungen: -</span
     >

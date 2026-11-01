@@ -5995,3 +5995,16 @@ did not yet act (match turns only) — so it now also helps practice
 throws, aimed at a fresh match's far baseline kubbs (lying ones are
 skipped). A headset that already saved "some" keeps it until the button
 is pressed.
+
+## 2026-11-01 — The menu: four tabs, two buttons to a row
+
+Erik: "inställningsmenyn får du gärna jobba om rejält, det börjar bli
+trångt och alla får inte plats … fler flikar och två bredvid varandra".
+Tabs Spel (Ny runda, court, Kasthjälp, language) / Match (opponent,
+time limit, rules — server only, a hint otherwise) / Alternativ (lines,
+mic, music, sound, haptics, strength, colour, name, debug, version) /
+Statistik, the buttons two to a row (flex-wrap). The panel is 500 wide
+at scale 0.8 (was 340 at 0.85): wider than ~560 × 0.85 it reached
+behind the scoreboard on the right. Checked in the emulator on all
+tabs. UIKitML stylesheets take no `/* comments */` — one stopped the
+whole level loading.

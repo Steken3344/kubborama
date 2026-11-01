@@ -32,7 +32,7 @@
   "throwStyleUnderhand": "Underhand",
   "throwStyleOverhand": "Overhand",
   "throwStyleHelicopter": "Helicopter",
-  "tabMain": "Menu",
+  "tabMain": "Game",
   "tabSettings": "Options",
   "tabStats": "Stats",
   "hapticsOn": "Haptics: On",
@@ -93,5 +93,7 @@
   "spectatorExitFullscreen": "Exit full screen",
   "aimAssistOff": "Throw help: Off",
   "aimAssistSome": "Throw help: Some",
-  "aimAssistMore": "Throw help: More"
+  "aimAssistMore": "Throw help: More",
+  "tabMatch": "Match",
+  "matchNeedsServer": "Match settings need the game server"
 }

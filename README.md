@@ -112,7 +112,7 @@ an arm's length past your throwing line is a foot fault ("Övertramp!"):
 it counts as thrown and does nothing. Profiles are stored on the server
 machine in `.kubb-server/profiles.json` (not committed).
 
-**Playing alone against a bot, and time limits:** in the menu (Meny),
+**Playing alone against a bot, and time limits:** in the menu (the Match tab),
 "Motståndare" puts a bot in the empty seat — easy, medium or hard (how
 far its aim strays) — and it plays the other end of the court with an
 avatar of its own. Someone entering VR takes the seat back from the

@@ -49,7 +49,7 @@ export interface HomePose {
   quaternion: [number, number, number, number];
 }
 
-type TabId = 'main' | 'settings' | 'stats';
+type TabId = 'main' | 'match' | 'settings' | 'stats';
 
 /** Cycle grid for the volume/haptics-strength buttons. `defaultSettings()`
  * starts these at 70, off this grid, so advancing must find the next step
@@ -158,6 +158,7 @@ export class MenuSystem extends createSystem({
       this.world.requireSceneObject<UIKitMLAsset>('reset-menu-panel');
 
     this.wireButton('tab-main-button', () => this.setActiveTab('main'));
+    this.wireButton('tab-match-button', () => this.setActiveTab('match'));
     this.wireButton('tab-settings-button', () => this.setActiveTab('settings'));
     this.wireButton('tab-stats-button', () => this.setActiveTab('stats'));
 
@@ -415,6 +416,9 @@ export class MenuSystem extends createSystem({
       .requireElementById('tab-main-content')
       .setProperties({ display: tab === 'main' ? 'flex' : 'none' });
     this.menuPanel
+      .requireElementById('tab-match-content')
+      .setProperties({ display: tab === 'match' ? 'flex' : 'none' });
+    this.menuPanel
       .requireElementById('tab-settings-content')
       .setProperties({ display: tab === 'settings' ? 'flex' : 'none' });
     this.menuPanel
@@ -431,6 +435,9 @@ export class MenuSystem extends createSystem({
     this.menuPanel
       .requireElementById('tab-main-label')
       .setProperties({ text: t('tabMain') });
+    this.menuPanel
+      .requireElementById('tab-match-label')
+      .setProperties({ text: t('tabMatch') });
     this.menuPanel
       .requireElementById('tab-settings-label')
       .setProperties({ text: t('tabSettings') });
@@ -463,6 +470,10 @@ export class MenuSystem extends createSystem({
     this.menuPanel
       .requireElementById('opponent-button')
       .setProperties({ display: server ? 'flex' : 'none' });
+    this.menuPanel.requireElementById('match-hint').setProperties({
+      display: server ? 'none' : 'flex',
+      text: t('matchNeedsServer'),
+    });
     this.menuPanel.requireElementById('time-limit-label').setProperties({
       text:
         (roomState.timeLimitMin === 0
