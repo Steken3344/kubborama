@@ -7,6 +7,7 @@ import kubb from './scene-assets/kubb.scene-asset.js';
 import stake from './scene-assets/stake.scene-asset.js';
 import stick from './scene-assets/stick.scene-asset.js';
 import stickRack from './scene-assets/stick-rack.scene-asset.js';
+import kubbTable from './scene-assets/kubb-table.scene-asset.js';
 import hudSignPosts from './scene-assets/hud-sign-posts.scene-asset.js';
 import hudFrame from './scene-assets/hud-frame.scene-asset.js';
 import peerAvatar from './scene-assets/peer-avatar.scene-asset.js';
@@ -27,6 +28,7 @@ export default defineAssets({
   stick,
   stake,
   'stick-rack': stickRack,
+  'kubb-table': kubbTable,
   'hud-sign-posts': hudSignPosts,
   'hud-frame': hudFrame,
   'peer-avatar': peerAvatar,

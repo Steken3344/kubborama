@@ -17,8 +17,13 @@ import { settingsState } from '../settingsState.js';
 import {
   FAR_RACK_NODE_IDS,
   STAKE_NODE_IDS,
+  STICK_TABLE_NODE_IDS,
   farBaselineZ,
 } from '../core/court-layout.js';
+import { stickTableShiftZ } from '../core/match.js';
+import type { MatchSide, MatchState } from '../core/match.js';
+import type { Pose } from '../core/presence.js';
+import { activeCourtHalves, activeFarBaselineZ } from './activeCourt.js';
 import { gameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
 import { mirrorPoseToFarBaseline } from '../core/presence.js';
@@ -97,6 +102,14 @@ export class CourtLayoutSystem extends createSystem({}) {
    * its first ticks, and setBodyTransform silently no-ops on an entity
    * without an engine body — at init() nothing would move. */
   private pendingStartupMode: Settings['gameMode'] | null = null;
+  private matchState: MatchState | null = null;
+  /** Each side's current stick-table shift (m along the court). */
+  private readonly tableShift: Record<MatchSide, number> = {
+    host: 0,
+    guest: 0,
+  };
+  private readonly nearTableBase: Partial<Record<'visual' | 'collider', Pose>> =
+    {};
   private startupProbeEntities: Entity[] = [];
 
   init(): void {
@@ -118,6 +131,31 @@ export class CourtLayoutSystem extends createSystem({}) {
       this.pendingStartupMode = null;
       this.applyGameMode(e.gameMode);
     });
+    // The near stick table as authored: the base both tables shift from.
+    for (const part of ['visual', 'collider'] as const) {
+      const object = this.world.requireSceneEntity(
+        STICK_TABLE_NODE_IDS.host[part],
+      ).object3D;
+      if (object) {
+        this.nearTableBase[part] = localPoseOf(object);
+      }
+    }
+    // The stick tables follow the thrower to the advantage line
+    // (core/match.ts stickTableShiftZ) — for players and spectators.
+    this.cleanupFuncs.push(
+      gameEvents.on('MatchStateChanged', ({ state }) => {
+        this.matchState = state;
+        this.applyTableShifts();
+      }),
+      gameEvents.on('BroadcastMatchState', ({ state }) => {
+        this.matchState = state;
+        this.applyTableShifts();
+      }),
+      gameEvents.on('MultiplayerPeerDisconnected', () => {
+        this.matchState = null;
+        this.applyTableShifts();
+      }),
+    );
     const startupMode = settingsState.current.gameMode;
     if (courtPresetForMode(startupMode) !== defaultCourtPreset) {
       // The scene JSON is authored for the default preset; anything
@@ -202,6 +240,10 @@ export class CourtLayoutSystem extends createSystem({}) {
 
     this.resizeCourtLines(preset, lineMeshes);
     this.placeFarRack(farBaselineZ(preset));
+    // The far rack was just laid out unshifted: re-apply the shifts.
+    this.tableShift.host = Number.NaN;
+    this.tableShift.guest = Number.NaN;
+    this.applyTableShifts();
     this.menuSystem.applyCourtLayout(homePoses);
     log('info', 'state', 'court laid out', {
       gameMode,
@@ -231,6 +273,47 @@ export class CourtLayoutSystem extends createSystem({}) {
       } else {
         far.object3D.position.set(...pose.position);
         far.object3D.quaternion.set(...pose.quaternion);
+      }
+    }
+  }
+
+  /** Moves each side's stick table (visual + static collider) to its
+   * baseline spot plus its shift; only when a shift changes. */
+  private applyTableShifts(): void {
+    const halves = activeCourtHalves();
+    const farZ = activeFarBaselineZ();
+    for (const side of ['host', 'guest'] as const) {
+      const shift = this.matchState
+        ? stickTableShiftZ(this.matchState, side, halves)
+        : 0;
+      if (shift === this.tableShift[side]) {
+        continue;
+      }
+      this.tableShift[side] = shift;
+      for (const part of ['visual', 'collider'] as const) {
+        const near = this.nearTableBase[part];
+        const entity = this.world.requireSceneEntity(
+          STICK_TABLE_NODE_IDS[side][part],
+        );
+        if (!near || !entity.object3D) {
+          continue;
+        }
+        const base =
+          side === 'host' ? near : mirrorPoseToFarBaseline(near, farZ);
+        const position: Vec3 = [
+          base.position[0],
+          base.position[1],
+          base.position[2] + shift,
+        ];
+        if (entity.hasComponent(PhysicsBody)) {
+          this.physicsSystem.setBodyTransform(entity, {
+            position,
+            quaternion: base.quaternion,
+          });
+        } else {
+          entity.object3D.position.set(...position);
+          entity.object3D.quaternion.set(...base.quaternion);
+        }
       }
     }
   }

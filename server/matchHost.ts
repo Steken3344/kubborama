@@ -10,7 +10,10 @@ import {
   sinBin,
   windVectorForMode,
 } from '../src/config.js';
-import { farBaselineZ } from '../src/core/court-layout.js';
+import {
+  farBaselineZ,
+  STICK_TABLE_NODE_IDS,
+} from '../src/core/court-layout.js';
 import {
   courtHalves,
   inkastRackPosition,
@@ -18,12 +21,12 @@ import {
 } from '../src/core/inkast.js';
 import type { CourtHalves } from '../src/core/inkast.js';
 import {
-  advantageLineZ,
   initialMatchState,
   isFinished,
   otherSide,
   standingKubbs,
   standingLineZ,
+  stickTableShiftZ,
   withInkastLanded,
   withKingFelled,
   withKubbFelled,
@@ -31,6 +34,7 @@ import {
   withTurnAdvanced,
 } from '../src/core/match.js';
 import { remainingS } from '../src/core/matchClock.js';
+import { inkastTableLayout } from '../src/config.js';
 import { isStickOnGround } from '../src/core/groundDamping.js';
 import { isThrowRelease } from '../src/core/throwRelease.js';
 import type {
@@ -119,6 +123,8 @@ const TOPPLEABLE_IDS = NETWORKED_PIECE_IDS.filter(
 /** After a full reset the freshly placed bodies settle for a moment —
  * no topple is judged until then (the headset's startup grace, short). */
 const RESET_GRACE_S = 1;
+/** Where queued kubbs stand: the thrower's kubb table. */
+const INKAST_TABLE = inkastTableLayout();
 const UPRIGHT: [number, number, number, number] = [0, 0, 0, 1];
 
 /**
@@ -718,11 +724,7 @@ export class MatchHost {
         this.matchState.currentTurn,
         slot,
         queue.length,
-        {
-          offsetM: inkast.rackOffsetBehindBaselineM,
-          spacingM: inkast.rackSpacingM,
-          kubbHeightM: pieces.kubb.heightM,
-        },
+        INKAST_TABLE,
       );
       this.world.setPose(item.kubbId, { position, quaternion: UPRIGHT });
       this.racked.set(item.kubbId, position);
@@ -740,11 +742,7 @@ export class MatchHost {
           this.matchState.currentTurn,
           slot,
           queue.length,
-          {
-            offsetM: inkast.rackOffsetBehindBaselineM,
-            spacingM: inkast.rackSpacingM,
-            kubbHeightM: pieces.kubb.heightM,
-          },
+          INKAST_TABLE,
         );
   }
 
@@ -770,13 +768,27 @@ export class MatchHost {
   // --- placement ---------------------------------------------------------
 
   /** The thrower's rack: its own baseline's, moved onto its advantage
-   * line when field kubbs stand on its half (shown, not enforced). */
+   * line when field kubbs stand on its half — the stick TABLE moves with
+   * it, so the sticks always lie on it (core/match.ts stickTableShiftZ);
+   * the other side's table goes home. */
   private placeSticksFor(side: MatchSide): void {
-    const lineZ = this.matchActive
-      ? advantageLineZ(this.matchState, side, this.halves)
-      : null;
-    const baselineZ = side === 'host' ? this.halves.nearBaselineZ : this.farZ;
-    const shiftZ = lineZ === null ? 0 : lineZ - baselineZ;
+    const shift = (s: MatchSide) =>
+      this.matchActive ? stickTableShiftZ(this.matchState, s, this.halves) : 0;
+    for (const s of ['host', 'guest'] as const) {
+      const id = STICK_TABLE_NODE_IDS[s].collider;
+      const home = this.world.homePose(id);
+      if (home) {
+        this.world.setPose(id, {
+          position: [
+            home.position[0],
+            home.position[1],
+            home.position[2] + shift(s),
+          ],
+          quaternion: home.quaternion,
+        });
+      }
+    }
+    const shiftZ = shift(side);
     for (const [id, stick] of this.sticks) {
       const home = this.world.homePose(id);
       if (!home) {

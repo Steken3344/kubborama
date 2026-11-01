@@ -3,7 +3,7 @@ import type { Entity } from '@iwsdk/core';
 import { KingPiece } from '../components/king-piece.js';
 import { KingProtected } from '../components/king-protected.js';
 import { OutOfPlay } from '../components/out-of-play.js';
-import { inkast, match, pieces } from '../config.js';
+import { inkastTableLayout, match, pieces } from '../config.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { gameEvents } from '../core/events.js';
 import type { GameEvents } from '../core/events.js';
@@ -154,11 +154,13 @@ export class MatchRulesSystem extends createSystem({
       if (!entity) {
         return;
       }
-      const position = inkastRackPosition(halves, thrower, slot, queue.length, {
-        offsetM: inkast.rackOffsetBehindBaselineM,
-        spacingM: inkast.rackSpacingM,
-        kubbHeightM: pieces.kubb.heightM,
-      });
+      const position = inkastRackPosition(
+        halves,
+        thrower,
+        slot,
+        queue.length,
+        inkastTableLayout(),
+      );
       this.rack.set(item.kubbId, position);
       if (!entity.hasComponent(OutOfPlay)) {
         entity.addComponent(OutOfPlay);

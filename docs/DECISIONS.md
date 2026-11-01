@@ -5756,3 +5756,30 @@ this pose).
   body at ~20 m/s, firing an impact sound and haptic on every grab (18 in
   his session); the impact heuristic now also ignores 0.25 s after a
   grab, as after a release.
+
+## 2026-11-01 — Everything on a table: stick table follows the thrower, a kubb table, nicer tables
+
+Erik: "alla pinnar spawnar alltid på bordet … även när man får gå fram",
+"fällda kubbar bör också spawna på ett bord", "förbättra borden",
+"var noga att fixa borden på båda sidorna".
+
+- **Stick table follows the thrower:** on the advantage line the server
+  used to move only the sticks — the table stayed at the baseline, so
+  the sticks dropped onto the grass. core/match.ts `stickTableShiftZ`
+  (the thrower's advantage line minus its baseline, during its own turn)
+  now moves the table too: the server sets its static collider pose with
+  the sticks, every client (players and spectators) moves the table's
+  visual + collider from the match state (CourtLayoutSystem). The other
+  side's table goes home.
+- **Kubb table:** felled kubbs queued for the inkast stand upright on a
+  table beside each stick table (src/data/kubb-table.json: 1.1 × 0.42 m,
+  top 0.8 m), one row centred up to five, two rows beyond
+  (core/inkast.ts inkastRackPosition). Scene nodes `kubb-table`(+`-2`) and
+  their colliders join FAR_RACK_NODE_IDS, so the far one is mirrored for
+  every court by the server and CourtLayoutSystem like the stick rack.
+  The old behind-the-baseline ground row (`rackOffsetBehindBaselineM`,
+  `rackSpacingM`) is gone.
+- **Nicer tables:** one builder (scene-assets/garden-table.ts) — dark
+  cedar boards with gaps, a Falu-red painted edge, apron, pale legs with
+  stretchers and a small red pennant — for both tables, so both sides
+  match.

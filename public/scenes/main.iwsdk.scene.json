@@ -664,6 +664,80 @@
       }
     },
     {
+      "content": {
+        "asset": "kubb-table",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "kubb-table",
+      "name": "Kubbbord",
+      "transform": {
+        "position": [1.05, 0, 1.0896],
+        "rotationDeg": [0, -180, 0],
+        "scale": 1
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "dimensions": [1.1, 0.04, 0.42],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Box"
+        }
+      },
+      "content": {
+        "type": "group"
+      },
+      "id": "kubb-table-collider",
+      "name": "Kubb table collider",
+      "transform": {
+        "position": [1.05, 0.78, 1.0896],
+        "rotationDeg": [0, -180, 0],
+        "scale": 1
+      }
+    },
+    {
+      "content": {
+        "asset": "kubb-table",
+        "castShadow": true,
+        "type": "asset"
+      },
+      "id": "kubb-table-2",
+      "name": "Kubbbord 2",
+      "transform": {
+        "position": [-1.05, 0, -7.0896],
+        "rotationDeg": [0, 0, 0],
+        "scale": 1
+      }
+    },
+    {
+      "components": {
+        "PhysicsBody": {
+          "state": "STATIC"
+        },
+        "PhysicsShape": {
+          "dimensions": [1.1, 0.04, 0.42],
+          "friction": 0.6,
+          "restitution": 0.15,
+          "shape": "Box"
+        }
+      },
+      "content": {
+        "type": "group"
+      },
+      "id": "kubb-table-2-collider",
+      "name": "Kubb table 2 collider",
+      "transform": {
+        "position": [-1.05, 0.78, -7.0896],
+        "rotationDeg": [0, 0, 0],
+        "scale": 1
+      }
+    },
+    {
       "components": {
         "OneHandGrabbable": {
           "rotate": true,

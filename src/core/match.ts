@@ -453,3 +453,27 @@ export function isFreshMatch(state: MatchState | null): boolean {
 export function isMatchUnderway(state: MatchState | null): boolean {
   return state !== null && !isFinished(state) && !isFreshMatch(state);
 }
+
+/**
+ * How far `side`'s stick table moves along the court (m): onto its
+ * advantage line for its own turn, so the sticks are always on the table
+ * where the thrower stands (Erik, 2026-11-01: "även när man får gå fram
+ * så spawnar pinnarna på bordet"); 0 otherwise. The server moves the
+ * table's collider and the sticks by it, every client the table itself.
+ */
+export function stickTableShiftZ(
+  state: MatchState,
+  side: MatchSide,
+  halves: CourtHalves,
+): number {
+  if (isFinished(state) || state.currentTurn !== side) {
+    return 0;
+  }
+  const lineZ = advantageLineZ(state, side, halves);
+  if (lineZ === null) {
+    return 0;
+  }
+  const baselineZ =
+    side === 'host' ? halves.nearBaselineZ : halves.farBaselineZ;
+  return lineZ - baselineZ;
+}

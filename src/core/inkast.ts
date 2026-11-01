@@ -108,14 +108,24 @@ function round(value: number): number {
 }
 
 export interface InkastRackLayout {
-  offsetM: number;
-  spacingM: number;
+  /** The near (host) kubb table's centre and top (src/data/kubb-table.json). */
+  tableXM: number;
+  tableZM: number;
+  topM: number;
+  columns: number;
+  columnSpacingM: number;
+  rowSpacingM: number;
   kubbHeightM: number;
 }
 
-/** Slot `slot` of `count` in the inkast rack: a row of upright kubbs
- * `offsetM` behind the THROWER's own baseline (outside the court), so
- * they are at hand where the thrower stands. */
+/**
+ * Slot `slot` of `count` queued kubbs: standing upright on the THROWER's
+ * kubb table beside its baseline (Erik, 2026-11-01: "fällda kubbar bör
+ * också spawna på ett bord" — no bending down). One row centred on the
+ * table up to `columns` kubbs, two rows beyond. The far table is the near
+ * one mirrored onto the far baseline (x → −x, z → far − z), as the scene
+ * and core/court-layout.ts FAR_RACK_NODE_IDS lay it out.
+ */
 export function inkastRackPosition(
   h: CourtHalves,
   thrower: MatchSide,
@@ -123,13 +133,16 @@ export function inkastRackPosition(
   count: number,
   rack: InkastRackLayout,
 ): Vec3 {
-  const z =
-    thrower === 'host'
-      ? h.nearBaselineZ + rack.offsetM
-      : h.farBaselineZ - rack.offsetM;
-  return [
-    round((slot - (count - 1) / 2) * rack.spacingM),
-    rack.kubbHeightM / 2,
-    round(z),
-  ];
+  const rows = count > rack.columns ? 2 : 1;
+  const row = Math.floor(slot / rack.columns);
+  const inRow = Math.min(rack.columns, count - row * rack.columns);
+  const localX =
+    ((slot % rack.columns) - (inRow - 1) / 2) * rack.columnSpacingM;
+  const localZ = rows === 1 ? 0 : (row - 0.5) * rack.rowSpacingM;
+  const x = rack.tableXM + localX;
+  const z = rack.tableZM + localZ;
+  const y = rack.topM + rack.kubbHeightM / 2;
+  return thrower === 'host'
+    ? [round(x), round(y), round(h.nearBaselineZ + z)]
+    : [round(-x || 0), round(y), round(h.farBaselineZ - z)];
 }

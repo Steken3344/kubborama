@@ -9,6 +9,7 @@ import {
   computeStickRackPositions,
 } from './core/court-layout.js';
 import type { CourtLayout, StickSpawn } from './core/court-layout.js';
+import type { InkastRackLayout } from './core/inkast.js';
 import type { Vec3 } from './core/vec3.js';
 import audioData from './data/audio.json' with { type: 'json' };
 import courtPresetsData from './data/court-presets.json' with { type: 'json' };
@@ -19,6 +20,7 @@ import inkastData from './data/inkast.json' with { type: 'json' };
 import inkastGuideData from './data/inkast-guide.json' with { type: 'json' };
 import sinBinData from './data/sin-bin.json' with { type: 'json' };
 import stickRackData from './data/stick-rack.json' with { type: 'json' };
+import kubbTableData from './data/kubb-table.json' with { type: 'json' };
 import multiplayerData from './data/multiplayer.json' with { type: 'json' };
 import matchData from './data/match.json' with { type: 'json' };
 import avatarData from './data/avatar.json' with { type: 'json' };
@@ -96,6 +98,20 @@ export const inkastGuide = inkastGuideData;
 /** How a held stick sits in the hand (core/stickGrip.ts). */
 export const stickGrip = stickGripData;
 export const stickRack = stickRackData;
+/** The table the inkast kubbs wait on, near side (core/inkast.ts). */
+export const kubbTable = kubbTableData;
+/** core/inkast.ts inkastRackPosition's layout: the kubb table, one place. */
+export function inkastTableLayout(): InkastRackLayout {
+  return {
+    tableXM: kubbTableData.xM,
+    tableZM: kubbTableData.zM,
+    topM: kubbTableData.topM,
+    columns: kubbTableData.columns,
+    columnSpacingM: kubbTableData.columnSpacingM,
+    rowSpacingM: kubbTableData.rowSpacingM,
+    kubbHeightM: piecesData.kubb.heightM,
+  };
+}
 export const multiplayer = multiplayerData;
 /** MP3a match rules: king-decision grace and the auto-restart delay. */
 export const match = matchData;

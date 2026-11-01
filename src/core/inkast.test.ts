@@ -71,15 +71,31 @@ describe('nudgeClear', () => {
   });
 });
 
-describe('inkastRackPosition', () => {
-  const rack = { offsetM: 0.5, spacingM: 0.15, kubbHeightM: 0.15 };
-  it('stands the row behind the thrower’s own baseline, centred on x', () => {
-    expect(inkastRackPosition(h, 'host', 0, 1, rack)).toEqual([0, 0.075, 0.5]);
-    expect(inkastRackPosition(h, 'guest', 0, 2, rack)).toEqual([
-      -0.075, 0.075, -8.5,
-    ]);
-    expect(inkastRackPosition(h, 'guest', 1, 2, rack)).toEqual([
-      0.075, 0.075, -8.5,
-    ]);
+describe('inkastRackPosition (on the kubb table)', () => {
+  const rack = {
+    tableXM: 1,
+    tableZM: 1,
+    topM: 0.8,
+    columns: 5,
+    columnSpacingM: 0.2,
+    rowSpacingM: 0.17,
+    kubbHeightM: 0.15,
+  };
+  it('stands up to five in one row centred on the table top', () => {
+    expect(inkastRackPosition(h, 'host', 0, 1, rack)).toEqual([1, 0.875, 1]);
+    expect(inkastRackPosition(h, 'host', 0, 3, rack)[0]).toBeCloseTo(0.8);
+    expect(inkastRackPosition(h, 'host', 2, 3, rack)[0]).toBeCloseTo(1.2);
+  });
+
+  it('uses two rows beyond five', () => {
+    const a = inkastRackPosition(h, 'host', 0, 7, rack);
+    const b = inkastRackPosition(h, 'host', 5, 7, rack);
+    expect(a[2]).toBeCloseTo(1 - 0.085);
+    expect(b[2]).toBeCloseTo(1 + 0.085);
+    expect(b[0]).toBeCloseTo(0.9); // two in the back row, centred
+  });
+
+  it('mirrors onto the far table for the guest', () => {
+    expect(inkastRackPosition(h, 'guest', 0, 1, rack)).toEqual([-1, 0.875, -9]);
   });
 });
