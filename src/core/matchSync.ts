@@ -55,6 +55,9 @@ export const matchStateSchema = z.object({
     ])
     .nullable(),
   timeUp: z.boolean().default(false),
+  // Additive (2026-11-01, simplified rules): an older peer omits both.
+  simplified: z.boolean().default(false),
+  retired: kubbIdList.default([]),
 });
 
 const matchSyncMessageSchema = z.object({

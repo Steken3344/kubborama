@@ -191,9 +191,41 @@ describe('room settings (2026-11-01)', () => {
     expect(parseClientMessage({ type: 'setBot', level: null })).not.toBeNull();
     expect(parseClientMessage({ type: 'setBot', level: 'godlike' })).toBeNull();
   });
+
+  it('accepts setRules standard/simplified; rejects other rules', () => {
+    for (const rules of ['standard', 'simplified']) {
+      expect(parseClientMessage({ type: 'setRules', rules })).not.toBeNull();
+    }
+    expect(parseClientMessage({ type: 'setRules', rules: 'easy' })).toBeNull();
+    expect(parseClientMessage({ type: 'setRules' })).toBeNull();
+  });
 });
 
 describe('room settings server messages (review, 2026-11-01)', () => {
+  it('roomSettings.rules defaults to standard for an older server', () => {
+    const old = parseServerMessage({
+      type: 'roomSettings',
+      timeLimitMin: 0,
+      bot: null,
+    });
+    expect(old).toMatchObject({ rules: 'standard' });
+    const simplified = parseServerMessage({
+      type: 'roomSettings',
+      timeLimitMin: 0,
+      bot: null,
+      rules: 'simplified',
+    });
+    expect(simplified).toMatchObject({ rules: 'simplified' });
+    expect(
+      parseServerMessage({
+        type: 'roomSettings',
+        timeLimitMin: 0,
+        bot: null,
+        rules: 'odd',
+      }),
+    ).toBeNull();
+  });
+
   it('parses roomSettings, clock and a bot player', () => {
     expect(
       parseServerMessage({

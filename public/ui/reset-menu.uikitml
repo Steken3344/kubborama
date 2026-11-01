@@ -141,6 +141,9 @@
     <Button id="time-limit-button" class="button" style="display: none">
       <ButtonLabel id="time-limit-label">Tidsgräns: Av</ButtonLabel>
     </Button>
+    <Button id="rules-button" class="button" style="display: none">
+      <ButtonLabel id="rules-label">Regler: Vanliga</ButtonLabel>
+    </Button>
     <Button id="opponent-button" class="button" style="display: none">
       <ButtonLabel id="opponent-label">Motståndare: Person</ButtonLabel>
     </Button>

@@ -47,6 +47,14 @@ export interface MatchState {
    * pair of turns is finished, then fewer kubbs left to knock down wins
    * (withTurnAdvanced). Never set in a match without a limit. */
   timeUp: boolean;
+  /** "Förenklat" (Erik, 2026-11-01): a felled FIELD kubb leaves play
+   * instead of being tossed back, so at most the baseline kubbs travel.
+   * Fixed for the whole match (the server applies a change at restart). */
+  simplified: boolean;
+  /** Kubb ids out of play for the rest of the match, in retirement
+   * order — the order decides each one's spot beside the court
+   * (core/inkast.ts retiredKubbPosition). Always empty when not simplified. */
+  retired: string[];
 }
 
 /** Physical instructions for the host's MatchRulesSystem: the reducer
@@ -54,7 +62,9 @@ export interface MatchState {
 export type MatchEffect =
   | { type: 'raise'; kubbId: string; x: number; z: number; reason: RaiseReason }
   | { type: 'restoreHome'; kubbId: string; reason: RaiseReason }
-  | { type: 'returnToRack'; kubbId: string };
+  | { type: 'returnToRack'; kubbId: string }
+  /** Simplified rules: lay the kubb beside the court, out of play. */
+  | { type: 'retire'; kubbId: string };
 
 export interface MatchStep {
   state: MatchState;
@@ -84,6 +94,7 @@ function unchanged(state: MatchState): MatchStep {
  */
 export function initialMatchState(
   kubbsPerSide: number = KUBB_COUNT,
+  simplified = false,
 ): MatchState {
   const guest: string[] = [];
   const host: string[] = [];
@@ -100,6 +111,8 @@ export function initialMatchState(
     winner: null,
     endReason: null,
     timeUp: false,
+    simplified,
+    retired: [],
   };
 }
 
@@ -162,7 +175,7 @@ export function standingKubbs(state: MatchState): {
 }
 
 /** Where a standing kubb is: a baseline of some half, a field kubb, or
- * nowhere (felled, queued, or not a kubb id). */
+ * nowhere (felled, queued, retired, or not a kubb id). */
 function locate(
   state: MatchState,
   id: string,
@@ -190,7 +203,9 @@ function withFieldKubbMoved(
   };
 }
 
-/** Rules 4–6. `x`/`z` is where the kubb came to rest. */
+/** Rules 4–6. `x`/`z` is where the kubb came to rest. In a simplified
+ * match a legitimately felled field kubb is retired (MatchState.retired)
+ * rather than queued for the next inkast. */
 export function withKubbFelled(
   state: MatchState,
   id: string,
@@ -224,6 +239,16 @@ export function withKubbFelled(
           state,
           effects: [{ type: 'restoreHome', kubbId: id, reason: reraise }],
         };
+  }
+  if (where.kind === 'field' && state.simplified) {
+    return {
+      state: {
+        ...state,
+        fieldKubbs: state.fieldKubbs.filter((k) => k.kubbId !== id),
+        retired: [...state.retired, id],
+      },
+      effects: [{ type: 'retire', kubbId: id }],
+    };
   }
   if (where.kind === 'field') {
     return {
@@ -442,6 +467,7 @@ export function isFreshMatch(state: MatchState | null): boolean {
     state.felledThisTurn.length === 0 &&
     state.inkastQueue.length === 0 &&
     state.fieldKubbs.length === 0 &&
+    state.retired.length === 0 &&
     state.baselineKubbs.host.length === state.baselineKubbs.guest.length
   );
 }

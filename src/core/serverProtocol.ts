@@ -21,7 +21,8 @@ import { statsSchema } from './stats.js';
  * watching, players). */
 /** v4 (2026-11-01): room settings (setTimeLimit, setBot → roomSettings),
  * the match clock, `players.bot` and endReason 'timeLimit' — an old
- * client would drop a time-limit result, so it must reload. */
+ * client would drop a time-limit result, so it must reload. Later,
+ * additively: setRules and roomSettings.rules (simplified rules). */
 export const SERVER_PROTOCOL_VERSION = 4;
 /** The server's fixed simulation rate, and every how many ticks it
  * sends a snapshot (→ 20 Hz). Shared: the client interpolates in ticks
@@ -53,6 +54,10 @@ export { botLevelSchema } from './botLevel.js';
 export type { BotLevelName } from './botLevel.js';
 /** A room time limit in whole minutes; 0 = none (src/data/match.json). */
 const timeLimitMin = z.number().int().min(0).max(120);
+/** The room's rules: standard kubb, or "Förenklat" — a felled field
+ * kubb leaves play (core/match.ts MatchState.simplified). */
+export const roomRulesSchema = z.enum(['standard', 'simplified']);
+export type RoomRules = z.infer<typeof roomRulesSchema>;
 /** WebRTC voice signaling, relayed by the server between the two seats
  * (the server "introduces" the headsets — no Trystero/Nostr). Bounded:
  * an audio-only SDP is a few kB. */
@@ -111,6 +116,8 @@ const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('setColor'), colorIndex }),
   /** Room setting: the match time limit (0 = none). */
   z.object({ type: z.literal('setTimeLimit'), minutes: timeLimitMin }),
+  /** Room setting: standard or simplified rules (additive in v4). */
+  z.object({ type: z.literal('setRules'), rules: roomRulesSchema }),
   /** Room setting: a bot in the free seat at this level, or none. */
   z.object({ type: z.literal('setBot'), level: botLevelSchema.nullable() }),
 ]);
@@ -228,6 +235,8 @@ const serverMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('roomSettings'),
     timeLimitMin,
     bot: botLevelSchema.nullable(),
+    // Additive in v4 (2026-11-01): an older server omits it.
+    rules: roomRulesSchema.default('standard'),
   }),
   /** To the thrower: the server tick its release started flying on —
    * the client shows its own stick on that time line

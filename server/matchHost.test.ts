@@ -533,3 +533,86 @@ describe('MatchHost — put down, not thrown (2026-11-01)', () => {
     expect(h.throwStick('host', 'stick-0')).toBe(true);
   });
 });
+
+describe('MatchHost — simplified rules (Förenklat, 2026-11-01)', () => {
+  /** The rest of `side`'s sticks land harmlessly; the round ends. */
+  function finishTurn(
+    h: ReturnType<typeof host>,
+    side: 'host' | 'guest',
+    from: number,
+  ) {
+    for (let i = from; i < 6; i++) {
+      expect(h.throwStick(side, `stick-${i}`)).toBe(true);
+      h.world.land(`stick-${i}`, [i * 0.3 - 0.8, 0.022, -3.5]);
+      h.run(0.6);
+    }
+    h.run(1);
+  }
+
+  it('a felled field kubb is laid beside the court and never queued', () => {
+    const h = host();
+    h.mh.setSimplified(true);
+    h.mh.setPlayers(['host', 'guest']);
+    expect(h.last()?.simplified).toBe(true);
+    h.run(1.2);
+    // Host fells guest baseline kubb-0: tossed over as usual.
+    expect(h.throwStick('host', 'stick-0')).toBe(true);
+    h.world.land('kubb-0', [-1.2, 0.035, -6.1]);
+    h.world.land('stick-0', [0, 0.022, -5.8]);
+    h.run(0.8);
+    finishTurn(h, 'host', 1);
+    expect(h.last()?.inkastQueue).toEqual([{ kubbId: 'kubb-0', attempt: 1 }]);
+    h.mh.onThrow('guest', {
+      pieceId: 'kubb-0',
+      position: [0, 1, -6.4],
+      quaternion: UP,
+      linearVelocity: [0, 3, 5],
+      angularVelocity: [0, 0, 0],
+    });
+    h.world.land('kubb-0', [0.5, 0.035, -2]);
+    h.run(0.8);
+    expect(h.last()?.fieldKubbs.map((k) => k.kubbId)).toEqual(['kubb-0']);
+    // The guest fells the field kubb: retired, not queued.
+    expect(h.throwStick('guest', 'stick-0')).toBe(true);
+    h.world.land('kubb-0', [0.6, 0.035, -2.1]);
+    h.world.land('stick-0', [0, 0.022, -2.4]);
+    h.run(0.8);
+    const s = h.last();
+    expect(s?.retired).toEqual(['kubb-0']);
+    expect(s?.felledThisTurn).toEqual([]);
+    expect(s?.fieldKubbs).toEqual([]);
+    const pose = h.world.poses.get('kubb-0');
+    // Backyard court (3 × 6): beside the +x side line, level with the centre.
+    expect(pose?.position[0]).toBeGreaterThan(1.5);
+    expect(pose?.position[0]).toBeLessThan(3);
+    expect(pose?.position[2]).toBeCloseTo(-3, 1);
+    expect(pose?.position[1]).toBeLessThan(0.05);
+    expect(h.gates.map((g) => g.message)).toContain('kubb retired');
+    finishTurn(h, 'guest', 1);
+    const next = h.last();
+    expect(next?.currentTurn).toBe('host');
+    expect(next?.inkastQueue).toEqual([]);
+    expect(next?.phase).toBe('throwing');
+    // Still lying out of play: it is never reported felled again.
+    h.run(2);
+    expect(h.last()?.retired).toEqual(['kubb-0']);
+    expect(h.world.poses.get('kubb-0')).toBe(pose);
+  });
+
+  it('a change mid-match waits for the next match', () => {
+    const h = host();
+    h.mh.setPlayers(['host', 'guest']);
+    h.run(1.2);
+    expect(h.throwStick('host', 'stick-0')).toBe(true);
+    h.world.land('kubb-0', [-1.2, 0.035, -6.1]);
+    h.world.land('stick-0', [0, 0.022, -5.8]);
+    h.run(0.8);
+    expect(h.last()?.felledThisTurn).toEqual(['kubb-0']);
+    h.mh.setSimplified(true);
+    expect(h.last()?.simplified).toBe(false);
+    h.mh.reset();
+    expect(h.last()?.simplified).toBe(true);
+    h.mh.setSimplified(false); // fresh: at once
+    expect(h.last()?.simplified).toBe(false);
+  });
+});

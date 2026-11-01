@@ -121,8 +121,12 @@ head-to-head); if you drop out, the bot and the clock wait for you. "Tidsgräns"
 (off, 20, 30 or 45 min, set before the match gets going) limits a
 match: the HUD shows the time left;
 when it runs out the pair of turns is finished, and whoever has fewer
-kubbs left to knock down wins (level: one more pair at a time). Both
-are room settings, kept until the room empties. On the backyard court
+kubbs left to knock down wins (level: one more pair at a time).
+"Regler: Förenklade" (simplified rules, also set before the match gets
+going) takes a felled field kubb — one that was tossed over — out of
+play: it is laid on the grass beside the court instead of being tossed
+back, so only felled baseline kubbs travel. All three are room
+settings, kept until the room empties. On the backyard court
 the half you toss your inkast into is outlined on the grass while it is
 your inkast.
 

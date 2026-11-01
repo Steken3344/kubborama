@@ -146,3 +146,42 @@ export function inkastRackPosition(
     ? [round(x), round(y), round(h.nearBaselineZ + z)]
     : [round(-x || 0), round(y), round(h.farBaselineZ - z)];
 }
+
+export interface RetiredKubbLayout {
+  /** How far outside the side line (x = +halfWidthM) the row lies. */
+  sideOffsetM: number;
+  /** Gap between neighbouring retired kubbs, along z. */
+  spacingM: number;
+  /** Centre height of a kubb lying on its side (half its width). */
+  lyingHeightM: number;
+}
+
+/** A kubb lying on its side: a quarter turn about z (sin 45°, cos 45°). */
+export const RETIRED_KUBB_QUATERNION: [number, number, number, number] = [
+  0,
+  0,
+  Math.SQRT1_2,
+  Math.SQRT1_2,
+];
+
+/**
+ * Simplified rules (Erik, 2026-11-01): where the `index`-th retired kubb
+ * (core/match.ts MatchState.retired order) lies, out of play, on the
+ * grass beside the +x side line. Slot 0 is level with the centre line;
+ * later slots alternate outwards (+1, −1, +2, −2 … spacings along z), so
+ * the row stays centred on the court without knowing how many will come
+ * and an already-placed kubb never has to move.
+ */
+export function retiredKubbPosition(
+  h: CourtHalves,
+  index: number,
+  layout: RetiredKubbLayout,
+): Vec3 {
+  const step = Math.ceil(index / 2);
+  const sign = index % 2 === 1 ? 1 : -1;
+  return [
+    round(h.halfWidthM + layout.sideOffsetM),
+    round(layout.lyingHeightM),
+    round(h.centreZ + sign * step * layout.spacingM) || 0,
+  ];
+}

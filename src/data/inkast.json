@@ -5,5 +5,7 @@
   "tossAngularMultiplier": 1.0,
   "maxTossFlightS": 6,
   "leaningFelledDeg": 20,
-  "rearmBelowDeg": 10
+  "rearmBelowDeg": 10,
+  "retiredSideOffsetM": 1.0,
+  "retiredSpacingM": 0.35
 }

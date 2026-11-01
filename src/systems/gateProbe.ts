@@ -132,6 +132,8 @@ export class GateProbeSystem extends createSystem({
           standingGuest: standing.guest,
           fieldKubbs: e.state.fieldKubbs.length,
           inkastQueue: e.state.inkastQueue.length,
+          simplified: e.state.simplified,
+          retired: e.state.retired.length,
           fresh:
             e.state.fieldKubbs.length === 0 &&
             e.state.felledThisTurn.length === 0 &&

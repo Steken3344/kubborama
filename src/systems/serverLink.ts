@@ -176,6 +176,9 @@ export class ServerLinkSystem extends createSystem({}) {
       gameEvents.on('ServerBotRequested', (e) => {
         this.send({ type: 'setBot', level: e.level });
       }),
+      gameEvents.on('ServerRulesRequested', (e) => {
+        this.send({ type: 'setRules', rules: e.rules });
+      }),
       () => {
         this.stopped = true;
         this.socket?.close();
@@ -285,6 +288,7 @@ export class ServerLinkSystem extends createSystem({}) {
       // The next room tells us its own settings on joining.
       roomState.timeLimitMin = 0;
       roomState.bot = null;
+      roomState.rules = 'standard';
       roomState.clock = null;
       this.side = null;
       if (this.spectating) {
@@ -467,16 +471,19 @@ export class ServerLinkSystem extends createSystem({}) {
       case 'roomSettings':
         roomState.timeLimitMin = message.timeLimitMin;
         roomState.bot = message.bot;
+        roomState.rules = message.rules;
         if (message.timeLimitMin === 0) {
           roomState.clock = null;
         }
         gateLog('room settings', {
           timeLimitMin: message.timeLimitMin,
           bot: message.bot,
+          rules: message.rules,
         });
         gameEvents.emit('RoomSettings', {
           timeLimitMin: message.timeLimitMin,
           bot: message.bot,
+          rules: message.rules,
         });
         return;
       case 'thrown': {

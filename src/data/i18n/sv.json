@@ -73,6 +73,8 @@
   "bannerFootFault": "Övertramp! {name}",
   "timeLimitOff": "Tidsgräns: Av",
   "timeLimitMinutes": "Tidsgräns: {n} min",
+  "rulesStandard": "Regler: Vanliga",
+  "rulesSimplified": "Regler: Förenklade",
   "opponentPerson": "Motståndare: Person",
   "opponentBot": "Motståndare: Bot, {level}",
   "botLevelEasy": "lätt",

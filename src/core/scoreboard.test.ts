@@ -45,6 +45,24 @@ describe('scoreboardFor', () => {
     expect(board.guest.toFell).toBe(7);
   });
 
+  it('a retired kubb (simplified rules) is simply gone from both rows', () => {
+    const fresh = initialMatchState(5, true);
+    const s = {
+      ...fresh,
+      currentTurn: 'guest' as const,
+      fieldKubbs: [{ kubbId: 'kubb-1', half: 'host' as const, x: 1, z: -2 }],
+      baselineKubbs: {
+        host: fresh.baselineKubbs.host,
+        guest: fresh.baselineKubbs.guest.slice(2),
+      },
+    };
+    const step = withKubbFelled(s, 'kubb-1', 1, -2);
+    expect(step.state.retired).toEqual(['kubb-1']);
+    const board = scoreboardFor(step.state, players);
+    expect(board.host.toFell).toBe(3);
+    expect(board.guest.toFell).toBe(5);
+  });
+
   it('without a match: names only, no turn', () => {
     const board = scoreboardFor(null, { host: null, guest: null });
     expect(board.turn).toBeNull();

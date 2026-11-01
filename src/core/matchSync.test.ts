@@ -72,4 +72,13 @@ describe('matchSync v3', () => {
       }),
     ).toBeNull();
   });
+
+  it('carries the simplified flag and retired kubbs; old peers default them', () => {
+    const s = { ...initialMatchState(5, true), retired: ['kubb-3'] };
+    expect(parseMatchSyncMessage(buildMatchSyncMessage(s))?.state).toEqual(s);
+    const { simplified: _s, retired: _r, ...old } = initialMatchState();
+    const parsed = parseMatchSyncMessage({ version: 3, state: old });
+    expect(parsed?.state.simplified).toBe(false);
+    expect(parsed?.state.retired).toEqual([]);
+  });
 });

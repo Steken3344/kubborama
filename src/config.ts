@@ -9,7 +9,7 @@ import {
   computeStickRackPositions,
 } from './core/court-layout.js';
 import type { CourtLayout, StickSpawn } from './core/court-layout.js';
-import type { InkastRackLayout } from './core/inkast.js';
+import type { InkastRackLayout, RetiredKubbLayout } from './core/inkast.js';
 import type { Vec3 } from './core/vec3.js';
 import audioData from './data/audio.json' with { type: 'json' };
 import courtPresetsData from './data/court-presets.json' with { type: 'json' };
@@ -114,6 +114,14 @@ export function inkastTableLayout(): InkastRackLayout {
     columnSpacingM: kubbTableData.columnSpacingM,
     rowSpacingM: kubbTableData.rowSpacingM,
     kubbHeightM: piecesData.kubb.heightM,
+  };
+}
+/** core/inkast.ts retiredKubbPosition's layout (simplified rules). */
+export function retiredKubbLayout(): RetiredKubbLayout {
+  return {
+    sideOffsetM: inkastData.retiredSideOffsetM,
+    spacingM: inkastData.retiredSpacingM,
+    lyingHeightM: piecesData.kubb.widthM / 2,
   };
 }
 /** The low dry-stone wall along the garden ground's edge

@@ -3,11 +3,20 @@ import type { Entity } from '@iwsdk/core';
 import { KingPiece } from '../components/king-piece.js';
 import { KingProtected } from '../components/king-protected.js';
 import { OutOfPlay } from '../components/out-of-play.js';
-import { inkastTableLayout, match, pieces } from '../config.js';
+import {
+  inkastTableLayout,
+  match,
+  pieces,
+  retiredKubbLayout,
+} from '../config.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { gameEvents } from '../core/events.js';
 import type { GameEvents } from '../core/events.js';
-import { inkastRackPosition } from '../core/inkast.js';
+import {
+  inkastRackPosition,
+  RETIRED_KUBB_QUATERNION,
+  retiredKubbPosition,
+} from '../core/inkast.js';
 import { isFinished, kubbId } from '../core/match.js';
 import type { MatchEffect, MatchSide } from '../core/match.js';
 import type { Vec3 } from '../core/vec3.js';
@@ -52,6 +61,9 @@ export class MatchRulesSystem extends createSystem({
   private rack = new Map<string, Vec3>();
   /** Seconds left until the auto-restart; null = not counting. */
   private restartInS: number | null = null;
+  /** How many kubbs have been laid out of play (simplified rules) since
+   * the last fresh match — the next one's slot beside the court. */
+  private retiredCount = 0;
 
   init(): void {
     const physicsSystem = this.world.getSystem(PhysicsSystem);
@@ -110,6 +122,7 @@ export class MatchRulesSystem extends createSystem({
       log('info', 'state', 'match rules active', {});
     }
     this.syncRack(event.state.currentTurn, event.state.inkastQueue);
+    this.retiredCount = event.state.retired.length;
 
     if (isFinished(event.state)) {
       // The game server restarts its own match (MP6).
@@ -190,6 +203,22 @@ export class MatchRulesSystem extends createSystem({
         });
       }
       gateLog('kubb returned to rack', { kubbId: effect.kubbId });
+      return;
+    }
+    if (effect.type === 'retire') {
+      // Only a simplified match emits it; serverless play has no rules
+      // button, so this is for completeness (the server does the same).
+      // MatchEffects follows MatchStateChanged, so the count already
+      // includes this kubb.
+      this.physicsSystem.setBodyTransform(entity, {
+        position: retiredKubbPosition(
+          activeCourtHalves(),
+          Math.max(0, this.retiredCount - 1),
+          retiredKubbLayout(),
+        ),
+        quaternion: RETIRED_KUBB_QUATERNION,
+      });
+      gateLog('kubb retired', { kubbId: effect.kubbId });
       return;
     }
     if (effect.type === 'restoreHome') {

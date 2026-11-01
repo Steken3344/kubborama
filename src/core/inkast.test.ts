@@ -7,6 +7,8 @@ import {
   inkastRackPosition,
   isLegalLanding,
   nudgeClear,
+  RETIRED_KUBB_QUATERNION,
+  retiredKubbPosition,
 } from './inkast.js';
 
 const h = courtHalves({ widthM: 5, lengthM: 8 });
@@ -97,5 +99,35 @@ describe('inkastRackPosition (on the kubb table)', () => {
 
   it('mirrors onto the far table for the guest', () => {
     expect(inkastRackPosition(h, 'guest', 0, 1, rack)).toEqual([-1, 0.875, -9]);
+  });
+});
+
+describe('retiredKubbPosition (simplified rules: out of play)', () => {
+  const layout = { sideOffsetM: 1, spacingM: 0.35, lyingHeightM: 0.035 };
+
+  it('lies beside the side line, the first one level with the centre', () => {
+    expect(retiredKubbPosition(h, 0, layout)).toEqual([3.5, 0.035, -4]);
+  });
+
+  it('alternates outwards along z so the row stays centred', () => {
+    const zs = [1, 2, 3, 4].map((i) => retiredKubbPosition(h, i, layout)[2]);
+    expect(zs).toEqual([-3.65, -4.35, -3.3, -4.7]);
+    const xs = [1, 2, 3, 4].map((i) => retiredKubbPosition(h, i, layout)[0]);
+    expect(new Set(xs)).toEqual(new Set([3.5]));
+  });
+
+  it('every slot of a full match is distinct and off the court', () => {
+    const slots = Array.from({ length: 10 }, (_, i) =>
+      retiredKubbPosition(h, i, layout),
+    );
+    expect(new Set(slots.map((p) => p[2])).size).toBe(10);
+    for (const [x] of slots) expect(x).toBeGreaterThan(h.halfWidthM);
+  });
+
+  it('lies on its side: a quarter turn about z', () => {
+    const [x, y, z, w] = RETIRED_KUBB_QUATERNION;
+    expect([x, y]).toEqual([0, 0]);
+    expect(z).toBeCloseTo(Math.SQRT1_2);
+    expect(w).toBeCloseTo(Math.SQRT1_2);
   });
 });

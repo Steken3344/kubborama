@@ -44,6 +44,7 @@ import {
 } from '../src/core/serverProtocol.js';
 import type {
   ClientMessage,
+  RoomRules,
   ServerMessage,
 } from '../src/core/serverProtocol.js';
 import type { Settings } from '../src/core/settings.js';
@@ -178,6 +179,7 @@ export class GameServer {
   private matchRecorded = false;
   /** Room settings beside the court (reset when the room empties). */
   private timeLimitMin = 0;
+  private rules: RoomRules = 'standard';
   private botLevel: BotLevel | null = null;
   private botMemory: BotMemory = freshBotMemory();
   private botRng: () => number = createRng(1);
@@ -351,6 +353,9 @@ export class GameServer {
     }
     if (message.type === 'setTimeLimit') {
       return this.changeTimeLimit(message.minutes, seat.side);
+    }
+    if (message.type === 'setRules') {
+      return this.changeRules(message.rules, seat.side);
     }
     if (message.type === 'setBot') {
       return this.changeBot(message.level, seat.side);
@@ -758,6 +763,7 @@ export class GameServer {
       },
     });
     this.host.setTimeLimit(this.timeLimitMin);
+    this.host.setSimplified(this.rules === 'simplified');
   }
 
   /** A room setting: the court. Rebuild the world on the new preset and
@@ -788,6 +794,7 @@ export class GameServer {
       type: 'roomSettings',
       timeLimitMin: this.timeLimitMin,
       bot: this.botLevel,
+      rules: this.rules,
     };
   }
 
@@ -810,6 +817,27 @@ export class GameServer {
     this.timeLimitMin = minutes;
     this.host?.setTimeLimit(minutes);
     this.log('info', 'gate', 'room time limit changed', { minutes, by });
+    this.broadcast(this.roomSettingsMessage());
+    return true;
+  }
+
+  /** A room setting: standard or simplified rules. Locked like the time
+   * limit while a match is underway; the match host builds the next
+   * match with them (a fresh one switches at once). */
+  private changeRules(rules: RoomRules, by: MatchSide): boolean {
+    if (rules === this.rules) {
+      return false;
+    }
+    if (isMatchUnderway(this.matchState)) {
+      this.log('info', 'gate', 'rules locked (match underway)', { by });
+      return false;
+    }
+    if (!this.roomActionAllowed('settings')) {
+      return false;
+    }
+    this.rules = rules;
+    this.host?.setSimplified(rules === 'simplified');
+    this.log('info', 'gate', 'room rules changed', { rules, by });
     this.broadcast(this.roomSettingsMessage());
     return true;
   }
@@ -1014,6 +1042,7 @@ export class GameServer {
       this.seats = [];
       this.botLevel = null;
       this.timeLimitMin = 0;
+      this.rules = 'standard';
       this.broadcast(this.roomSettingsMessage());
     }
     if (this.seats.length === 0) {

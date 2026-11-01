@@ -6,21 +6,25 @@ import {
   inkast,
   inkastTableLayout,
   match,
+  retiredKubbLayout,
   pieces,
   round,
   sinBin,
   windVectorForMode,
 } from '../src/config.js';
-import { farBaselineZ } from '../src/core/court-layout.js';
+import { farBaselineZ, KUBB_COUNT } from '../src/core/court-layout.js';
 import {
   courtHalves,
   inkastRackPosition,
   isLegalLanding,
+  RETIRED_KUBB_QUATERNION,
+  retiredKubbPosition,
 } from '../src/core/inkast.js';
 import type { CourtHalves } from '../src/core/inkast.js';
 import {
   initialMatchState,
   isFinished,
+  isFreshMatch,
   otherSide,
   standingKubbs,
   standingLineZ,
@@ -121,6 +125,8 @@ const TOPPLEABLE_IDS = NETWORKED_PIECE_IDS.filter(
 const RESET_GRACE_S = 1;
 /** Where queued kubbs stand: the thrower's kubb table. */
 const INKAST_TABLE = inkastTableLayout();
+/** Where retired kubbs lie (simplified rules). */
+const RETIRED_LAYOUT = retiredKubbLayout();
 const UPRIGHT: [number, number, number, number] = [0, 0, 0, 1];
 
 /**
@@ -166,6 +172,9 @@ export class MatchHost {
   private matchElapsedS = 0;
   /** A player is away (reconnecting): the match clock stands still. */
   private clockPaused = false;
+  /** The room's rules: simplified ("Förenklat") retires felled field
+   * kubbs. Every new match is built with it. */
+  private simplified = false;
 
   constructor(
     private readonly world: MatchWorld,
@@ -317,6 +326,16 @@ export class MatchHost {
       this.timeLimitS === null || this.matchElapsedS < this.timeLimitS;
     if (timeLeft && this.matchState.timeUp && !isFinished(this.matchState)) {
       this.setMatchState({ ...this.matchState, timeUp: false });
+    }
+  }
+
+  /** The room's rules. Only a fresh match (nothing felled yet) switches
+   * at once; otherwise the flag is kept and the next match — restart,
+   * Ny runda, court change — is built with it. */
+  setSimplified(on: boolean): void {
+    this.simplified = on;
+    if (on !== this.matchState.simplified && isFreshMatch(this.matchState)) {
+      this.setMatchState({ ...this.matchState, simplified: on });
     }
   }
 
@@ -686,6 +705,22 @@ export class MatchHost {
       this.out.gate('kubb returned to rack', { kubbId: effect.kubbId });
       return;
     }
+    if (effect.type === 'retire') {
+      const index = this.matchState.retired.indexOf(effect.kubbId);
+      this.world.setPose(effect.kubbId, {
+        position: retiredKubbPosition(
+          this.halves,
+          Math.max(0, index),
+          RETIRED_LAYOUT,
+        ),
+        quaternion: RETIRED_KUBB_QUATERNION,
+      });
+      this.out.gate('kubb retired', {
+        kubbId: effect.kubbId,
+        retired: this.matchState.retired.length,
+      });
+      return;
+    }
     if (effect.type === 'restoreHome') {
       const home = this.world.homePose(effect.kubbId);
       if (home) {
@@ -819,7 +854,7 @@ export class MatchHost {
     this.restartInS = null;
     this.startRound(initialRoundState());
     this.placeEverythingHome();
-    this.matchState = initialMatchState();
+    this.matchState = initialMatchState(KUBB_COUNT, this.simplified);
     if (this.matchActive) {
       this.placeSticksFor('host');
     }

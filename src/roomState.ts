@@ -1,4 +1,4 @@
-import type { BotLevelName } from './core/serverProtocol.js';
+import type { BotLevelName, RoomRules } from './core/serverProtocol.js';
 
 /** The game server's room settings beside the court (2026-11-01), as
  * ServerLinkSystem last heard them — the menu's labels and the HUD clock
@@ -6,9 +6,11 @@ import type { BotLevelName } from './core/serverProtocol.js';
 export const roomState: {
   timeLimitMin: number;
   bot: BotLevelName | null;
+  rules: RoomRules;
   clock: { remainingS: number; timeUp: boolean } | null;
 } = {
   timeLimitMin: 0,
   bot: null,
+  rules: 'standard',
   clock: null,
 };

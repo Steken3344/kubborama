@@ -5928,3 +5928,35 @@ so the help never steers towards an early king. Per headset, in the menu
 (Kasthjälp: Av / Lite / Mycket = 0 / 0.4 / 0.75, pieces.json), "Lite" by
 default; applied in the client before the release is sent, so the server
 stays the judge of what happens.
+## 2026-11-01 — Simplified rules (Förenklat)
+
+Erik: "ett förenklat spelläge där när kubben fälls på baslinjen, kastas
+över och efter man fällt 'sin' överkastade så tas den bort (ur spel) så
+slipper vi att det kan vara upp till 9 kubbar som kastas fram och
+tillbaka".
+
+- A room setting `rules: 'standard' | 'simplified'` (menu button
+  "Regler: Vanliga / Förenklade", server mode only), mirroring the time
+  limit exactly: `setRules` → `roomSettings.rules`, locked while a match
+  is underway (allowed before the first felled kubb and after a
+  decision), reset to standard when the room empties. Additive in
+  protocol v4 (old servers/clients default to standard).
+- Rule (core/match.ts): in a simplified match a legitimately felled
+  FIELD kubb is retired — it leaves `fieldKubbs` for `MatchState.retired`
+  and never enters `felledThisTurn` (the next inkast queue); the reducer
+  emits a `retire` effect. Felled baseline kubbs are tossed over as
+  before. Re-raises (inkast hits, rebounds), rule 5 (field kubbs first),
+  the king rules and the time-limit tiebreak are unchanged; a retired
+  kubb is simply no longer standing, so the HUD/TV "att fälla" counts and
+  the win check need nothing new. Felling a retired kubb again is a
+  no-op, and a match with retired kubbs is never "fresh".
+- The flag lives in MatchState (fixed per match). MatchHost.setSimplified
+  switches a fresh match at once; otherwise it is kept and every new
+  match (restart, Ny runda, court change) is built with it.
+- A retired kubb lies on its side on the grass 1.0 m outside the +x side
+  line, slots 0.35 m apart along z, alternating out from the centre line
+  so the row stays centred and placed kubbs never move
+  (core/inkast.ts retiredKubbPosition, numbers in src/data/inkast.json).
+  It stays toppled, so the server never reports it felled again.
+- Serverless (P2P) play has no rules button and always plays standard;
+  its MatchRulesSystem handles `retire` the same way for completeness.

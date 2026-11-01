@@ -73,6 +73,8 @@
   "bannerFootFault": "Foot fault! {name}",
   "timeLimitOff": "Time limit: Off",
   "timeLimitMinutes": "Time limit: {n} min",
+  "rulesStandard": "Rules: Standard",
+  "rulesSimplified": "Rules: Simplified",
   "opponentPerson": "Opponent: Person",
   "opponentBot": "Opponent: Bot, {level}",
   "botLevelEasy": "easy",

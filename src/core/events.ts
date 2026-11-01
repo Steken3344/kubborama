@@ -1,6 +1,6 @@
 import type { Language } from './i18n.js';
 import type { MatchEffect, MatchSide, MatchState } from './match.js';
-import type { BotLevelName, VoiceSignal } from './serverProtocol.js';
+import type { BotLevelName, RoomRules, VoiceSignal } from './serverProtocol.js';
 import type { PresenceMessage } from './presence.js';
 import type { ClientProfile } from './profiles.js';
 import type { PlayersInfo } from './scoreboard.js';
@@ -217,6 +217,10 @@ export interface GameEvents {
   ServerBotRequested: {
     level: BotLevelName | null;
   };
+  /** Room setting button: standard or simplified ("Förenklat") rules. */
+  ServerRulesRequested: {
+    rules: RoomRules;
+  };
   /** A stick let go too slowly to be a throw (core/throwRelease.ts
    * isThrowRelease): it goes back to its rack and does not count. */
   StickPutBack: {
@@ -226,6 +230,7 @@ export interface GameEvents {
   RoomSettings: {
     timeLimitMin: number;
     bot: BotLevelName | null;
+    rules: RoomRules;
   };
   /** The match clock under a time limit (about once a second). */
   MatchClock: {

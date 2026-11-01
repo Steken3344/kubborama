@@ -4,6 +4,7 @@ import {
   advantageLineZ,
   initialMatchState,
   isFinished,
+  isFreshMatch,
   kubbIndexFromId,
   kubbSide,
   otherSide,
@@ -56,6 +57,8 @@ describe('initialMatchState', () => {
       winner: null,
       endReason: null,
       timeUp: false,
+      simplified: false,
+      retired: [],
     });
     expect(standingKubbs(initialMatchState())).toEqual({ host: 5, guest: 5 });
   });
@@ -316,5 +319,116 @@ describe('a full field-kubb turn', () => {
       'kubb-9',
     ]);
     expect(standingKubbs(s)).toEqual({ host: 4, guest: 3 });
+  });
+});
+
+describe('simplified rules (Förenklat)', () => {
+  /** guestWithTwoFieldKubbs, but in a simplified match. */
+  function simplifiedGuestWithTwoFieldKubbs(): MatchState {
+    let s = initialMatchState(5, true);
+    s = fell(fell(s, 'kubb-0'), 'kubb-1');
+    s = withTurnAdvanced(s);
+    s = land(s, 'kubb-0', -0.5, -2).state;
+    s = land(s, 'kubb-1', 0.5, -3).state;
+    return s;
+  }
+
+  it('starts with the flag set and nothing retired', () => {
+    const s = initialMatchState(5, true);
+    expect(s.simplified).toBe(true);
+    expect(s.retired).toEqual([]);
+  });
+
+  it('a felled baseline kubb is still queued for the inkast', () => {
+    const s = fell(initialMatchState(5, true), 'kubb-0');
+    expect(s.felledThisTurn).toEqual(['kubb-0']);
+    expect(s.retired).toEqual([]);
+  });
+
+  it('retires a legitimately felled field kubb instead of queueing it', () => {
+    const before = simplifiedGuestWithTwoFieldKubbs();
+    const step = withKubbFelled(before, 'kubb-0', -0.5, -2);
+    expect(step.effects).toEqual([{ type: 'retire', kubbId: 'kubb-0' }]);
+    expect(step.state.retired).toEqual(['kubb-0']);
+    expect(step.state.felledThisTurn).toEqual([]);
+    expect(step.state.fieldKubbs.map((k) => k.kubbId)).toEqual(['kubb-1']);
+    expect(standingKubbs(step.state)).toEqual({ host: 6, guest: 3 });
+  });
+
+  it('keeps the standard rule when not simplified', () => {
+    const step = withKubbFelled(guestWithTwoFieldKubbs(), 'kubb-0', -0.5, -2);
+    expect(step.effects).toEqual([]);
+    expect(step.state.felledThisTurn).toEqual(['kubb-0']);
+    expect(step.state.retired).toEqual([]);
+  });
+
+  it('still re-raises a field kubb hit by an inkast or a rebound', () => {
+    let s = simplifiedGuestWithTwoFieldKubbs();
+    // The guest knocks its own baseline kubb-2 (rule 6).
+    const rebound = withKubbFelled(s, 'kubb-2', 0, GUEST_Z);
+    expect(rebound.effects[0]).toMatchObject({
+      type: 'restoreHome',
+      reason: 'rebound',
+    });
+    expect(rebound.state.retired).toEqual([]);
+    // An inkast hit on a field kubb raises it where it lies.
+    s = withTurnAdvanced(fell(s, 'kubb-0', -0.5, -2));
+    expect(s.phase).toBe('throwing'); // kubb-0 retired: nothing to toss
+    const hit = withKubbFelled({ ...s, phase: 'inkast' }, 'kubb-1', 0.4, -3);
+    expect(hit.effects[0]).toMatchObject({
+      type: 'raise',
+      reason: 'inkastHit',
+    });
+    expect(hit.state.retired).toEqual(['kubb-0']);
+  });
+
+  it('felling a retired kubb again is a no-op', () => {
+    const s = withKubbFelled(
+      simplifiedGuestWithTwoFieldKubbs(),
+      'kubb-0',
+      -0.5,
+      -2,
+    ).state;
+    const again = withKubbFelled(s, 'kubb-0', 3.5, -4);
+    expect(again.state).toBe(s);
+    expect(again.effects).toEqual([]);
+  });
+
+  it('a match with retired kubbs is never fresh', () => {
+    const fresh = initialMatchState(5, true);
+    expect(isFreshMatch(fresh)).toBe(true);
+    expect(isFreshMatch({ ...fresh, retired: ['kubb-0'] })).toBe(false);
+  });
+
+  it('a full simplified match: field kubbs leave play, then the king wins', () => {
+    let s = simplifiedGuestWithTwoFieldKubbs();
+    // Guest: both field kubbs, then the whole host baseline.
+    s = fell(s, 'kubb-0', -0.5, -2);
+    s = fell(s, 'kubb-1', 0.5, -3);
+    for (const id of ['kubb-5', 'kubb-6', 'kubb-7', 'kubb-8', 'kubb-9']) {
+      s = fell(s, id, 0, HOST_Z);
+    }
+    expect(s.retired).toEqual(['kubb-0', 'kubb-1']);
+    expect(standingKubbs(s)).toEqual({ host: 0, guest: 3 });
+    s = withTurnAdvanced(s);
+    // Host tosses the five baseline kubbs onto the guest half.
+    expect(s.inkastQueue).toHaveLength(5);
+    ['kubb-5', 'kubb-6', 'kubb-7', 'kubb-8', 'kubb-9'].forEach((id, i) => {
+      s = land(s, id, -2 + i, -6).state;
+    });
+    expect(s.phase).toBe('throwing');
+    expect(standingKubbs(s)).toEqual({ host: 0, guest: 8 });
+    // Host clears the five field kubbs (all retired), then the baseline.
+    ['kubb-5', 'kubb-6', 'kubb-7', 'kubb-8', 'kubb-9'].forEach((id, i) => {
+      s = fell(s, id, -2 + i, -6);
+    });
+    for (const id of ['kubb-2', 'kubb-3', 'kubb-4']) {
+      s = fell(s, id);
+    }
+    expect(s.retired).toHaveLength(7);
+    expect(standingKubbs(s)).toEqual({ host: 0, guest: 0 });
+    s = withKingFelled(s);
+    expect(s.winner).toBe('host');
+    expect(s.endReason).toBe('allKubbsAndKing');
   });
 });

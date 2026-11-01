@@ -636,6 +636,7 @@ describe('GameServer — bot opponent and time limit (2026-11-01)', () => {
       type: 'roomSettings',
       timeLimitMin: 0,
       bot: 'hard',
+      rules: 'standard',
     });
     expect(a.received).toContainEqual(
       expect.objectContaining({ type: 'peers', count: 2 }),
@@ -714,6 +715,7 @@ describe('GameServer — bot opponent and time limit (2026-11-01)', () => {
       type: 'roomSettings',
       timeLimitMin: 0,
       bot: 'easy',
+      rules: 'standard',
     });
     // The ghost reconnecting does not take the seat back from the bot.
     const again = fakeClient();
@@ -753,6 +755,7 @@ describe('GameServer — bot opponent and time limit (2026-11-01)', () => {
       type: 'roomSettings',
       timeLimitMin: 0,
       bot: null,
+      rules: 'standard',
     });
   });
 
@@ -770,6 +773,7 @@ describe('GameServer — bot opponent and time limit (2026-11-01)', () => {
       type: 'roomSettings',
       timeLimitMin: 20,
       bot: 'medium',
+      rules: 'standard',
     });
     for (let i = 0; i < 120; i++) server.tick();
     const clocks = a.received.filter((m) => m.type === 'clock');
@@ -849,7 +853,7 @@ describe('GameServer — bot seat lifecycle (review, 2026-11-01)', () => {
     clock.now += REJOIN_GRACE_MS + 1;
     server.tick();
     expect(tv.received.filter((m) => m.type === 'roomSettings').at(-1)).toEqual(
-      { type: 'roomSettings', timeLimitMin: 0, bot: null },
+      { type: 'roomSettings', timeLimitMin: 0, bot: null, rules: 'standard' },
     );
   });
 });
@@ -916,5 +920,89 @@ describe('GameServer — a player away pauses the match (2026-11-01)', () => {
     for (let i = 0; i < 31; i++) server.tick();
     // Only the half second after rejoining has run off the clock.
     expect(remaining(back)).toBeGreaterThan(before - 2);
+  });
+});
+
+describe('GameServer — simplified rules (Förenklat, 2026-11-01)', () => {
+  it('the rules are shared with the room, reach the match, and reset when it empties', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const tv = fakeClient();
+    const ha = server.connect(a.connection);
+    await ha.receive(join());
+    expect(a.received).toContainEqual({
+      type: 'roomSettings',
+      timeLimitMin: 0,
+      bot: null,
+      rules: 'standard',
+    });
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    expect(await ha.receive({ type: 'setRules', rules: 'standard' })).toBe(
+      false,
+    );
+    expect(await ha.receive({ type: 'setRules', rules: 'simplified' })).toBe(
+      true,
+    );
+    expect(a.received.filter((m) => m.type === 'roomSettings').at(-1)).toEqual({
+      type: 'roomSettings',
+      timeLimitMin: 0,
+      bot: null,
+      rules: 'simplified',
+    });
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    expect(await ha.receive({ type: 'setBot', level: 'easy' })).toBe(true);
+    const lastMatch = a.received.filter((m) => m.type === 'match').at(-1);
+    expect(lastMatch?.type === 'match' && lastMatch.state?.simplified).toBe(
+      true,
+    );
+    await server
+      .connect(tv.connection)
+      .receive({ type: 'watch', protocol: SERVER_PROTOCOL_VERSION });
+    ha.close();
+    clock.now += REJOIN_GRACE_MS + 1;
+    server.tick();
+    expect(tv.received.filter((m) => m.type === 'roomSettings').at(-1)).toEqual(
+      { type: 'roomSettings', timeLimitMin: 0, bot: null, rules: 'standard' },
+    );
+  });
+
+  it('refuses a rules change once the match is underway', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const ha = server.connect(a.connection);
+    await ha.receive(join());
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    await ha.receive({ type: 'setBot', level: 'easy' });
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    // Fresh match: still allowed.
+    expect(await ha.receive({ type: 'setRules', rules: 'simplified' })).toBe(
+      true,
+    );
+    for (let i = 0; i < 6; i++) {
+      await ha.receive({
+        type: 'throw',
+        pieceId: `stick-${String(i)}`,
+        position: [0.2, 1, -0.3],
+        quaternion: [0, 0, 0, 1],
+        linearVelocity: [4, 2, -1],
+        angularVelocity: [0, 0, 0],
+      });
+      clock.now += 1000;
+      for (let t = 0; t < 30; t++) server.tick();
+    }
+    for (
+      let t = 0;
+      t < 60 * 20 &&
+      !a.received.some(
+        (m) => m.type === 'match' && m.state?.currentTurn === 'guest',
+      );
+      t++
+    ) {
+      server.tick();
+    }
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    expect(await ha.receive({ type: 'setRules', rules: 'standard' })).toBe(
+      false,
+    );
   });
 });

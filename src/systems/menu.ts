@@ -26,6 +26,7 @@ import { accuracy } from '../core/stats.js';
 import { isMatchUnderway } from '../core/match.js';
 import type { MatchState } from '../core/match.js';
 import { gameEvents } from '../core/events.js';
+import { roomRulesSchema } from '../core/serverProtocol.js';
 import type { GameEvents } from '../core/events.js';
 import { matchActivity } from '../matchActivityState.js';
 import { uiTick } from '../core/haptics.js';
@@ -102,7 +103,8 @@ export class MenuSystem extends createSystem({
   private currentTimeS = 0;
   private uiSfxRng = createRng(UI_SFX_SEED);
   private matchState: MatchState | null = null;
-  private timeLimitLocked = false;
+  /** Time limit and rules are locked while a match is underway. */
+  private roomSettingsLocked = false;
 
   init(): void {
     const grabSystem = this.world.getSystem(GrabSystem);
@@ -201,6 +203,14 @@ export class MenuSystem extends createSystem({
       );
       gateLog('time limit pressed', { minutes });
       gameEvents.emit('ServerTimeLimitRequested', { minutes });
+    });
+    this.wireButton('rules-button', () => {
+      if (isMatchUnderway(this.matchState)) {
+        return; // locked mid-match; the server refuses it too
+      }
+      const rules = nextInCycle(roomRulesSchema.options, roomState.rules);
+      gateLog('rules pressed', { rules });
+      gameEvents.emit('ServerRulesRequested', { rules });
     });
     this.wireButton('opponent-button', () => {
       const level = nextInCycle(OPPONENT_CYCLE, roomState.bot);
@@ -347,18 +357,18 @@ export class MenuSystem extends createSystem({
           }
         }
       }),
-      // The time-limit lock follows the match.
+      // The time-limit and rules lock follows the match.
       gameEvents.on('MatchStateChanged', ({ state }) => {
         const locked = isMatchUnderway(state);
         this.matchState = state;
-        if (locked !== this.timeLimitLocked) {
-          this.timeLimitLocked = locked;
+        if (locked !== this.roomSettingsLocked) {
+          this.roomSettingsLocked = locked;
           this.refreshLabels();
         }
       }),
       gameEvents.on('MultiplayerPeerDisconnected', () => {
         this.matchState = null;
-        this.timeLimitLocked = false;
+        this.roomSettingsLocked = false;
         this.refreshLabels();
       }),
       // MP3a: MatchRulesSystem (auto-restart, room emptied) and a
@@ -448,6 +458,9 @@ export class MenuSystem extends createSystem({
       .requireElementById('time-limit-button')
       .setProperties({ display: server ? 'flex' : 'none' });
     this.menuPanel
+      .requireElementById('rules-button')
+      .setProperties({ display: server ? 'flex' : 'none' });
+    this.menuPanel
       .requireElementById('opponent-button')
       .setProperties({ display: server ? 'flex' : 'none' });
     this.menuPanel.requireElementById('time-limit-label').setProperties({
@@ -455,7 +468,14 @@ export class MenuSystem extends createSystem({
         (roomState.timeLimitMin === 0
           ? t('timeLimitOff')
           : t('timeLimitMinutes', { n: roomState.timeLimitMin })) +
-        (this.timeLimitLocked ? t('lockedDuringMatch') : ''),
+        (this.roomSettingsLocked ? t('lockedDuringMatch') : ''),
+    });
+    this.menuPanel.requireElementById('rules-label').setProperties({
+      text:
+        (roomState.rules === 'simplified'
+          ? t('rulesSimplified')
+          : t('rulesStandard')) +
+        (this.roomSettingsLocked ? t('lockedDuringMatch') : ''),
     });
     this.menuPanel.requireElementById('opponent-label').setProperties({
       text:
