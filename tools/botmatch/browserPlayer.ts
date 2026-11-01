@@ -159,12 +159,15 @@ export class BrowserPlayer {
     action:
       | { kind: 'reset' }
       | { kind: 'court'; gameMode: GameMode }
-      | { kind: 'timeLimit'; minutes: number },
+      | { kind: 'timeLimit'; minutes: number }
+      | { kind: 'rules'; rules: 'standard' | 'simplified' },
   ): Promise<void> {
     await this.page.evaluate((a) => {
       const dev = (globalThis as unknown as { __kubbDev: DevHook }).__kubbDev;
       if (a.kind === 'reset') {
         dev.gameEvents.emit('ServerResetRequested', {});
+      } else if (a.kind === 'rules') {
+        dev.gameEvents.emit('ServerRulesRequested', { rules: a.rules });
       } else if (a.kind === 'timeLimit') {
         dev.gameEvents.emit('ServerTimeLimitRequested', {
           minutes: a.minutes,

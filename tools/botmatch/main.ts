@@ -52,6 +52,8 @@ const LANGUAGE = arg('language', 'sv');
 const BOT_COLOR = Number(arg('bot-color', '4'));
 /** A room time limit in minutes (0 = none), set before the scenarios. */
 const TIME_LIMIT_MIN = Number(arg('time-limit', '0'));
+/** The room's rules, set before the scenarios (Förenklat, 2026-11-01). */
+const RULES = arg('rules', 'standard');
 /** Write a JSON summary of the run here (the series reads it). */
 const SUMMARY = arg('summary', '');
 /** Shorter pauses between sticks and tosses, for long series. */
@@ -63,7 +65,8 @@ if (
   !Number.isInteger(SEED) ||
   !['', 'simple', 'advanced'].includes(COURT) ||
   (LANGUAGE !== 'sv' && LANGUAGE !== 'en') ||
-  !Number.isInteger(BOT_COLOR)
+  !Number.isInteger(BOT_COLOR) ||
+  (RULES !== 'standard' && RULES !== 'simplified')
 ) {
   console.error(
     'spreads in metres (>= 0), --seed and --bot-color integers, --court simple|advanced, --language sv|en',
@@ -406,6 +409,17 @@ async function main(): Promise<void> {
     await sleep(1500); // the room cooldown before the scenario's reset
   }
 
+  if (RULES === 'simplified') {
+    await host.room({ kind: 'rules', rules: 'simplified' });
+    for (let i = 0; i < 20 && bot.match?.simplified !== true; i += 1) {
+      await sleep(250);
+    }
+    say(
+      `rules ${RULES} (match says simplified=${String(bot.match?.simplified)})`,
+    );
+    await sleep(1500); // the room cooldown before the scenario's reset
+  }
+
   const rng = createRng(SEED);
   say(
     `aim spread host ${String(SPREAD_BY_SIDE.host)} m, guest ${String(SPREAD_BY_SIDE.guest)} m, seed ${String(SEED)}`,
@@ -480,6 +494,7 @@ async function main(): Promise<void> {
           spread: SPREAD_BY_SIDE,
           language: LANGUAGE,
           botColor: BOT_COLOR,
+          rules: RULES,
           pageErrors: host.errors,
           tableCheck,
           scenarios: chosen.map((sc) => ({

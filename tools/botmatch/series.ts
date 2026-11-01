@@ -21,6 +21,8 @@ const MATCHES = Number(arg('matches', '20'));
 /** Room time limit per match in minutes (0 = none). */
 const TIME_LIMIT_MIN = arg('time-limit', '0');
 const URL_ARG = arg('url', '');
+/** standard | simplified (Förenklat: felled field kubbs leave play). */
+const RULES = arg('rules', 'standard');
 const FIRST = Number(arg('first', '0'));
 const OUT = arg('out', join(tmpdir(), 'kubb-series', String(Date.now())));
 const LOG_PATH = '.iwsdk/runtime/logs/kubb-debug.ndjson';
@@ -95,6 +97,7 @@ interface MatchRow {
   warnings: number;
   pageErrors: number;
   tables: string;
+  retired: number;
 }
 
 function analyse(plan: Plan, summaryPath: string): MatchRow | null {
@@ -159,6 +162,7 @@ function analyse(plan: Plan, summaryPath: string): MatchRow | null {
         e.message !== 'game server connection closed',
     ).length,
     pageErrors: summary.pageErrors.length,
+    retired: gate('server', 'kubb retired').length,
     tables: summary.tableCheck
       ? `${String(summary.tableCheck.turns)}/${String(summary.tableCheck.sticksOff.length)}/${String(summary.tableCheck.kubbsOff.length)}`
       : '-',
@@ -169,8 +173,8 @@ function table(rows: MatchRow[]): string {
   const pct = (a: number, b: number) =>
     b === 0 ? '-' : `${String(Math.round((100 * a) / b))}%`;
   const head =
-    '| # | court | lang | aim A/B (m) | result | min | rounds | winner | how | A hit/stick | B hit/stick | inkast ok/out | raised (reason) | warn | tables turns/sticks off/kubbs off |';
-  const sep = `|${'---|'.repeat(15)}`;
+    '| # | court | lang | aim A/B (m) | result | min | rounds | winner | how | A hit/stick | B hit/stick | inkast ok/out | raised (reason) | retired | warn | tables turns/sticks off/kubbs off |';
+  const sep = `|${'---|'.repeat(16)}`;
   const body = rows.map((r) =>
     [
       r.plan.index + 1,
@@ -188,6 +192,7 @@ function table(rows: MatchRow[]): string {
       Object.entries(r.raised)
         .map(([k, v]) => `${k} ${String(v)}`)
         .join(', '),
+      r.retired,
       r.warnings + r.pageErrors,
       r.tables,
     ].join(' | '),
@@ -222,6 +227,8 @@ function main(): void {
         plan.court,
         '--time-limit',
         TIME_LIMIT_MIN,
+        '--rules',
+        RULES,
         ...(URL_ARG ? ['--url', URL_ARG] : []),
         '--language',
         plan.language,
