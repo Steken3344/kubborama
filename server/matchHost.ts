@@ -11,10 +11,7 @@ import {
   sinBin,
   windVectorForMode,
 } from '../src/config.js';
-import {
-  farBaselineZ,
-  STICK_TABLE_NODE_IDS,
-} from '../src/core/court-layout.js';
+import { farBaselineZ } from '../src/core/court-layout.js';
 import {
   courtHalves,
   inkastRackPosition,
@@ -27,7 +24,6 @@ import {
   otherSide,
   standingKubbs,
   standingLineZ,
-  stickTableShiftZ,
   withInkastLanded,
   withKingFelled,
   withKubbFelled,
@@ -767,30 +763,9 @@ export class MatchHost {
 
   // --- placement ---------------------------------------------------------
 
-  /** The thrower's rack: its own baseline's, moved onto its advantage
-   * line when field kubbs stand on its half — the stick TABLE moves with
-   * it, so the sticks always lie on it (core/match.ts stickTableShiftZ);
-   * the other side's table goes home. */
+  /** The thrower's rack on its own stick table, which always stands at
+   * its baseline (Erik, 2026-11-01: the tables never move). */
   private placeSticksFor(side: MatchSide): void {
-    const shift = (s: MatchSide) =>
-      this.matchActive ? stickTableShiftZ(this.matchState, s, this.halves) : 0;
-    for (const s of ['host', 'guest'] as const) {
-      const id = STICK_TABLE_NODE_IDS[s].collider;
-      const home = this.world.homePose(id);
-      if (home) {
-        this.world.setPose(id, {
-          position: [
-            home.position[0],
-            home.position[1],
-            home.position[2] + shift(s),
-          ],
-          quaternion: home.quaternion,
-        });
-      }
-    }
-    const shiftZ = this.matchActive
-      ? stickTableShiftZ(this.matchState, side, this.halves)
-      : 0;
     for (const [id, stick] of this.sticks) {
       const home = this.world.homePose(id);
       if (!home) {
@@ -798,14 +773,7 @@ export class MatchHost {
       }
       const pose =
         side === 'host' ? home : mirrorPoseToFarBaseline(home, this.farZ);
-      this.world.setPose(id, {
-        position: [
-          pose.position[0],
-          pose.position[1],
-          pose.position[2] + shiftZ,
-        ],
-        quaternion: pose.quaternion,
-      });
+      this.world.setPose(id, pose);
       stick.phase = 'racked';
       stick.restS = 0;
     }

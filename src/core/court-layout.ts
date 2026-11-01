@@ -148,14 +148,6 @@ export const FAR_RACK_NODE_IDS: ReadonlyArray<
   ['kubb-table-collider', 'kubb-table-2-collider'],
 ];
 
-/** Each side's stick table: its visual node and its static collider —
- * the pair that follows the thrower to the advantage line
- * (core/match.ts stickTableShiftZ). */
-export const STICK_TABLE_NODE_IDS = {
-  host: { visual: 'stick-rack', collider: 'stick-rack-collider' },
-  guest: { visual: 'stick-rack-2', collider: 'stick-rack-2-collider' },
-} as const;
-
 /** Corner stakes, in `computeCourtLayout().stakePositions` order. */
 export const STAKE_NODE_IDS = [
   'corner-stake-near-left',

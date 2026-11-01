@@ -17,7 +17,6 @@ import {
   initialMatchState,
   isFinished,
   kubbIndexFromId,
-  stickTableShiftZ,
   withInkastLanded,
   withKingFelled,
   withKubbFelled,
@@ -1061,28 +1060,15 @@ export class MultiplayerSystem extends createSystem({}) {
     this.broadcastMatchState();
   }
 
-  /** The new thrower's rack: its own baseline's, shifted onto its
-   * advantage line when field kubbs stand on its half (MP4 rule 8 —
-   * shown, not enforced: the sticks simply wait where the thrower may
-   * stand). */
+  /** The new thrower's rack on its own baseline's stick table (the
+   * tables never move — Erik, 2026-11-01). */
   private placeSticksForTurn(side: MatchSide): void {
     const farZ = activeFarBaselineZ();
-    // The same shift the server and every table use (core/match.ts).
-    const shiftZ = stickTableShiftZ(this.matchState, side, activeCourtHalves());
-    this.placeSticks((nearRackPose) => {
-      const pose =
-        side === 'host'
-          ? nearRackPose
-          : mirrorPoseToFarBaseline(nearRackPose, farZ);
-      return {
-        position: [
-          pose.position[0],
-          pose.position[1],
-          pose.position[2] + shiftZ,
-        ],
-        quaternion: pose.quaternion,
-      };
-    });
+    this.placeSticks((nearRackPose) =>
+      side === 'host'
+        ? nearRackPose
+        : mirrorPoseToFarBaseline(nearRackPose, farZ),
+    );
   }
 
   /** Back to the captured near-rack home pose — used when the room

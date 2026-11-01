@@ -99,9 +99,10 @@ Vite dev server (port 8081) with hot reload.
 
 **Moving around:** the left thumbstick slides you across the garden
 (kept inside the trees, and during a match never past your own
-throwing line), the right thumbstick snap-turns 45°. When you
-throw from the advantage line you are teleported onto it, and back to
-your baseline when your turn ends.
+throwing line), the right thumbstick snap-turns 45°. The stick and
+kubb tables always stand at your baseline; when you may throw from the
+advantage line it is shown in yellow, and you walk or slide up to it
+yourself if you want to.
 
 **Profiles and foot faults:** pick your name in the menu (Alternativ →
 Namn) and the server remembers your colour, statistics and results

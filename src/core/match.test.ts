@@ -9,7 +9,6 @@ import {
   otherSide,
   standingKubbs,
   standingLineZ,
-  stickTableShiftZ,
   turnPassedTo,
   withInkastLanded,
   withKingFelled,
@@ -317,29 +316,5 @@ describe('a full field-kubb turn', () => {
       'kubb-9',
     ]);
     expect(standingKubbs(s)).toEqual({ host: 4, guest: 3 });
-  });
-});
-
-describe('stickTableShiftZ (2026-11-01)', () => {
-  const halves = courtHalves({ widthM: 5, lengthM: 8 });
-  it('moves the thrower’s table onto its advantage line, nobody else’s', () => {
-    const s: MatchState = {
-      ...initialMatchState(),
-      currentTurn: 'host',
-      fieldKubbs: [{ kubbId: 'kubb-0', half: 'host', x: 0, z: -2.5 }],
-    };
-    expect(stickTableShiftZ(s, 'host', halves)).toBeCloseTo(-2.5);
-    expect(stickTableShiftZ(s, 'guest', halves)).toBe(0);
-  });
-
-  it('stays home without field kubbs on the own half, or once decided', () => {
-    expect(stickTableShiftZ(initialMatchState(), 'host', halves)).toBe(0);
-    const won: MatchState = {
-      ...initialMatchState(),
-      fieldKubbs: [{ kubbId: 'kubb-0', half: 'host', x: 0, z: -2.5 }],
-      winner: 'host',
-      endReason: 'allKubbsAndKing',
-    };
-    expect(stickTableShiftZ(won, 'host', halves)).toBe(0);
   });
 });

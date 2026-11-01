@@ -17,13 +17,8 @@ import { settingsState } from '../settingsState.js';
 import {
   FAR_RACK_NODE_IDS,
   STAKE_NODE_IDS,
-  STICK_TABLE_NODE_IDS,
   farBaselineZ,
 } from '../core/court-layout.js';
-import { isFreshMatch, stickTableShiftZ } from '../core/match.js';
-import type { MatchSide, MatchState } from '../core/match.js';
-import type { Pose } from '../core/presence.js';
-import { activeCourtHalves, activeFarBaselineZ } from './activeCourt.js';
 import { gameEvents } from '../core/events.js';
 import { log } from '../core/log.js';
 import { mirrorPoseToFarBaseline } from '../core/presence.js';
@@ -102,26 +97,6 @@ export class CourtLayoutSystem extends createSystem({}) {
    * its first ticks, and setBodyTransform silently no-ops on an entity
    * without an engine body — at init() nothing would move. */
   private pendingStartupMode: Settings['gameMode'] | null = null;
-  private matchState: MatchState | null = null;
-  /** Each side's current stick-table shift (m along the court). */
-  private readonly tableShift: Record<MatchSide, number> = {
-    host: 0,
-    guest: 0,
-  };
-  private readonly nearTableBase: Partial<Record<'visual' | 'collider', Pose>> =
-    {};
-  /** The stick tables' entities, resolved once in init. */
-  private tableEntities!: Record<
-    MatchSide,
-    Record<'visual' | 'collider', Entity>
-  >;
-  /** The turn the shifts were decided for: like the server, a table
-   * moves only when the turn changes (or the match restarts) — never
-   * mid-turn, when a re-raised field kubb or a decided match would move
-   * it out from under the sticks (review, 2026-11-01). */
-  private shiftTurnKey = '';
-  /** A collider had no Havok body yet: try again next frame. */
-  private tableShiftPending = false;
   private startupProbeEntities: Entity[] = [];
 
   init(): void {
@@ -143,38 +118,6 @@ export class CourtLayoutSystem extends createSystem({}) {
       this.pendingStartupMode = null;
       this.applyGameMode(e.gameMode);
     });
-    const tableEntity = (side: MatchSide, part: 'visual' | 'collider') =>
-      this.world.requireSceneEntity(STICK_TABLE_NODE_IDS[side][part]);
-    this.tableEntities = {
-      host: {
-        visual: tableEntity('host', 'visual'),
-        collider: tableEntity('host', 'collider'),
-      },
-      guest: {
-        visual: tableEntity('guest', 'visual'),
-        collider: tableEntity('guest', 'collider'),
-      },
-    };
-    // The near stick table as authored: the base both tables shift from.
-    for (const part of ['visual', 'collider'] as const) {
-      const object = this.tableEntities.host[part].object3D;
-      if (object) {
-        this.nearTableBase[part] = localPoseOf(object);
-      }
-    }
-    // The stick tables follow the thrower to the advantage line
-    // (core/match.ts stickTableShiftZ) — for players and spectators.
-    this.cleanupFuncs.push(
-      gameEvents.on('MatchStateChanged', ({ state }) => {
-        this.onMatchState(state);
-      }),
-      gameEvents.on('BroadcastMatchState', ({ state }) => {
-        this.onMatchState(state);
-      }),
-      gameEvents.on('MultiplayerPeerDisconnected', () => {
-        this.onMatchState(null);
-      }),
-    );
     const startupMode = settingsState.current.gameMode;
     if (courtPresetForMode(startupMode) !== defaultCourtPreset) {
       // The scene JSON is authored for the default preset; anything
@@ -195,9 +138,6 @@ export class CourtLayoutSystem extends createSystem({}) {
   }
 
   update(): void {
-    if (this.tableShiftPending) {
-      this.applyTableShifts();
-    }
     if (this.pendingStartupMode === null) {
       return;
     }
@@ -262,10 +202,6 @@ export class CourtLayoutSystem extends createSystem({}) {
 
     this.resizeCourtLines(preset, lineMeshes);
     this.placeFarRack(farBaselineZ(preset));
-    // The far rack was just laid out unshifted: re-apply the shifts.
-    this.tableShift.host = Number.NaN;
-    this.tableShift.guest = Number.NaN;
-    this.applyTableShifts();
     this.menuSystem.applyCourtLayout(homePoses);
     log('info', 'state', 'court laid out', {
       gameMode,
@@ -295,68 +231,6 @@ export class CourtLayoutSystem extends createSystem({}) {
       } else {
         far.object3D.position.set(...pose.position);
         far.object3D.quaternion.set(...pose.quaternion);
-      }
-    }
-  }
-
-  /** A new match state: the tables move only on a new turn or a fresh
-   * match (see shiftTurnKey). */
-  private onMatchState(state: MatchState | null): void {
-    const key =
-      state === null
-        ? 'none'
-        : isFreshMatch(state)
-          ? 'fresh'
-          : state.currentTurn;
-    if (key === this.shiftTurnKey) {
-      return;
-    }
-    this.shiftTurnKey = key;
-    this.matchState = state;
-    this.applyTableShifts();
-  }
-
-  /** Moves each side's stick table (visual + static collider) to its
-   * baseline spot plus its shift; only when a shift changes. */
-  private applyTableShifts(): void {
-    this.tableShiftPending = false;
-    const halves = activeCourtHalves();
-    const farZ = activeFarBaselineZ();
-    for (const side of ['host', 'guest'] as const) {
-      const shift = this.matchState
-        ? stickTableShiftZ(this.matchState, side, halves)
-        : 0;
-      if (shift === this.tableShift[side]) {
-        continue;
-      }
-      const collider = this.tableEntities[side].collider;
-      if (!collider.getValue(PhysicsBody, '_engineBody')) {
-        this.tableShiftPending = true; // body not built yet: next frame
-        continue;
-      }
-      this.tableShift[side] = shift;
-      for (const part of ['visual', 'collider'] as const) {
-        const near = this.nearTableBase[part];
-        const entity = this.tableEntities[side][part];
-        if (!near || !entity.object3D) {
-          continue;
-        }
-        const base =
-          side === 'host' ? near : mirrorPoseToFarBaseline(near, farZ);
-        const position: Vec3 = [
-          base.position[0],
-          base.position[1],
-          base.position[2] + shift,
-        ];
-        if (entity.hasComponent(PhysicsBody)) {
-          this.physicsSystem.setBodyTransform(entity, {
-            position,
-            quaternion: base.quaternion,
-          });
-        } else {
-          entity.object3D.position.set(...position);
-          entity.object3D.quaternion.set(...base.quaternion);
-        }
       }
     }
   }

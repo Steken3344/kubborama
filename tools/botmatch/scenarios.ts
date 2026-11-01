@@ -129,12 +129,6 @@ export const SCENARIOS: Scenario[] = [
         message: 'advantage line',
         test: (d) => d['side'] === 'host',
       },
-      {
-        label: 'A teleported onto it',
-        role: 'host',
-        message: 'stand line',
-        test: (d) => d['onAdvantageLine'] === true,
-      },
     ],
   },
   {

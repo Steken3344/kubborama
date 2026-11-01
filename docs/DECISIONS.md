@@ -5808,3 +5808,16 @@ clears them. Scene JSON boxes are checked against the data
 (server/boundary.test.ts). Everything else in the run already held:
 put-backs and slow drops are not throws, out-of-turn / kubb / re-throws
 are refused, wild sticks are re-racked, rejoin keeps the seat.
+
+## 2026-11-01 — Tables never move; no teleport to the advantage line
+
+Erik: the stick table and the kubb table must always stand in the same
+place (at each baseline). Asked how a player then reaches the sticks
+when allowed to throw from the advantage line, he chose "no teleport"
+over teleport-after-grip and teleport-as-today. So `stickTableShiftZ`
+and the table moving on server, P2P host and clients are gone, and
+AdvantageLineSystem only shows the line. The foot-fault line stays the
+advantage line while it applies (standingLineZ), so walking or sliding
+up to it with the thumbstick is allowed but never required. Supersedes
+the 2026-10-31 teleport and the earlier 2026-11-01 "table follows the
+thrower" entries.

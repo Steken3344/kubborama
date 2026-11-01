@@ -1,12 +1,9 @@
 import { createSystem, Visibility } from '@iwsdk/core';
 import type { Entity, Mesh, MeshStandardMaterial } from '@iwsdk/core';
 import { gameEvents } from '../core/events.js';
-import { advantageLineZ, isFinished, standingLineZ } from '../core/match.js';
-import type { MatchSide, MatchState } from '../core/match.js';
-import { standingPose } from '../core/presence.js';
-import { placePlayer } from '../playerPlacement.js';
+import { advantageLineZ, isFinished } from '../core/match.js';
 import { gateLog } from '../debug/gateLog.js';
-import { activeCourtHalves, activeFarBaselineZ } from './activeCourt.js';
+import { activeCourtHalves } from './activeCourt.js';
 
 /** Distinct from the white court lines, so the line reads as "you may
  * stand here" rather than as part of the court. */
@@ -18,24 +15,19 @@ const ADVANTAGE_LINE_COLOR = '#f2c14e';
  * across the court at the one closest to the centre shows where they
  * may throw from. Shown, not enforced. A clone of the centre court line
  * (created at init, so no scene JSON is involved), placed on every
- * MatchStateChanged; hidden outside a match. MultiplayerSystem moves the
- * thrower's sticks onto the same line.
+ * MatchStateChanged; hidden outside a match.
  *
- * Erik, 2026-10-31: the thrower is also TELEPORTED onto its advantage
- * line when its throwing phase starts (a small room may not allow
- * walking up to it), and back to its baseline when the turn ends
- * (core/match.ts standingLineZ). Only CHANGES of the line move the
- * player, so thumbstick adjustments in between are kept. Baseline
- * placement on joining stays with ServerLinkSystem / MultiplayerSystem
- * — this only moves the rig onto a line and back, so a side not yet
- * resolved can never be misplaced.
+ * Erik, 2026-11-01: the thrower is NOT teleported onto the line (it was
+ * from 2026-10-31): the stick and kubb tables always stand at the
+ * baseline, so the player stays by them; whoever wants to throw from the
+ * line walks up to it in the room. The server's foot-fault line is the
+ * advantage line meanwhile (core/match.ts standingLineZ), so a throw
+ * from anywhere behind it counts.
  */
 export class AdvantageLineSystem extends createSystem({}) {
   private source!: Mesh;
   private line!: Entity;
   private shownZ: number | null = null;
-  /** The advantage line the rig was teleported onto, if any. */
-  private onLineZ: number | null = null;
 
   init(): void {
     this.source = this.world.requireSceneEntity('court-line-center')
@@ -52,52 +44,11 @@ export class AdvantageLineSystem extends createSystem({}) {
           ? null
           : advantageLineZ(e.state, e.state.currentTurn, activeCourtHalves());
         this.show(z, e.state.currentTurn);
-        this.stand(e.state, e.mySide);
-      }),
-      // A court switch re-places the rig at the new baseline
-      // (ServerLinkSystem): any line from the old court is gone.
-      gameEvents.on('GameModeChanged', () => {
-        this.onLineZ = null;
       }),
       gameEvents.on('MultiplayerPeerDisconnected', () => {
-        // The room emptied: whoever owns the seat places the rig now.
         this.show(null, null);
-        this.onLineZ = null;
       }),
     );
-  }
-
-  /** Onto my advantage line while I throw at field kubbs on my half;
-   * back to my baseline otherwise. */
-  private stand(state: MatchState, side: MatchSide): void {
-    const halves = activeCourtHalves();
-    const baselineZ =
-      side === 'host' ? halves.nearBaselineZ : halves.farBaselineZ;
-    const targetZ = standingLineZ(state, side, halves);
-    if (targetZ === baselineZ) {
-      if (this.onLineZ !== null) {
-        this.onLineZ = null;
-        this.teleport(side, null); // my turn ended: back to the baseline
-      }
-      return;
-    }
-    if (targetZ !== this.onLineZ) {
-      this.onLineZ = targetZ;
-      this.teleport(side, targetZ);
-    }
-  }
-
-  private teleport(side: MatchSide, lineZ: number | null): void {
-    const pose =
-      lineZ === null
-        ? standingPose(side, activeFarBaselineZ())
-        : standingPose(side, activeFarBaselineZ(), lineZ);
-    placePlayer(this.world, this.player, pose);
-    gateLog('stand line', {
-      side,
-      z: pose.position[2],
-      onAdvantageLine: lineZ !== null,
-    });
   }
 
   private show(z: number | null, side: string | null): void {
