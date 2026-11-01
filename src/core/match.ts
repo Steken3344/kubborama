@@ -430,3 +430,26 @@ export function standingLineZ(
   }
   return advantageLineZ(state, side, halves) ?? baselineZ;
 }
+
+/** A match as "Ny runda" leaves it: host to throw, nothing felled,
+ * every kubb home. Scenarios start only once the server says so. */
+export function isFreshMatch(state: MatchState | null): boolean {
+  return (
+    state !== null &&
+    state.winner === null &&
+    state.currentTurn === 'host' &&
+    state.phase === 'throwing' &&
+    state.felledThisTurn.length === 0 &&
+    state.inkastQueue.length === 0 &&
+    state.fieldKubbs.length === 0 &&
+    state.baselineKubbs.host.length === state.baselineKubbs.guest.length
+  );
+}
+
+/** A match that has started and is not decided — what the time-limit
+ * button is locked during (Erik, 2026-11-01: no shortening the limit
+ * when ahead). Before the first felled kubb, and once decided, it may
+ * change. */
+export function isMatchUnderway(state: MatchState | null): boolean {
+  return state !== null && !isFinished(state) && !isFreshMatch(state);
+}

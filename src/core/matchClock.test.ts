@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { initialMatchState, withTimeUp, withTurnAdvanced } from './match.js';
+import {
+  initialMatchState,
+  isMatchUnderway,
+  withTimeUp,
+  withTurnAdvanced,
+} from './match.js';
 import type { MatchState } from './match.js';
 import { clockText, remainingS } from './matchClock.js';
 
@@ -84,5 +89,17 @@ describe('match clock', () => {
     expect(clockText(1200)).toBe('20:00');
     expect(clockText(65.4)).toBe('1:06');
     expect(clockText(0)).toBe('0:00');
+  });
+});
+
+describe('isMatchUnderway (time-limit lock)', () => {
+  it('is false before anything happened, true mid-match, false once decided', () => {
+    expect(isMatchUnderway(null)).toBe(false);
+    expect(isMatchUnderway(initialMatchState())).toBe(false);
+    const guestTurn = withTurnAdvanced(initialMatchState());
+    expect(isMatchUnderway(guestTurn)).toBe(true);
+    expect(
+      isMatchUnderway({ ...guestTurn, winner: 'host', endReason: 'timeLimit' }),
+    ).toBe(false);
   });
 });

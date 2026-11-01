@@ -1,5 +1,7 @@
 import type { CourtHalves } from './inkast.js';
 import { otherSide, standingLineZ } from './match.js';
+
+export { isFreshMatch } from './match.js';
 import type { MatchSide, MatchState } from './match.js';
 import { buildPresenceMessage } from './presence.js';
 import type { Pose, PresenceMessage } from './presence.js';
@@ -135,21 +137,6 @@ export function jitter(target: Vec3, rng: () => number, spreadM: number): Vec3 {
     target[1],
     target[2] + r * Math.sin(angleRad),
   ];
-}
-
-/** A match as "Ny runda" leaves it: host to throw, nothing felled,
- * every kubb home. Scenarios start only once the server says so. */
-export function isFreshMatch(state: MatchState | null): boolean {
-  return (
-    state !== null &&
-    state.winner === null &&
-    state.currentTurn === 'host' &&
-    state.phase === 'throwing' &&
-    state.felledThisTurn.length === 0 &&
-    state.inkastQueue.length === 0 &&
-    state.fieldKubbs.length === 0 &&
-    state.baselineKubbs.host.length === state.baselineKubbs.guest.length
-  );
 }
 
 /** Behind the line, as a player stands. */

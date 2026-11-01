@@ -5634,7 +5634,9 @@ Erik approved all three ideas from the 20-match series.
   lifts time-up; match time always counts, so switching the limit off
   and on keeps it. The clock stops once the match is decided. Protocol
   bumped to v4 (an old client would drop a `timeLimit` result).
-- Accepted as is: either player may change the time limit mid-match
-  (two people in the same garden — no lock, like "Ny runda"), and the
-  bot keeps playing through its opponent's 60 s rejoin grace (nothing
+- Time limit locked mid-match (Erik, 2026-11-01, "kör på"): it may
+  change before the first felled kubb or turn change
+  (core/match.ts isMatchUnderway) and once the match is decided; the
+  server refuses it otherwise and the button says "(låst under match)".
+  Accepted as is: the bot keeps playing through its opponent's 60 s rejoin grace (nothing
   is recorded against a bot).

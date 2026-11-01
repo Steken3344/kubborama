@@ -22,6 +22,8 @@ import { BOT_LEVEL_KEYS } from '../botLevelKeys.js';
 import { roomState } from '../roomState.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { accuracy } from '../core/stats.js';
+import { isMatchUnderway } from '../core/match.js';
+import type { MatchState } from '../core/match.js';
 import { gameEvents } from '../core/events.js';
 import type { GameEvents } from '../core/events.js';
 import { matchActivity } from '../matchActivityState.js';
@@ -98,6 +100,8 @@ export class MenuSystem extends createSystem({
   private activeTab: TabId = 'main';
   private currentTimeS = 0;
   private uiSfxRng = createRng(UI_SFX_SEED);
+  private matchState: MatchState | null = null;
+  private timeLimitLocked = false;
 
   init(): void {
     const grabSystem = this.world.getSystem(GrabSystem);
@@ -187,6 +191,9 @@ export class MenuSystem extends createSystem({
     // Room settings (2026-11-01): each press asks the server for the
     // next choice; the label follows the server's roomSettings reply.
     this.wireButton('time-limit-button', () => {
+      if (isMatchUnderway(this.matchState)) {
+        return; // locked mid-match; the server refuses it too
+      }
       const minutes = nextInCycle(
         match.timeLimitChoicesMin,
         roomState.timeLimitMin,
@@ -320,6 +327,20 @@ export class MenuSystem extends createSystem({
       gameEvents.on('RoomSettings', () => {
         this.refreshLabels();
       }),
+      // The time-limit lock follows the match.
+      gameEvents.on('MatchStateChanged', ({ state }) => {
+        const locked = isMatchUnderway(state);
+        this.matchState = state;
+        if (locked !== this.timeLimitLocked) {
+          this.timeLimitLocked = locked;
+          this.refreshLabels();
+        }
+      }),
+      gameEvents.on('MultiplayerPeerDisconnected', () => {
+        this.matchState = null;
+        this.timeLimitLocked = false;
+        this.refreshLabels();
+      }),
       // MP3a: MatchRulesSystem (auto-restart, room emptied) and a
       // guest's relayed "Ny runda" all ask for a full reset here.
       gameEvents.on('ResetRequested', () => {
@@ -411,9 +432,10 @@ export class MenuSystem extends createSystem({
       .setProperties({ display: server ? 'flex' : 'none' });
     this.menuPanel.requireElementById('time-limit-label').setProperties({
       text:
-        roomState.timeLimitMin === 0
+        (roomState.timeLimitMin === 0
           ? t('timeLimitOff')
-          : t('timeLimitMinutes', { n: roomState.timeLimitMin }),
+          : t('timeLimitMinutes', { n: roomState.timeLimitMin })) +
+        (this.timeLimitLocked ? t('lockedDuringMatch') : ''),
     });
     this.menuPanel.requireElementById('opponent-label').setProperties({
       text:

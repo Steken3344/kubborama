@@ -798,3 +798,41 @@ describe('GameServer — bot seat lifecycle (review, 2026-11-01)', () => {
     );
   });
 });
+
+describe('GameServer — time limit locked mid-match (2026-11-01)', () => {
+  it('refuses a new limit once the match is underway', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const ha = server.connect(a.connection);
+    await ha.receive(join());
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    await ha.receive({ type: 'setBot', level: 'easy' });
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    // Fresh match: still allowed.
+    expect(await ha.receive({ type: 'setTimeLimit', minutes: 30 })).toBe(true);
+    for (let i = 0; i < 6; i++) {
+      await ha.receive({
+        type: 'throw',
+        pieceId: `stick-${String(i)}`,
+        position: [0.2, 1, -0.3],
+        quaternion: [0, 0, 0, 1],
+        linearVelocity: [4, 2, -1],
+        angularVelocity: [0, 0, 0],
+      });
+      clock.now += 1000;
+      for (let t = 0; t < 30; t++) server.tick();
+    }
+    for (
+      let t = 0;
+      t < 60 * 20 &&
+      !a.received.some(
+        (m) => m.type === 'match' && m.state?.currentTurn === 'guest',
+      );
+      t++
+    ) {
+      server.tick();
+    }
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    expect(await ha.receive({ type: 'setTimeLimit', minutes: 20 })).toBe(false);
+  });
+});

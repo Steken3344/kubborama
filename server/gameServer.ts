@@ -19,6 +19,7 @@ import type { CourtHalves } from '../src/core/inkast.js';
 import { createRng } from '../src/core/rng.js';
 import type { Vec3 } from '../src/core/vec3.js';
 import { shownAvatarColors } from '../src/core/avatarColors.js';
+import { isMatchUnderway } from '../src/core/match.js';
 import type { MatchSide, MatchState } from '../src/core/match.js';
 import { NETWORKED_PIECE_IDS } from '../src/core/pieceSync.js';
 import {
@@ -708,9 +709,16 @@ export class GameServer {
   private changeTimeLimit(minutes: number, by: MatchSide): boolean {
     if (
       !matchTuning.timeLimitChoicesMin.includes(minutes) ||
-      minutes === this.timeLimitMin ||
-      !this.roomActionAllowed('settings')
+      minutes === this.timeLimitMin
     ) {
+      return false;
+    }
+    if (isMatchUnderway(this.matchState)) {
+      // Locked mid-match: no shortening the limit while ahead.
+      this.log('info', 'gate', 'time limit locked (match underway)', { by });
+      return false;
+    }
+    if (!this.roomActionAllowed('settings')) {
       return false;
     }
     this.timeLimitMin = minutes;
