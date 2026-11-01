@@ -30,6 +30,7 @@ import spectatorData from './data/spectator.json' with { type: 'json' };
 import staticBatchData from './data/static-batch.json' with { type: 'json' };
 import confettiData from './data/confetti.json' with { type: 'json' };
 import botData from './data/bot.json' with { type: 'json' };
+import stickGripData from './data/stick-grip.json' with { type: 'json' };
 import profileNamesData from './data/profile-names.json' with { type: 'json' };
 
 export const courtPresets = courtPresetsData.presets;
@@ -92,6 +93,8 @@ export const footFaultReachM = locomotionData.footFaultReachM;
 export const inkast = inkastData;
 /** The backyard inkast aid: the target half outlined on the grass. */
 export const inkastGuide = inkastGuideData;
+/** How a held stick sits in the hand (core/stickGrip.ts). */
+export const stickGrip = stickGripData;
 export const stickRack = stickRackData;
 export const multiplayer = multiplayerData;
 /** MP3a match rules: king-decision grace and the auto-restart delay. */

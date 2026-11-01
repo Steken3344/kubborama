@@ -11,6 +11,7 @@ import { SpectatorSystem } from './systems/spectator.js';
 import { StaticBatchSystem } from './systems/staticBatch.js';
 import { ConfettiSystem } from './systems/confetti.js';
 import { InkastGuideSystem } from './systems/inkastGuide.js';
+import { StickGripSystem } from './systems/stickGrip.js';
 import { CourtLayoutSystem } from './systems/courtLayout.js';
 import { CourtLinesSystem } from './systems/courtLines.js';
 import { GateProbeSystem } from './systems/gateProbe.js';
@@ -81,6 +82,9 @@ void loadServerConfig()
     // systems/handoff.ts) — just runs slightly ahead of GrabSystem (-3)
     // so a release is visible as early in the frame as possible.
     world.registerSystem(HandoffSystem, { priority: -4 });
+    // A held stick sits in the hand by its end: after GrabSystem (-3),
+    // before PhysicsSystem (-2), which drives the held body to it.
+    world.registerSystem(StickGripSystem, { priority: -2.5 });
     // StatsSystem next: MenuSystem's stats tab and HudSystem both read
     // StatsSystem.stats, so it must be registered (and its RoundEnded
     // subscription attached) before either of them.

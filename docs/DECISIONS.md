@@ -5734,3 +5734,16 @@ and "liten ljudeffekt när man fäller en kubb, något roligt".
   isThrowRelease) is no throw — the headset sends nothing and redraws
   the stick at its rack (server pose; serverless: its home pose), and
   the server refuses such a release anyway. Sticks only for now.
+
+## 2026-11-01 — A held stick sits in the hand by its end
+
+Erik: picking a stick up "svävar och känns inte som man håller i den";
+of three options he chose "the end in the hand". IWSDK's OneHandGrabbable
+has no snap/attach option — its handle keeps the offset the object had
+when grabbed. StickGripSystem (priority −2.5: after GrabSystem −3,
+before PhysicsSystem −2, which drives a Grabbed body toward the object's
+pose with SetTargetQTransform) lays the stick into the grip every frame:
+one end 4 cm inside the fist, the shaft along the controller's −Z,
+pitched 20° down (src/data/stick-grip.json, core/stickGrip.ts). The
+throw maths is unchanged (it samples the grip; the release position is
+this pose).
