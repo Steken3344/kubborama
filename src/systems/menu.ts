@@ -547,6 +547,26 @@ export class MenuSystem extends createSystem({
               )
               .join('  '),
     });
+    // Against the bot, per level (2026-11-01), easiest first.
+    const botRecord = this.statsSystem.botRecord;
+    const played = BOT_LEVELS.filter((level) => botRecord[level]);
+    this.menuPanel.requireElementById('stats-vs-bot').setProperties({
+      display: isServerModeOn() ? 'flex' : 'none',
+      text:
+        played.length === 0
+          ? t('statsVsBotEmpty')
+          : t('statsVsBot', {
+              results: played
+                .map((level) =>
+                  t('statsVsBotLevel', {
+                    level: t(BOT_LEVEL_KEYS[level]),
+                    won: botRecord[level]?.won ?? 0,
+                    lost: botRecord[level]?.lost ?? 0,
+                  }),
+                )
+                .join(', '),
+            }),
+    });
   }
 
   update(_delta: number, time: number): void {

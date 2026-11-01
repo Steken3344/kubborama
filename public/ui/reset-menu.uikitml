@@ -191,5 +191,8 @@
     <span id="stats-head-to-head" class="stat-line" style="display: none"
       >Mot andra: inga matcher än</span
     >
+    <span id="stats-vs-bot" class="stat-line" style="display: none"
+      >Mot boten: inga matcher än</span
+    >
   </div>
 </Panel>

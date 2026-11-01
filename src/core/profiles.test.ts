@@ -7,6 +7,7 @@ import {
   MAX_HEAD_TO_HEAD,
   parseProfileStore,
   profileKeyFor,
+  recordBotResult,
   recordMatchResult,
   recordRoundFor,
   setProfileColor,
@@ -125,5 +126,38 @@ describe('profile store', () => {
     let store = claimProfile(emptyProfileStore(), 'a', 'Erik');
     store = recordRoundFor(store, 'name:Erik', round);
     expect(parseProfileStore(JSON.stringify(store))).toEqual(store);
+  });
+});
+
+describe('results against the bot (2026-11-01)', () => {
+  it('counts wins and losses per level in the person’s profile', () => {
+    let store = claimProfile(emptyProfileStore(), 'dev-1', 'Kalle');
+    const key = profileKeyFor(store, 'dev-1').key;
+    store = recordBotResult(store, key, 'hard', false);
+    store = recordBotResult(store, key, 'hard', true);
+    store = recordBotResult(store, key, 'easy', true);
+    expect(clientProfile(store, key).botRecord).toEqual({
+      hard: { won: 1, lost: 1 },
+      easy: { won: 1, lost: 0 },
+    });
+    expect(clientProfile(store, key).headToHead).toEqual([]);
+  });
+
+  it('a profile saved before the bot record existed still loads', () => {
+    const old = {
+      version: 1,
+      profiles: {
+        'name:Kalle': {
+          name: 'Kalle',
+          colorIndex: 2,
+          stats: clientProfile(emptyProfileStore(), 'x').stats,
+          headToHead: {},
+        },
+      },
+      devices: { 'dev-1': 'name:Kalle' },
+    };
+    const store = parseProfileStore(JSON.stringify(old));
+    expect(store.profiles['name:Kalle']?.colorIndex).toBe(2);
+    expect(clientProfile(store, 'name:Kalle').botRecord).toEqual({});
   });
 });

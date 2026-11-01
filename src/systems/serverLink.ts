@@ -425,6 +425,7 @@ export class ServerLinkSystem extends createSystem({}) {
           colorIndex: message.colorIndex,
           stats: message.stats,
           headToHead: message.headToHead,
+          botRecord: message.botRecord ?? {},
         });
         return;
       case 'colors':

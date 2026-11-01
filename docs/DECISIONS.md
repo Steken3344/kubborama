@@ -5654,3 +5654,23 @@ airborne it keeps its flight values, so throws feel the same. Roll after
 touchdown: underhand 0.59 → 0.25 m, sideways 4.6 → 0.25 m
 (server/stickRoll.test.ts asserts < 0.35 m). Server (MatchHost) and the
 serverless client (StickGroundDampingSystem) share the rule.
+
+## 2026-11-01 — Bot polish: pause when away, a record per level, fallible inkast
+
+Erik approved ("kör 1-6") after the bot opponent shipped.
+
+- **A player away pauses the match:** while a person's seat waits out
+  its rejoin grace, the match clock stands still (MatchHost
+  `setClockPaused`) and the bot does not throw — the time limit can no
+  longer run out, nor the bot win, against an empty seat.
+- **Results against the bot:** each profile keeps `botRecord`, wins and
+  losses per level (`.default({})`, so old profile files still load),
+  sent with the profile and shown in Statistik ("Mot boten: svår 1-3").
+  Head-to-head stays between people.
+- **The bot's inkast can miss:** its toss spread is the court-sized one
+  times a per-level factor (easy 2.0, medium 1.4, hard 1.0 —
+  src/data/bot.json). Above 1 a toss can land out and gets its second
+  try, as a weaker player's does; hard still never misses.
+- **Bot tools find the dev server:** `--url` defaults to the running
+  session's URL from `npx iwsdk dev status` (its port moved to 8083
+  twice today).

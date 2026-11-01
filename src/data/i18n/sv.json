@@ -83,5 +83,8 @@
   "clockTimeUp": "Sista varvet",
   "matchEndTimeLimit": "Tiden ute, färst kvar",
   "spectatorClock": "{time} kvar",
-  "spectatorTimeUp": "Tiden är ute: sista varvet"
+  "spectatorTimeUp": "Tiden är ute: sista varvet",
+  "statsVsBot": "Mot boten: {results}",
+  "statsVsBotEmpty": "Mot boten: inga matcher än",
+  "statsVsBotLevel": "{level} {won}-{lost}"
 }

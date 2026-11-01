@@ -1,8 +1,17 @@
 {
   "levels": {
-    "easy": { "aimSpreadM": 0.6 },
-    "medium": { "aimSpreadM": 0.3 },
-    "hard": { "aimSpreadM": 0.15 }
+    "easy": {
+      "aimSpreadM": 0.6,
+      "inkastSpreadFactor": 2.0
+    },
+    "medium": {
+      "aimSpreadM": 0.3,
+      "inkastSpreadFactor": 1.4
+    },
+    "hard": {
+      "aimSpreadM": 0.15,
+      "inkastSpreadFactor": 1.0
+    }
   },
   "turnStartDelayS": 2.5,
   "betweenSticksS": 2.5,

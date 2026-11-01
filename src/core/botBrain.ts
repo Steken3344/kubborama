@@ -16,6 +16,9 @@ import type { Vec3 } from './vec3.js';
 export interface BotTuning {
   /** How far the aim strays (m): the level (src/data/bot.json). */
   aimSpreadM: number;
+  /** The inkast's spread as a multiple of the court-sized one: above 1
+   * a toss can land out, as a weaker player's does (1 = never). */
+  inkastSpreadFactor: number;
   turnStartDelayS: number;
   betweenSticksS: number;
   afterTossS: number;
@@ -123,7 +126,11 @@ export function botStep(
     }
     const aimed = {
       ...plan,
-      target: jitter(plan.target, rng, inkastSpreadM(view.halves, t)),
+      target: jitter(
+        plan.target,
+        rng,
+        inkastSpreadM(view.halves, t) * t.inkastSpreadFactor,
+      ),
     };
     return {
       memory: {

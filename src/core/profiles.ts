@@ -1,3 +1,5 @@
+import { botLevelSchema } from './botLevel.js';
+import type { BotLevelName } from './botLevel.js';
 import { z } from 'zod';
 import { MAX_COLOR_INDEX } from './presence.js';
 import { emptyStats, recordRound, statsSchema } from './stats.js';
@@ -21,12 +23,21 @@ const headToHeadSchema = z.object({
   lost: z.number().int().nonnegative(),
 });
 
+/** Results against the bot, per level (2026-11-01). */
+export const botRecordSchema = z.partialRecord(
+  botLevelSchema,
+  headToHeadSchema,
+);
+export type BotRecord = z.infer<typeof botRecordSchema>;
+
 const profileSchema = z.object({
   name: z.string().nullable(),
   colorIndex: z.number().int().min(0).max(MAX_COLOR_INDEX),
   stats: statsSchema,
   /** By the opponent's profile key. */
   headToHead: z.record(z.string(), headToHeadSchema),
+  /** `.default` so profiles saved before it existed still load. */
+  botRecord: botRecordSchema.default({}),
 });
 type Profile = z.infer<typeof profileSchema>;
 
@@ -44,6 +55,7 @@ export interface ClientProfile {
   colorIndex: number;
   stats: Stats;
   headToHead: Array<{ opponentName: string | null; won: number; lost: number }>;
+  botRecord: BotRecord;
 }
 
 export function emptyProfileStore(): ProfileStore {
@@ -65,7 +77,13 @@ function keyOf(deviceId: string, name: string | null): string {
 }
 
 function newProfile(name: string | null, colorIndex = 0): Profile {
-  return { name, colorIndex, stats: emptyStats(), headToHead: {} };
+  return {
+    name,
+    colorIndex,
+    stats: emptyStats(),
+    headToHead: {},
+    botRecord: {},
+  };
 }
 
 function withProfile(
@@ -190,6 +208,27 @@ export function recordMatchResult(
   );
 }
 
+/** A finished match against the bot: a win or a loss at its level. */
+export function recordBotResult(
+  store: ProfileStore,
+  key: string,
+  level: BotLevelName,
+  won: boolean,
+): ProfileStore {
+  const profile = profileAt(store, key);
+  const before = profile.botRecord[level] ?? { won: 0, lost: 0 };
+  return withProfile(store, key, {
+    ...profile,
+    botRecord: {
+      ...profile.botRecord,
+      [level]: {
+        won: before.won + (won ? 1 : 0),
+        lost: before.lost + (won ? 0 : 1),
+      },
+    },
+  });
+}
+
 export function clientProfile(store: ProfileStore, key: string): ClientProfile {
   const profile = profileAt(store, key);
   return {
@@ -204,5 +243,6 @@ export function clientProfile(store: ProfileStore, key: string): ClientProfile {
         won: r.won,
         lost: r.lost,
       })),
+    botRecord: profile.botRecord,
   };
 }

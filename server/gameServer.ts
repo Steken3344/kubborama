@@ -27,6 +27,7 @@ import {
   clientProfile,
   isKnownDevice,
   profileKeyFor,
+  recordBotResult,
   recordMatchResult,
   recordRoundFor,
   setProfileColor,
@@ -186,6 +187,7 @@ export class GameServer {
       return;
     }
     this.world.step(1 / TICK_HZ);
+    this.host.setClockPaused(this.playerAway());
     this.host.tick(1 / TICK_HZ);
     this.tickCount += 1;
     this.tickBot();
@@ -603,10 +605,24 @@ export class GameServer {
       return;
     }
     if (winner.bot || loser.bot) {
-      // Head-to-head is between people; a bot match is practice for it.
+      // Head-to-head is between people; the bot has its own record, per
+      // level, in the person's profile.
       this.matchRecorded = true;
-      this.log('info', 'gate', 'bot match not recorded', {
+      const person = winner.bot ? loser : winner;
+      if (this.botLevel !== null && !person.bot) {
+        this.updateProfiles(
+          recordBotResult(
+            this.profiles,
+            person.profileKey,
+            this.botLevel,
+            person === winner,
+          ),
+        );
+        this.sendProfile(person);
+      }
+      this.log('info', 'gate', 'bot match recorded', {
         winner: state.winner,
+        level: this.botLevel,
       });
       return;
     }
@@ -775,6 +791,11 @@ export class GameServer {
     return true;
   }
 
+  /** A person's seat is held for a rejoin: the match waits for them. */
+  private playerAway(): boolean {
+    return this.seats.some((s) => !s.bot && s.connection === null);
+  }
+
   /** The court's halves, cached per court (read every tick). */
   private botHalves(): CourtHalves {
     if (this.halvesCache?.gameMode !== this.gameMode) {
@@ -826,8 +847,8 @@ export class GameServer {
       }
     }
     const state = this.matchState;
-    if (!state) {
-      return;
+    if (!state || this.playerAway()) {
+      return; // the bot waits for its opponent to come back
     }
     const myTurn = state.currentTurn === seat.side;
     this.botPositions.clear();

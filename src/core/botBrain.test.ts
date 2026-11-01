@@ -10,6 +10,7 @@ import type { Vec3 } from './vec3.js';
 const halves = courtHalves({ widthM: 5, lengthM: 8 });
 const tuning: BotTuning = {
   aimSpreadM: 0.3,
+  inkastSpreadFactor: 1,
   turnStartDelayS: 2,
   betweenSticksS: 1,
   afterTossS: 3,
@@ -123,5 +124,42 @@ describe('botStep', () => {
       1,
     );
     expect(inkastSpreadM(halves, tuning)).toBe(1.2);
+  });
+
+  it('a weaker level tosses some inkast kubbs out; the hardest never does', () => {
+    const outOf = (factor: number) => {
+      const rng = createRng(7);
+      let out = 0;
+      for (let i = 0; i < 200; i++) {
+        const inkast: MatchState = {
+          ...guestTurn,
+          phase: 'inkast',
+          inkastQueue: [{ kubbId: `kubb-${String(i % 10)}`, attempt: 1 }],
+        };
+        let step = botStep(
+          freshBotMemory(),
+          view(inkast, 0),
+          { ...tuning, inkastSpreadFactor: factor },
+          rng,
+        );
+        step = botStep(
+          step.memory,
+          view(inkast, 5),
+          { ...tuning, inkastSpreadFactor: factor },
+          rng,
+        );
+        const a = step.action;
+        if (!a) continue;
+        // The aim point: along the release direction to the middle of
+        // the host half (z = centre / 2), where the toss is aimed.
+        const aimZ = halves.centreZ / 2;
+        const x =
+          a.from[0] + (a.velocity[0] / a.velocity[2]) * (aimZ - a.from[2]);
+        if (Math.abs(x) > halves.halfWidthM) out += 1;
+      }
+      return out;
+    };
+    expect(outOf(1)).toBe(0);
+    expect(outOf(2.5)).toBeGreaterThan(0);
   });
 });

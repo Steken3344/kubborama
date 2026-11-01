@@ -115,7 +115,8 @@ machine in `.kubb-server/profiles.json` (not committed).
 "Motståndare" puts a bot in the empty seat — easy, medium or hard (how
 far its aim strays) — and it plays the other end of the court with an
 avatar of its own. Someone entering VR takes the seat back from the
-bot. Matches against the bot don't count in head-to-head. "Tidsgräns"
+bot. Results against the bot are kept per level under Statistik (not in
+head-to-head); if you drop out, the bot and the clock wait for you. "Tidsgräns"
 (off, 20, 30 or 45 min, set before the match gets going) limits a
 match: the HUD shows the time left;
 when it runs out the pair of turns is finished, and whoever has fewer

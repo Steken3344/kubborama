@@ -1,3 +1,4 @@
+import { devServerUrl } from './devUrl.js';
 import { bot as botTuning } from '../../src/config.js';
 import { inkastSpreadM } from '../../src/core/botBrain.js';
 import { spawn, spawnSync } from 'node:child_process';
@@ -33,7 +34,7 @@ const arg = (name: string, fallback: string): string => {
   const value = i > 0 ? process.argv[i + 1] : undefined;
   return value ?? fallback;
 };
-const BASE = arg('url', 'https://localhost:8081/');
+const BASE = arg('url', '') || devServerUrl();
 const WHICH = arg('scenario', 'all');
 /** Aim spread for aimed sticks (m) and its seed: 0 aims perfectly.
  * The default makes bot matches look like real ones — misses, near

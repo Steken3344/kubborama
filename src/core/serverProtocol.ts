@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { botLevelSchema } from './botLevel.js';
+import { botRecordSchema } from './profiles.js';
 import { matchStateSchema } from './matchSync.js';
 import { MAX_COLOR_INDEX, presenceMessageSchema } from './presence.js';
 import { MAX_HEAD_TO_HEAD } from './profiles.js';
@@ -47,9 +49,8 @@ const colorIndex = z.number().int().min(0).max(MAX_COLOR_INDEX);
 /** A profile name from the menu's fixed list (the server checks the
  * list itself) — short, never free text. */
 const profileName = z.string().min(1).max(24);
-/** The single-player bot's level (src/data/bot.json). */
-export const botLevelSchema = z.enum(['easy', 'medium', 'hard']);
-export type BotLevelName = z.infer<typeof botLevelSchema>;
+export { botLevelSchema } from './botLevel.js';
+export type { BotLevelName } from './botLevel.js';
 /** A room time limit in whole minutes; 0 = none (src/data/match.json). */
 const timeLimitMin = z.number().int().min(0).max(120);
 /** WebRTC voice signaling, relayed by the server between the two seats
@@ -188,6 +189,7 @@ const serverMessageSchema = z.discriminatedUnion('type', [
         }),
       )
       .max(MAX_HEAD_TO_HEAD),
+    botRecord: botRecordSchema.optional(),
   }),
   /** The colours the room SHOWS for each side — a clash already
    * resolved (core/avatarColors.ts); null for an empty seat. */

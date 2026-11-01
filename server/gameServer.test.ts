@@ -836,3 +836,30 @@ describe('GameServer — time limit locked mid-match (2026-11-01)', () => {
     expect(await ha.receive({ type: 'setTimeLimit', minutes: 20 })).toBe(false);
   });
 });
+
+describe('GameServer — a player away pauses the match (2026-11-01)', () => {
+  it('the clock stands still and the bot waits until the player is back', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const ha = server.connect(a.connection);
+    const joinA = join('simple', 'pause-test-aaaa');
+    await ha.receive(joinA);
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    await ha.receive({ type: 'setTimeLimit', minutes: 20 });
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    await ha.receive({ type: 'setBot', level: 'hard' });
+    for (let i = 0; i < 120; i++) server.tick();
+    const remaining = (c: ReturnType<typeof fakeClient>) => {
+      const last = c.received.filter((m) => m.type === 'clock').at(-1);
+      return last?.type === 'clock' ? last.remainingS : NaN;
+    };
+    const before = remaining(a);
+    ha.close();
+    for (let i = 0; i < 600; i++) server.tick(); // 10 s away
+    const back = fakeClient();
+    await server.connect(back.connection).receive(joinA);
+    for (let i = 0; i < 31; i++) server.tick();
+    // Only the half second after rejoining has run off the clock.
+    expect(remaining(back)).toBeGreaterThan(before - 2);
+  });
+});

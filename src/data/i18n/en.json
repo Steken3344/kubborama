@@ -83,5 +83,8 @@
   "clockTimeUp": "Last pair",
   "matchEndTimeLimit": "Time up, fewest left",
   "spectatorClock": "{time} left",
-  "spectatorTimeUp": "Time up: last pair of turns"
+  "spectatorTimeUp": "Time up: last pair of turns",
+  "statsVsBot": "Vs the bot: {results}",
+  "statsVsBotEmpty": "Vs the bot: no matches yet",
+  "statsVsBotLevel": "{level} {won}-{lost}"
 }

@@ -42,6 +42,8 @@ export class StatsSystem extends createSystem({}) {
   stats: Stats = emptyStats();
   /** Results against each opponent (server mode only). */
   headToHead: ClientProfile['headToHead'] = [];
+  /** Results against the bot per level (server mode only). */
+  botRecord: ClientProfile['botRecord'] = {};
   private unsubscribeRoundEnded?: () => void;
   private unsubscribeServerProfile?: () => void;
 
@@ -51,6 +53,7 @@ export class StatsSystem extends createSystem({}) {
     this.unsubscribeServerProfile = gameEvents.on('ServerProfile', (p) => {
       this.stats = p.stats;
       this.headToHead = p.headToHead;
+      this.botRecord = p.botRecord;
     });
     this.unsubscribeRoundEnded = gameEvents.on('RoundEnded', (e) => {
       if (viaServer) {

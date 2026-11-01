@@ -161,6 +161,8 @@ export class MatchHost {
    * counted only while a match is being played. */
   private timeLimitS: number | null = null;
   private matchElapsedS = 0;
+  /** A player is away (reconnecting): the match clock stands still. */
+  private clockPaused = false;
 
   constructor(
     private readonly world: MatchWorld,
@@ -304,6 +306,17 @@ export class MatchHost {
     }
   }
 
+  /** A seated player dropped out and may come back: stop the clock
+   * until they do, so the time limit never runs out on an empty seat. */
+  setClockPaused(paused: boolean): void {
+    if (paused !== this.clockPaused) {
+      this.clockPaused = paused;
+      this.out.gate(paused ? 'clock paused' : 'clock resumed', {
+        elapsedS: Math.round(this.matchElapsedS),
+      });
+    }
+  }
+
   /** Sticks still in the rack (the bot reads them, not its own count). */
   rackedSticks(): string[] {
     const racked: string[] = [];
@@ -362,7 +375,7 @@ export class MatchHost {
   }
 
   private tickClock(dtS: number): void {
-    if (!this.matchActive || isFinished(this.matchState)) {
+    if (!this.matchActive || this.clockPaused || isFinished(this.matchState)) {
       return;
     }
     this.matchElapsedS += dtS;
