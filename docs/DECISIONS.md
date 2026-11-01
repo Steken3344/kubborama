@@ -5900,3 +5900,16 @@ self-approved.
   past its aim point (a tossed kubb tumbles on): it piled up on the
   thrower's baseline instead of near the centre line. The bot now aims
   `inkastRollM` (0.9 m) short of where the kubbs should rest.
+
+## 2026-11-01 — The bot's inkast keeps clear of the king
+
+Erik's test of #240: the bot felled the king with its own inkast twice
+(kingFelledByInkast — he won both, but it looked like a bug). The bot
+tosses from the middle of its baseline, and since #240 aims 0.9 m short
+for the roll — which put the aim point at the centre line, where the
+king stands. The cluster now stays `inkastKingClearM` (0.8 m) beside
+the king's lane. The rule itself is unchanged.
+
+Also: an old cached tab logged 91 "dropped malformed server message"
+warnings for the new `impacts` message; a message type the build does
+not know is now ignored quietly (isUnknownServerMessageType).

@@ -281,6 +281,19 @@ export function parseClientMessage(data: unknown): ClientMessage | null {
   return result.success ? result.data : null;
 }
 
+/** Every server message type this build understands. A NEWER server
+ * may send more (additive messages keep the protocol version): those are
+ * ignored quietly, not reported as malformed (an old cached tab logged
+ * 91 warnings for `impacts`, 2026-11-01). */
+const KNOWN_SERVER_TYPES: ReadonlySet<string> = new Set(
+  serverMessageSchema.options.map((o) => o.shape.type.value),
+);
+
+export function isUnknownServerMessageType(data: unknown): boolean {
+  const type = (data as { type?: unknown } | null)?.type;
+  return typeof type === 'string' && !KNOWN_SERVER_TYPES.has(type);
+}
+
 export function parseServerMessage(data: unknown): ServerMessage | null {
   const result = serverMessageSchema.safeParse(data);
   return result.success ? result.data : null;

@@ -40,6 +40,8 @@ export interface BotTuning {
   inkastClusterSpreadM: number;
   /** How far a tossed kubb rolls on after landing (m). */
   inkastRollM: number;
+  /** The cluster stays this far beside the king's lane (m). */
+  inkastKingClearM: number;
 }
 
 export interface BotMemory {
@@ -148,6 +150,7 @@ export function botStep(
       policyView,
       t.inkastClusterInsideM,
       t.inkastLineMarginM,
+      t.inkastKingClearM,
     );
     // A tossed kubb tumbles on after landing (~0.9 m on grass, measured
     // against the server, 2026-11-01): aim that much short of where it

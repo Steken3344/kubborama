@@ -132,12 +132,14 @@ export function planInkast(view: PolicyView, legal: boolean): ThrowPlan | null {
  * felled several with one stick. With field kubbs already on the half it
  * aims at their middle; otherwise at the court's centre line, `insideM`
  * into the half — the closest the kubbs can lie to its own sticks. Kept
- * `marginM` inside every line of the half (kubbs roll after landing).
+ * `marginM` inside every line of the half (kubbs roll after landing),
+ * and at least `kingClearM` beside the king's lane (x = 0).
  */
 export function clusterInkastTarget(
   view: PolicyView,
   insideM: number,
   marginM: number,
+  kingClearM = 0,
 ): Vec3 {
   const other = otherSide(view.state.currentTurn);
   const { nearBaselineZ, centreZ, farBaselineZ, halfWidthM } = view.halves;
@@ -153,7 +155,12 @@ export function clusterInkastTarget(
       n += 1;
     }
   }
-  const x = n > 0 ? sumX / n : 0;
+  const meanX = n > 0 ? sumX / n : kingClearM;
+  // Beside the king's lane (Erik, 2026-11-01: the bot felled the king
+  // with its own inkast twice — the toss flies down the middle and
+  // comes down at the centre line, where the king stands).
+  const x =
+    Math.abs(meanX) < kingClearM ? (meanX < 0 ? -1 : 1) * kingClearM : meanX;
   const z = n > 0 ? sumZ / n : centreZ + into * insideM;
   const maxX = Math.max(0, halfWidthM - marginM);
   const nearLine = centreZ + into * marginM;

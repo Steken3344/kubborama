@@ -167,6 +167,20 @@ describe('clusterInkastTarget (Erik, 2026-11-01: "samla dem")', () => {
     expect(z).toBeCloseTo(-3.5);
   });
 
+  it('keeps the cluster beside the king (it felled him twice, 2026-11-01)', () => {
+    const [x] = clusterInkastTarget(view({ state: guestInkast }), 1, 0.5, 0.8);
+    expect(Math.abs(x)).toBeGreaterThanOrEqual(0.8);
+    const state = {
+      ...guestInkast,
+      fieldKubbs: [
+        { kubbId: 'kubb-0', half: 'host' as const, x: -0.2, z: -2.5 },
+      ],
+    };
+    expect(clusterInkastTarget(view({ state }), 1, 0.5, 0.8)[0]).toBeCloseTo(
+      -0.8,
+    );
+  });
+
   it('the host tosses into the guest half beyond the centre line', () => {
     const hostInkast = { ...initialMatchState(), phase: 'inkast' as const };
     expect(

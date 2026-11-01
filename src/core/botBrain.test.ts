@@ -23,6 +23,7 @@ const tuning: BotTuning = {
   inkastClusterInsideM: 0.8,
   inkastClusterSpreadM: 0.45,
   inkastRollM: 0.9,
+  inkastKingClearM: 0.8,
 };
 const positions = new Map<string, Vec3>([
   ['kubb-0', [-2, 0.15, -8]],

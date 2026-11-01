@@ -4,6 +4,7 @@ import {
   botLevelSchema,
   buildServerMessage,
   parseClientMessage,
+  isUnknownServerMessageType,
   parseServerMessage,
   SERVER_PROTOCOL_VERSION,
 } from './serverProtocol.js';
@@ -214,5 +215,20 @@ describe('room settings server messages (review, 2026-11-01)', () => {
         guest: { name: null, colorIndex: 4, bot: 'hard' },
       }),
     ).not.toBeNull();
+  });
+});
+
+describe('unknown server message types (2026-11-01)', () => {
+  it('tells a newer message type from a malformed known one', () => {
+    expect(isUnknownServerMessageType({ type: 'fromTheFuture', x: 1 })).toBe(
+      true,
+    );
+    expect(isUnknownServerMessageType({ type: 'snapshot', tick: 'bad' })).toBe(
+      false,
+    );
+    expect(isUnknownServerMessageType({ type: 'impacts', items: [] })).toBe(
+      false,
+    );
+    expect(isUnknownServerMessageType(null)).toBe(false);
   });
 });

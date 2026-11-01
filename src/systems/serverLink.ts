@@ -14,6 +14,7 @@ import { placePlayer } from '../playerPlacement.js';
 import { serverShownColors } from '../shownColors.js';
 import type { PresenceMessage } from '../core/presence.js';
 import {
+  isUnknownServerMessageType,
   parseServerMessage,
   SERVER_PATH,
   SERVER_PROTOCOL_VERSION,
@@ -266,6 +267,9 @@ export class ServerLinkSystem extends createSystem({}) {
       }
       const message = parseServerMessage(data);
       if (!message) {
+        if (isUnknownServerMessageType(data)) {
+          return; // from a newer server: not ours to read
+        }
         log('warn', 'net', 'dropped malformed server message', {});
         return;
       }
