@@ -20,7 +20,7 @@ import { readBodySpeed } from './bodySpeed.js';
 import type { Hand } from './hapticPlayer.js';
 import { pulseHaptic } from './hapticPlayer.js';
 import { playSfxVariant } from './playSfx.js';
-import { computeThrowRelease } from '../core/throwRelease.js';
+import { computeThrowRelease, isThrowRelease } from '../core/throwRelease.js';
 import { activePreset, percentToReal, tuningParams } from '../core/tuning.js';
 import { classifyThrow } from '../core/underhandClassifier.js';
 import { PoseSampler, releaseWindowFrames } from './poseSampler.js';
@@ -172,6 +172,16 @@ export class ThrowingSystem extends createSystem({
         angularMultiplier,
       });
 
+    if (!isThrowRelease(releaseSpeedMps, pieces.throw.minThrowSpeedMps)) {
+      // Put down or re-gripped, not thrown: back to the rack, uncounted.
+      entity.setValue(StickState, 'phase', StickPhase.Racked);
+      log('info', 'throw', 'stick put back', {
+        entityIndex: entity.index,
+        releaseSpeedMps,
+      });
+      gameEvents.emit('StickPutBack', { entityIndex: entity.index });
+      return;
+    }
     entity.addComponent(PhysicsManipulation, {
       force: [0, 0, 0],
       linearVelocity,

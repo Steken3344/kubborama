@@ -3,6 +3,7 @@ import {
   computeHandVelocity,
   computeReleaseVelocity,
   computeThrowRelease,
+  isThrowRelease,
 } from './throwRelease.js';
 import { fromAxisAngle } from './quat.js';
 import type { PoseSample } from './throwRelease.js';
@@ -256,5 +257,14 @@ describe('computeThrowRelease (gh#2: CI-testable seam for a full release, no MCP
     expect(withLeverArm.linearVelocity).not.toEqual(
       zeroLeverArm.linearVelocity,
     );
+  });
+});
+
+describe('isThrowRelease', () => {
+  it('a gentle put-down or re-grip is no throw; a lob is', () => {
+    expect(isThrowRelease(0.4, 1.5)).toBe(false);
+    expect(isThrowRelease(1.49, 1.5)).toBe(false);
+    expect(isThrowRelease(1.5, 1.5)).toBe(true);
+    expect(isThrowRelease(6, 1.5)).toBe(true);
   });
 });

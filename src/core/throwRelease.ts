@@ -147,3 +147,18 @@ export function computeThrowRelease({
     releaseSpeedMps: length(linearVelocity),
   };
 }
+
+/**
+ * Is a release a throw at all? (Erik, 2026-11-01: "om jag plockar upp en
+ * pinne och lägger tillbaka den … uppfattas som jag kastade".) Below
+ * `minThrowSpeedMps` the hand was putting the stick down or taking a
+ * new grip: it goes back to the rack and does not count. A real throw,
+ * even a short lob, leaves the hand at several m/s. Shared by the
+ * headset (ThrowingSystem) and the server (MatchHost), which decides.
+ */
+export function isThrowRelease(
+  releaseSpeedMps: number,
+  minThrowSpeedMps: number,
+): boolean {
+  return releaseSpeedMps >= minThrowSpeedMps;
+}

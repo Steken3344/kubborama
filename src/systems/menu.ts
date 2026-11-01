@@ -321,6 +321,19 @@ export class MenuSystem extends createSystem({
       gameEvents.on('RoomSettings', () => {
         this.refreshLabels();
       }),
+      // Serverless play: a put-back stick goes home to its rack (with the
+      // server, ServerLinkSystem redraws it at the server's rack pose).
+      gameEvents.on('StickPutBack', ({ entityIndex }) => {
+        if (isServerModeOn()) {
+          return;
+        }
+        const home = this.homePoses.get(entityIndex);
+        for (const entity of this.queries.sticks.entities) {
+          if (home && entity.index === entityIndex) {
+            this.physicsSystem.setBodyTransform(entity, home);
+          }
+        }
+      }),
       // The time-limit lock follows the match.
       gameEvents.on('MatchStateChanged', ({ state }) => {
         const locked = isMatchUnderway(state);

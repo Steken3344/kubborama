@@ -210,6 +210,11 @@ export interface GameEvents {
   ServerBotRequested: {
     level: BotLevelName | null;
   };
+  /** A stick let go too slowly to be a throw (core/throwRelease.ts
+   * isThrowRelease): it goes back to its rack and does not count. */
+  StickPutBack: {
+    entityIndex: number;
+  };
   /** The room's settings beside the court, as the server last sent them. */
   RoomSettings: {
     timeLimitMin: number;

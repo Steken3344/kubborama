@@ -516,3 +516,20 @@ describe('MatchHost — time limit changes (review, 2026-11-01)', () => {
     expect(h.mh.rackedSticks()).not.toContain('stick-0');
   });
 });
+
+describe('MatchHost — put down, not thrown (2026-11-01)', () => {
+  it('a slow release is refused: the stick stays racked and can be thrown after', () => {
+    const h = host();
+    h.mh.setPlayers(['host', 'guest']);
+    const putDown = h.mh.onThrow('host', {
+      pieceId: 'stick-0',
+      position: [0, 1, 0.3],
+      quaternion: UP,
+      linearVelocity: [0, -0.3, 0.2],
+      angularVelocity: [0, 0, 0],
+    });
+    expect(putDown).toBe(false);
+    expect(h.mh.rackedSticks()).toContain('stick-0');
+    expect(h.throwStick('host', 'stick-0')).toBe(true);
+  });
+});

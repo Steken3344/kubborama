@@ -5728,3 +5728,9 @@ and "liten ljudeffekt när man fäller en kubb, något roligt".
   choice for missing (fixed, core/cycle.ts, tested). The easy bot felled
   8 of 24 sticks (33 %) against Erik's 6: easy now aims with a 0.9 m
   spread (was 0.6; medium 0.3, hard 0.15 unchanged).
+- Put down ≠ thrown (Erik: picking a stick up and laying it back "is
+  taken as a throw"): a release slower than 1.5 m/s
+  (`pieces.throw.minThrowSpeedMps`, core/throwRelease.ts
+  isThrowRelease) is no throw — the headset sends nothing and redraws
+  the stick at its rack (server pose; serverless: its home pose), and
+  the server refuses such a release anyway. Sticks only for now.

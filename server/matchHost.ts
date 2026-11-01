@@ -32,6 +32,7 @@ import {
 } from '../src/core/match.js';
 import { remainingS } from '../src/core/matchClock.js';
 import { isStickOnGround } from '../src/core/groundDamping.js';
+import { isThrowRelease } from '../src/core/throwRelease.js';
 import type {
   MatchEffect,
   MatchPhase,
@@ -217,6 +218,12 @@ export class MatchHost {
   onThrow(side: MatchSide, input: ThrowInput): boolean {
     const stick = this.sticks.get(input.pieceId);
     if (stick) {
+      const [vx, vy, vz] = input.linearVelocity;
+      if (
+        !isThrowRelease(Math.hypot(vx, vy, vz), pieces.throw.minThrowSpeedMps)
+      ) {
+        return false; // put down, not thrown: it stays in the rack
+      }
       const onTurn = this.matchActive
         ? side === this.matchState.currentTurn &&
           this.matchState.phase === 'throwing' &&

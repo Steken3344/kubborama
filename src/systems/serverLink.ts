@@ -162,6 +162,13 @@ export class ServerLinkSystem extends createSystem({}) {
       gameEvents.on('ServerColorRequested', (e) => {
         this.send({ type: 'setColor', colorIndex: e.colorIndex });
       }),
+      // A put-back stick is redrawn at its server pose — the rack.
+      gameEvents.on('StickPutBack', (e) => {
+        const id = this.pieceIdByIndex.get(e.entityIndex);
+        if (id) {
+          this.lastApplied.delete(id);
+        }
+      }),
       gameEvents.on('ServerTimeLimitRequested', (e) => {
         this.send({ type: 'setTimeLimit', minutes: e.minutes });
       }),

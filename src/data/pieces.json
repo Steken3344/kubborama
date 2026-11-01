@@ -50,6 +50,7 @@
     "groundHeightM": 0.06,
     "groundAngularDamping": 20,
     "groundLinearDamping": 6,
-    "releaseImpactGraceS": 0.15
+    "releaseImpactGraceS": 0.15,
+    "minThrowSpeedMps": 1.5
   }
 }
