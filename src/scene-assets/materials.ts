@@ -68,6 +68,14 @@ export const courtLineMaterial = new MeshStandardMaterial({
   roughness: 0.9,
 });
 
+/** Boundary dry-stone wall — per-stone colour comes from vertex
+ * colours; flat shading keeps the low-poly Kenney-like look. */
+export const stoneMaterial = new MeshStandardMaterial({
+  vertexColors: true,
+  flatShading: true,
+  roughness: 0.95,
+});
+
 /** MP1 co-presence placeholder avatar (docs/PLAN.md §10) — a plain
  * flat color, deliberately not matching any game-piece material, so a
  * remote player's head/hands are never mistaken for a kubb/king/stick.

@@ -10,6 +10,7 @@ import stickRack from './scene-assets/stick-rack.scene-asset.js';
 import hudSignPosts from './scene-assets/hud-sign-posts.scene-asset.js';
 import hudFrame from './scene-assets/hud-frame.scene-asset.js';
 import peerAvatar from './scene-assets/peer-avatar.scene-asset.js';
+import stoneWall from './scene-assets/stone-wall.scene-asset.js';
 
 const publicAssetUrl = (filePath: string): string =>
   `${import.meta.env.BASE_URL}${filePath.replace(/^\/+/u, '')}`;
@@ -30,6 +31,7 @@ export default defineAssets({
   'hud-sign-posts': hudSignPosts,
   'hud-frame': hudFrame,
   'peer-avatar': peerAvatar,
+  'stone-wall': stoneWall,
   'court-line-long': courtLineLong,
   'court-line-short': courtLineShort,
   'reset-menu': {
