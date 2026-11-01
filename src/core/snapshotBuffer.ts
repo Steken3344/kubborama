@@ -20,8 +20,10 @@ import type { Vec3 } from './vec3.js';
  * 60 Hz — no throw gets near it) is a teleport (rack reset, court
  * switch): jump, never sweep a stick through the air. */
 const TELEPORT_M_PER_TICK = 0.5;
-/** sampleAhead's look-ahead for a piece at the ground (ticks). */
+/** sampleAhead's look-ahead near the ground saturates at this (ticks). */
 const NEAR_GROUND_AHEAD_TICKS = 3;
+/** Less than this between the two newest snapshots is standing still. */
+const STILL_M = 0.001;
 
 interface Snapshot {
   tick: number;
@@ -136,36 +138,48 @@ export class SnapshotBuffer {
       groundY: number;
     },
   ): boolean {
-    let newer: { tick: number; pose: PieceTransform } | null = null;
-    let older: { tick: number; pose: PieceTransform } | null = null;
-    for (let i = this.snapshots.length - 1; i >= 0 && !older; i--) {
-      const snapshot = this.snapshots[i];
-      const pose = snapshot?.pieces.get(id);
-      if (!snapshot || !pose) continue;
-      if (!newer) newer = { tick: snapshot.tick, pose };
-      else older = { tick: snapshot.tick, pose };
+    // The two newest snapshots holding the piece — indices, so nothing is
+    // allocated per call (it runs every frame for the own stick).
+    let newerIndex = -1;
+    let olderIndex = -1;
+    for (let i = this.snapshots.length - 1; i >= 0 && olderIndex < 0; i--) {
+      if (!this.snapshots[i]?.pieces.has(id)) continue;
+      if (newerIndex < 0) newerIndex = i;
+      else olderIndex = i;
     }
-    if (!newer || tick <= newer.tick || !older) {
+    const newerSnap = this.snapshots[newerIndex];
+    const olderSnap = this.snapshots[olderIndex];
+    const newer = newerSnap?.pieces.get(id);
+    const older = olderSnap?.pieces.get(id);
+    if (
+      !newerSnap ||
+      !olderSnap ||
+      !newer ||
+      !older ||
+      tick <= newerSnap.tick
+    ) {
       return this.sample(id, tick, out);
     }
-    const spanTicks = newer.tick - older.tick;
-    // Near the grass the stick lands, bounces and brakes: flight
-    // velocity would overshoot and the next snapshot pull it back, so
-    // only a short look ahead there.
-    const nearGround = (newer.pose.position[1] ?? 0) < 2 * opts.groundY;
-    const aheadTicks = Math.min(
-      tick - newer.tick,
-      nearGround ? NEAR_GROUND_AHEAD_TICKS : opts.maxAheadTicks,
-    );
-    const a = older.pose.position;
-    const b = newer.pose.position;
-    if (
-      Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) >
-      TELEPORT_M_PER_TICK * spanTicks
-    ) {
-      copy(newer.pose, out);
+    const spanTicks = newerSnap.tick - olderSnap.tick;
+    const a = older.position;
+    const b = newer.position;
+    const movedM = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    // At rest (a lying stick, a raised kubb) or teleported: exactly the
+    // newest pose — no gravity on something standing still (review,
+    // 2026-11-01: a raised kubb was drawn sunk 12 mm for 8 s).
+    if (movedM < STILL_M || movedM > TELEPORT_M_PER_TICK * spanTicks) {
+      copy(newer, out);
       return true;
     }
+    // Near the grass the stick lands, bounces and brakes: flight velocity
+    // would overshoot, so the look-ahead saturates smoothly there (never a
+    // hard stop that would freeze the stick until the next snapshot).
+    const rawAhead = tick - newerSnap.tick;
+    const nearGround = (b[1] ?? 0) < 2 * opts.groundY;
+    const aheadTicks = nearGround
+      ? NEAR_GROUND_AHEAD_TICKS *
+        (1 - Math.exp(-rawAhead / NEAR_GROUND_AHEAD_TICKS))
+      : Math.min(rawAhead, opts.maxAheadTicks);
     for (let i = 0; i < 3; i++) {
       const pa = a[i] ?? 0;
       const pb = b[i] ?? 0;
@@ -185,8 +199,8 @@ export class SnapshotBuffer {
       Math.min(lastY, opts.groundY),
     );
     slerpInto(
-      older.pose.quaternion,
-      newer.pose.quaternion,
+      older.quaternion,
+      newer.quaternion,
       1 + aheadTicks / spanTicks,
       out.quaternion,
     );

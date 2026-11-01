@@ -222,3 +222,48 @@ describe('sampleAhead in the air', () => {
     expect(out.position[2]).toBeCloseTo(-1.2);
   });
 });
+
+describe('sampleAhead review fixes (2026-11-01)', () => {
+  const opts = {
+    maxAheadTicks: 12,
+    gravityMps2: 9.81,
+    tickHz: 60,
+    groundY: 0.06,
+  };
+  const pose = (
+    y: number,
+    z: number,
+    q: Quat = [0, 0, 0, 1],
+  ): PieceTransform => ({
+    id: 'k',
+    position: [0, y, z],
+    quaternion: q,
+  });
+  const out = () => ({
+    position: [0, 0, 0] as Vec3,
+    quaternion: [0, 0, 0, 1] as Quat,
+  });
+
+  it('a piece standing still above the ground stays exactly where it is', () => {
+    const b = new SnapshotBuffer();
+    b.push(3, [pose(0.075, -4)]);
+    b.push(6, [pose(0.075, -4)]);
+    const o = out();
+    b.sampleAhead('k', 15, o, opts);
+    expect(o.position).toEqual([0, 0.075, -4]);
+  });
+
+  it('near the ground the look-ahead keeps creeping instead of freezing', () => {
+    const b = new SnapshotBuffer();
+    b.push(3, [pose(0.03, -3)]);
+    b.push(6, [pose(0.03, -3.3)]);
+    const z = (tick: number) => {
+      const o = out();
+      b.sampleAhead('k', tick, o, opts);
+      return o.position[2];
+    };
+    expect(z(9)).toBeLessThan(z(8));
+    expect(z(12)).toBeLessThan(z(9));
+    expect(z(40)).toBeGreaterThan(-3.3 - 0.1 * 3 - 1e-9); // saturates at 3 ticks
+  });
+});

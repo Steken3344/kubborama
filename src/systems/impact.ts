@@ -43,14 +43,17 @@ export class ImpactSystem extends createSystem({
     required: [PhysicsBody],
     where: [eq(PhysicsBody, 'state', PhysicsState.Dynamic)],
   },
+  // Anything held: letting go starts the release grace (whatever the
+  // body's state while it was in the hand).
+  held: { required: [Grabbed] },
 }) {
   // One persisted Vec3 per entity (allocated once, on first sighting),
   // mutated in place every frame after that — see docs/DECISIONS.md,
   // fresh-eyes M2 review nitpick about per-frame allocation here.
   private previousVelocity = new Map<number, Vec3>();
-  /** Sticks held last frame, and when each was let go (release grace). */
-  private heldSticks = new Set<number>();
+  /** When each piece was let go (release grace), and the clock. */
   private releasedAtS = new Map<number, number>();
+  private nowS = 0;
   private tmpCurr: Vec3 = [0, 0, 0];
   private tmpPos = new Vector3();
   private sfxRng = createRng(IMPACT_SFX_SEED);
@@ -65,9 +68,13 @@ export class ImpactSystem extends createSystem({
       );
     }
     this.grabSystem = grabSystem;
+    this.queries.held.subscribe('disqualify', (entity) => {
+      this.releasedAtS.set(entity.index, this.nowS);
+    });
   }
 
   update(_delta: number, time: number): void {
+    this.nowS = time;
     // Velocity bookkeeping always runs (skipping it would make the
     // first post-grace frame compare against a stale previousVelocity
     // and read a fake huge delta); only the impact reaction is gated.
@@ -124,24 +131,16 @@ export class ImpactSystem extends createSystem({
     }
   }
 
-  /** True for a stick in the moment after it left the hand. */
+  /** True for a piece (a stick, an inkast kubb) in the moment after it
+   * left the hand. */
   private releasing(entity: Entity, timeS: number): boolean {
-    if (!entity.hasComponent(StickState)) {
-      return false;
-    }
-    const index = entity.index;
-    if (entity.getValue(StickState, 'phase') === StickPhase.Held) {
-      this.heldSticks.add(index);
-      return false;
-    }
-    if (this.heldSticks.delete(index)) {
-      this.releasedAtS.set(index, timeS);
-    }
-    const releasedAt = this.releasedAtS.get(index);
+    const releasedAt = this.releasedAtS.get(entity.index);
     if (inReleaseGrace(releasedAt, timeS, pieces.throw.releaseImpactGraceS)) {
       return true;
     }
-    this.releasedAtS.delete(index);
+    if (releasedAt !== undefined) {
+      this.releasedAtS.delete(entity.index);
+    }
     return false;
   }
 

@@ -1,3 +1,4 @@
+import { SNAPSHOT_EVERY_TICKS } from './serverProtocol.js';
 import type { Vec3 } from './vec3.js';
 
 /**
@@ -23,6 +24,10 @@ export interface Handover {
    * known: the stick is then shown on the THROW's own time line —
    * flight time since release — instead of 100 ms in the past. */
   serverStartTick: number | null;
+  /** Reused step objects: advanceHandover runs every frame and must not
+   * allocate (CLAUDE.md). */
+  readonly followStep: { kind: 'follow'; tick: number };
+  readonly blendStep: { kind: 'blend'; t: number; tick: number | null };
 }
 
 /** Server-side movement smaller than this is not the throw yet. */
@@ -35,6 +40,8 @@ export function startHandover(serverPoseAtRelease: Vec3): Handover {
     elapsedS: 0,
     blendElapsedS: null,
     serverStartTick: null,
+    followStep: { kind: 'follow', tick: 0 },
+    blendStep: { kind: 'blend', t: 0, tick: null },
   };
 }
 
@@ -76,9 +83,6 @@ export type HandoverStep =
 const LOCAL: HandoverStep = { kind: 'local' };
 const DONE: HandoverStep = { kind: 'done' };
 
-/** Snapshots come every this many ticks (core/serverProtocol.ts). */
-const SNAPSHOT_SPAN_TICKS = 3;
-
 export interface HandoverOptions {
   blendS: number;
   timeoutS: number;
@@ -112,24 +116,31 @@ export function advanceHandover(
 ): HandoverStep {
   h.elapsedS += dtS;
   if (h.serverStartTick !== null) {
-    if (opts.latestTick < h.serverStartTick + 2 * SNAPSHOT_SPAN_TICKS) {
+    if (opts.latestTick < h.serverStartTick + 2 * SNAPSHOT_EVERY_TICKS) {
       return h.elapsedS > opts.timeoutS ? DONE : LOCAL;
     }
     // Straight onto the throw's time line — no blend: it is the same
     // flight at the same moment (within ~10 cm, under one frame of
     // motion), and a blend from the last drawn pose lagged a fast stick.
-    return converged || h.elapsedS > opts.followMaxS
-      ? DONE
-      : { kind: 'follow', tick: h.serverStartTick + h.elapsedS * opts.tickHz };
+    if (converged || h.elapsedS > opts.followMaxS) {
+      return DONE;
+    }
+    h.followStep.tick = h.serverStartTick + h.elapsedS * opts.tickHz;
+    return h.followStep;
   }
   if (h.blendElapsedS === null) {
     if (h.movedAtTick === null || renderTick < h.movedAtTick) {
       return h.elapsedS > opts.timeoutS ? DONE : LOCAL;
     }
     h.blendElapsedS = 0;
-    return { kind: 'blend', t: 0, tick: null };
+    h.blendStep.t = 0;
+    return h.blendStep;
   }
   h.blendElapsedS += dtS;
   const t = h.blendElapsedS / opts.blendS;
-  return t >= 1 ? DONE : { kind: 'blend', t, tick: null };
+  if (t >= 1) {
+    return DONE;
+  }
+  h.blendStep.t = t;
+  return h.blendStep;
 }

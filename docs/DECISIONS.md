@@ -5714,3 +5714,12 @@ and "liten ljudeffekt när man fäller en kubb, något roligt".
   played with the wooden knock — code, not a recording, so the
   OGG-only asset rule and licensing are untouched.
 - The bot series now also reads time-limit decisions as results.
+- Review fixes (same day): a piece standing still is extrapolated to
+  exactly its newest pose (no gravity — a raised inkast kubb was drawn
+  12 mm sunk until the 8 s follow cap); the throw time line is used for
+  sticks only (tossed kubbs keep the render-time handover); near the
+  ground the look-ahead saturates smoothly instead of freezing at a hard
+  cap; the handover and sampleAhead allocate nothing per frame; the
+  release grace starts when a grab ends (any piece, whatever its body
+  state while held); groundY and the snapshot span come from config and
+  the protocol.

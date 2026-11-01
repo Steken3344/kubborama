@@ -19,7 +19,7 @@ import {
   SERVER_PROTOCOL_VERSION,
   TICK_HZ,
 } from '../core/serverProtocol.js';
-import { multiplayer } from '../config.js';
+import { multiplayer, pieces } from '../config.js';
 import { slerpInto } from '../core/quat.js';
 import { InterpolationClock, SnapshotBuffer } from '../core/snapshotBuffer.js';
 import {
@@ -119,7 +119,7 @@ export class ServerLinkSystem extends createSystem({}) {
     maxAheadTicks: multiplayer.ownThrowMaxAheadTicks,
     gravityMps2: GRAVITY_MPS2,
     tickHz: TICK_HZ,
-    groundY: 0.05,
+    groundY: pieces.throw.groundHeightM,
   };
   /** The last pose written per piece: unchanged ones are skipped
    * between snapshots. */
@@ -469,7 +469,11 @@ export class ServerLinkSystem extends createSystem({}) {
         });
         return;
       case 'thrown': {
-        const handover = this.handovers.get(message.pieceId);
+        // Sticks only: a tossed kubb lands, is raised and moved by the
+        // rules — the render-time handover suits it (review, 2026-11-01).
+        const handover = message.pieceId.startsWith('stick-')
+          ? this.handovers.get(message.pieceId)
+          : undefined;
         if (handover) {
           noteThrowStarted(handover, message.tick);
         }
