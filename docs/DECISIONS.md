@@ -5913,3 +5913,18 @@ the king's lane. The rule itself is unchanged.
 Also: an old cached tab logged 91 "dropped malformed server message"
 warnings for the new `impacts` message; a message type the build does
 not know is now ignored quietly (isUnknownServerMessageType).
+
+## 2026-11-01 — Throw help (Kasthjälp)
+
+Erik: "kan vi göra något så man får någon kast-assistans … känns
+jättesvårt idag" (his #240 match: 7 kubbs felled with 48 sticks, most
+throws ~1.5 m short of the 6 m baseline). core/aimAssist.ts bends a near
+miss towards a kubb the thrower may legally aim at: the landing point
+(at kubb height) moves part of the way to the nearest target within
+1.5 m. Only the horizontal velocity changes, so the arc and flight time
+stay the player's. Targets follow the rules — field kubbs on the other
+half first, then its baseline, the king only once the half is cleared —
+so the help never steers towards an early king. Per headset, in the menu
+(Kasthjälp: Av / Lite / Mycket = 0 / 0.4 / 0.75, pieces.json), "Lite" by
+default; applied in the client before the release is sent, so the server
+stays the judge of what happens.

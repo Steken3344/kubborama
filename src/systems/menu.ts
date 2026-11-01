@@ -58,6 +58,13 @@ const VOLUME_STEPS = [0, 25, 50, 75, 100] as const;
 
 /** Deterministic per-session UI-click-sfx-variant picker — not the physics RNG. */
 const UI_SFX_SEED = 24601;
+/** Throw help, in button order (core/aimAssist.ts). */
+const AIM_ASSIST_LEVELS = ['off', 'some', 'more'] as const;
+const AIM_ASSIST_LABEL_KEYS = {
+  off: 'aimAssistOff',
+  some: 'aimAssistSome',
+  more: 'aimAssistMore',
+} as const;
 
 // 5 kubbs per baseline, 2 baselines, 1 king (docs/PLAN.md §2b).
 const TOTAL_PIECES = KUBB_COUNT * 2 + 1;
@@ -237,6 +244,12 @@ export class MenuSystem extends createSystem({
         // with that name's profile (ServerProfile below).
         gameEvents.emit('ServerProfileRequested', { name: next });
       }
+      this.refreshLabels();
+    });
+    this.wireButton('aim-assist-button', () => {
+      this.settingsSystem.setAimAssist(
+        nextInCycle(AIM_ASSIST_LEVELS, settingsState.current.aimAssist),
+      );
       this.refreshLabels();
     });
     this.wireButton('court-lines-button', () => {
@@ -466,6 +479,9 @@ export class MenuSystem extends createSystem({
       text: t('profileNamePrefix', {
         name: s.profileName ?? t('profileNameDefault'),
       }),
+    });
+    this.menuPanel.requireElementById('aim-assist-label').setProperties({
+      text: t(AIM_ASSIST_LABEL_KEYS[s.aimAssist]),
     });
     this.menuPanel.requireElementById('court-lines-label').setProperties({
       text: s.courtLinesVisible ? t('courtLinesOn') : t('courtLinesOff'),

@@ -21,6 +21,9 @@ import { readBodySpeed } from './bodySpeed.js';
 import type { Hand } from './hapticPlayer.js';
 import { pulseHaptic } from './hapticPlayer.js';
 import { playSfxVariant } from './playSfx.js';
+import { aimTargetIds, assistAim } from '../core/aimAssist.js';
+import type { MatchSide, MatchState } from '../core/match.js';
+import { settingsState } from '../settingsState.js';
 import { assistRelease } from '../core/throwAssist.js';
 import { computeThrowRelease, isThrowRelease } from '../core/throwRelease.js';
 import { activePreset, percentToReal, tuningParams } from '../core/tuning.js';
@@ -64,6 +67,10 @@ export class ThrowingSystem extends createSystem({
   private tmpSpeed: [number, number] = [0, 0];
 
   private physicsSystem: PhysicsSystem | null = null;
+  /** The match as this headset sees it, for the throw help's targets. */
+  private matchState: MatchState | null = null;
+  private mySide: MatchSide | null = null;
+  private readonly targetPos = new Vector3();
 
   init(): void {
     const grabSystem = this.world.getSystem(GrabSystem);
@@ -74,6 +81,16 @@ export class ThrowingSystem extends createSystem({
     }
     this.grabSystem = grabSystem;
     this.physicsSystem = this.world.getSystem(PhysicsSystem) ?? null;
+    this.cleanupFuncs.push(
+      gameEvents.on('MatchStateChanged', ({ state, mySide }) => {
+        this.matchState = state;
+        this.mySide = mySide;
+      }),
+      gameEvents.on('MultiplayerPeerDisconnected', () => {
+        this.matchState = null;
+        this.mySide = null;
+      }),
+    );
     this.queries.heldSticks.subscribe('qualify', (entity) => {
       this.onGrabStart(entity);
     });
@@ -150,6 +167,39 @@ export class ThrowingSystem extends createSystem({
     log('debug', 'grab', 'stick grabbed', { entityIndex: entity.index, hand });
   }
 
+  /** The throw help (core/aimAssist.ts): bend a near miss towards a
+   * kubb this player may aim at. Only in a match, on its own turn —
+   * once per release, so the target lookups may allocate. */
+  private withAimAssist(from: Vec3, velocity: Vec3): Vec3 {
+    const level = settingsState.current.aimAssist;
+    const state = this.matchState;
+    const side = this.mySide;
+    if (
+      level === 'off' ||
+      !state ||
+      !side ||
+      state.currentTurn !== side ||
+      state.phase !== 'throwing' ||
+      state.winner !== null
+    ) {
+      return velocity;
+    }
+    const targets: Vec3[] = [];
+    for (const id of aimTargetIds(state, side)) {
+      const object3D = this.world.getSceneEntity?.(id)?.object3D;
+      if (object3D) {
+        object3D.getWorldPosition(this.targetPos);
+        targets.push([this.targetPos.x, this.targetPos.y, this.targetPos.z]);
+      }
+    }
+    const help = pieces.throw.aimAssist;
+    return assistAim(from, velocity, targets, {
+      strength: help[level],
+      radiusM: help.radiusM,
+      aimHeightM: help.aimHeightM,
+    });
+  }
+
   private onRelease(entity: Entity): void {
     const buffer = this.poseSampler.take(entity.index);
 
@@ -170,7 +220,7 @@ export class ThrowingSystem extends createSystem({
       preset.angularMultiplier,
     );
     const {
-      linearVelocity,
+      linearVelocity: handVelocity,
       angularVelocity: handSpin,
       releaseSpeedMps,
     } = computeThrowRelease({
@@ -190,6 +240,7 @@ export class ThrowingSystem extends createSystem({
       gameEvents.emit('StickPutBack', { entityIndex: entity.index });
       return;
     }
+    const linearVelocity = this.withAimAssist(releasePosition, handVelocity);
     // The swing decides, not the wrist (core/throwAssist.ts): the spin
     // keeps its end-over-end part, the stick turns into the throw's plane.
     let angularVelocity = handSpin;

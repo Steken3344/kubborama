@@ -176,6 +176,11 @@ export class SettingsSystem extends createSystem({}) {
     this.persist();
   }
 
+  setAimAssist(aimAssist: Settings['aimAssist']): void {
+    settingsState.current = { ...settingsState.current, aimAssist };
+    this.persist();
+  }
+
   setProfileName(profileName: string | null): void {
     settingsState.current = { ...settingsState.current, profileName };
     this.persist();

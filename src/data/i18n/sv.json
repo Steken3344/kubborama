@@ -88,5 +88,8 @@
   "statsVsBotEmpty": "Mot boten: inga matcher än",
   "statsVsBotLevel": "{level} {won}-{lost}",
   "spectatorFullscreen": "Helskärm",
-  "spectatorExitFullscreen": "Avsluta helskärm"
+  "spectatorExitFullscreen": "Avsluta helskärm",
+  "aimAssistOff": "Kasthjälp: Av",
+  "aimAssistSome": "Kasthjälp: Lite",
+  "aimAssistMore": "Kasthjälp: Mycket"
 }

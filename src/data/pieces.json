@@ -53,6 +53,12 @@
     "releaseImpactGraceS": 0.25,
     "minThrowSpeedMps": 1.5,
     "spinAssist": 1,
-    "alignAssist": 1
+    "alignAssist": 1,
+    "aimAssist": {
+      "some": 0.4,
+      "more": 0.75,
+      "radiusM": 1.5,
+      "aimHeightM": 0.15
+    }
   }
 }

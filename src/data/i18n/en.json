@@ -88,5 +88,8 @@
   "statsVsBotEmpty": "Vs the bot: no matches yet",
   "statsVsBotLevel": "{level} {won}-{lost}",
   "spectatorFullscreen": "Full screen",
-  "spectatorExitFullscreen": "Exit full screen"
+  "spectatorExitFullscreen": "Exit full screen",
+  "aimAssistOff": "Throw help: Off",
+  "aimAssistSome": "Throw help: Some",
+  "aimAssistMore": "Throw help: More"
 }
