@@ -85,6 +85,37 @@ const STICKS = [
 const BETWEEN_STICKS_MS = FAST ? 1000 : 1500;
 const AFTER_TOSS_MS = FAST ? 3000 : 4000;
 const ROOM_GAP_MS = 1200;
+/** Table check (Erik, 2026-11-01: sticks and queued kubbs always on a
+ * table, the stick table following the thrower to the advantage line):
+ * at each turn start every stick, and in an inkast every queued kubb,
+ * must sit above these heights (the tables' tops are 0.95 and 0.8 m). */
+const STICK_ON_TABLE_MIN_Y = 0.85;
+const KUBB_ON_TABLE_MIN_Y = 0.7;
+const tableCheck = {
+  turns: 0,
+  sticksOff: [] as string[],
+  kubbsOff: [] as string[],
+};
+
+function checkTables(bot: ProtocolBot, key: string): void {
+  const state = bot.match;
+  if (!state) return;
+  tableCheck.turns += 1;
+  const ids =
+    state.phase === 'throwing'
+      ? STICKS
+      : state.inkastQueue.map((i) => i.kubbId);
+  const minY =
+    state.phase === 'throwing' ? STICK_ON_TABLE_MIN_Y : KUBB_ON_TABLE_MIN_Y;
+  const off =
+    state.phase === 'throwing' ? tableCheck.sticksOff : tableCheck.kubbsOff;
+  for (const id of ids) {
+    const y = bot.positions.get(id)?.[1];
+    if (y !== undefined && y < minY) {
+      off.push(`${key} ${id} y=${y.toFixed(2)}`);
+    }
+  }
+}
 
 /** Everything to tear down if the run dies half-way (no orphans). */
 const cleanups: Array<() => void | Promise<void>> = [];
@@ -162,6 +193,7 @@ async function runScenario(
       // turn only — a run once waited forever on the host's inkast.
       tossed.clear();
       await sleep(1200); // the server re-racks the sticks
+      checkTables(bot, key);
       continue;
     }
     const action = roomActions.shift();
@@ -428,6 +460,15 @@ async function main(): Promise<void> {
       `page errors (player A): ${host.errors.slice(0, 5).join(' | ')}`,
     );
   }
+  console.log(
+    `table check: ${String(tableCheck.turns)} turn starts, sticks off ${String(tableCheck.sticksOff.length)}, kubbs off ${String(tableCheck.kubbsOff.length)}`,
+  );
+  for (const line of [...tableCheck.sticksOff, ...tableCheck.kubbsOff].slice(
+    0,
+    10,
+  )) {
+    console.log(`  off table: ${line}`);
+  }
   console.log(`screenshots: ${OUT}`);
   if (SUMMARY !== '') {
     writeFileSync(
@@ -440,6 +481,7 @@ async function main(): Promise<void> {
           language: LANGUAGE,
           botColor: BOT_COLOR,
           pageErrors: host.errors,
+          tableCheck,
           scenarios: chosen.map((sc) => ({
             name: sc.name,
             ...outcomes.get(sc.name),

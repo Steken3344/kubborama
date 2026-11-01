@@ -94,6 +94,7 @@ interface MatchRow {
   heldBehindLine: number;
   warnings: number;
   pageErrors: number;
+  tables: string;
 }
 
 function analyse(plan: Plan, summaryPath: string): MatchRow | null {
@@ -101,6 +102,7 @@ function analyse(plan: Plan, summaryPath: string): MatchRow | null {
   const summary = JSON.parse(readFileSync(summaryPath, 'utf8')) as {
     pageErrors: string[];
     scenarios: Array<{ result?: string; fromMs?: number; toMs?: number }>;
+    tableCheck?: { turns: number; sticksOff: string[]; kubbsOff: string[] };
   };
   const sc = summary.scenarios[0];
   if (!sc?.fromMs || !sc.toMs) return null;
@@ -157,6 +159,9 @@ function analyse(plan: Plan, summaryPath: string): MatchRow | null {
         e.message !== 'game server connection closed',
     ).length,
     pageErrors: summary.pageErrors.length,
+    tables: summary.tableCheck
+      ? `${String(summary.tableCheck.turns)}/${String(summary.tableCheck.sticksOff.length)}/${String(summary.tableCheck.kubbsOff.length)}`
+      : '-',
   };
 }
 
@@ -164,8 +169,8 @@ function table(rows: MatchRow[]): string {
   const pct = (a: number, b: number) =>
     b === 0 ? '-' : `${String(Math.round((100 * a) / b))}%`;
   const head =
-    '| # | court | lang | aim A/B (m) | result | min | rounds | winner | how | A hit/stick | B hit/stick | inkast ok/out | raised (reason) | warn |';
-  const sep = `|${'---|'.repeat(14)}`;
+    '| # | court | lang | aim A/B (m) | result | min | rounds | winner | how | A hit/stick | B hit/stick | inkast ok/out | raised (reason) | warn | tables turns/sticks off/kubbs off |';
+  const sep = `|${'---|'.repeat(15)}`;
   const body = rows.map((r) =>
     [
       r.plan.index + 1,
@@ -184,6 +189,7 @@ function table(rows: MatchRow[]): string {
         .map(([k, v]) => `${k} ${String(v)}`)
         .join(', '),
       r.warnings + r.pageErrors,
+      r.tables,
     ].join(' | '),
   );
   return [head, sep, ...body.map((b) => `| ${b} |`)].join('\n');
