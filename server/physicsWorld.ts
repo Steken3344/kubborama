@@ -100,6 +100,8 @@ export interface PhysicsWorld {
   applyThrow(input: ThrowInput): boolean;
   /** Linear and angular speed of a piece (rest detection). */
   speeds(id: string): [number, number] | null;
+  /** A piece's linear velocity (m/s), for impact detection. */
+  linearVelocity(id: string): Vec3 | null;
   /** Release every Havok body, shape and the world (room emptied). */
   dispose(): void;
 }
@@ -345,6 +347,14 @@ export async function createPhysicsWorld(
       const v = hk.HP_Body_GetLinearVelocity(body)[1];
       const w = hk.HP_Body_GetAngularVelocity(body)[1];
       return [Math.hypot(...v), Math.hypot(...w)];
+    },
+    linearVelocity(id) {
+      const body = bodies.get(id);
+      if (!body) {
+        return null;
+      }
+      const [x, y, z] = hk.HP_Body_GetLinearVelocity(body)[1];
+      return [x, y, z];
     },
   };
 }

@@ -46,6 +46,7 @@ export class ImpactSystem extends createSystem({
   // Anything held: letting go starts the release grace (whatever the
   // body's state while it was in the hand).
   held: { required: [Grabbed] },
+  bodies: { required: [PhysicsBody] },
 }) {
   // One persisted Vec3 per entity (allocated once, on first sighting),
   // mutated in place every frame after that — see docs/DECISIONS.md,
@@ -76,6 +77,15 @@ export class ImpactSystem extends createSystem({
     this.queries.held.subscribe('disqualify', (entity) => {
       this.releasedAtS.set(entity.index, this.nowS);
     });
+    // Server mode: flying and struck pieces follow the server's
+    // snapshots, so local physics sees no impacts on them — the server
+    // sends its own (core/impactWatch.ts). A held stick is still local
+    // physics and detected above.
+    this.cleanupFuncs.push(
+      gameEvents.on('ServerImpact', (e) => {
+        this.onServerImpact(e.entityIndex, e.deltaVMps, e.position);
+      }),
+    );
   }
 
   update(_delta: number, time: number): void {
@@ -134,6 +144,30 @@ export class ImpactSystem extends createSystem({
       // instead of incorrectly appearing to come from world origin.
       this.playImpactSfx(entity, deltaVMps, object3D ? position : undefined);
     }
+  }
+
+  private onServerImpact(
+    entityIndex: number,
+    deltaVMps: number,
+    position: Vec3,
+  ): void {
+    let entity: Entity | undefined;
+    for (const e of this.queries.bodies.entities) {
+      if (e.index === entityIndex) {
+        entity = e;
+        break;
+      }
+    }
+    if (!entity || entity.hasComponent(Grabbed)) {
+      return;
+    }
+    log('debug', 'physics', 'impact', {
+      entityIndex,
+      deltaVMps,
+      source: 'server',
+    });
+    this.pulseHapticForStick(entity, deltaVMps);
+    this.playImpactSfx(entity, deltaVMps, position);
   }
 
   /** True for a piece (a stick, an inkast kubb) in the moment after it

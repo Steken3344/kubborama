@@ -4,6 +4,7 @@ import {
   courtPresetForMode,
   getCourtPreset,
   match as matchTuning,
+  pieces,
   profileNames,
 } from '../src/config.js';
 import type { BotLevel } from '../src/config.js';
@@ -16,6 +17,8 @@ import type { BotMemory } from '../src/core/botBrain.js';
 import { botPresence, isFreshMatch } from '../src/core/botPolicy.js';
 import { courtHalves } from '../src/core/inkast.js';
 import type { CourtHalves } from '../src/core/inkast.js';
+import { createImpactWatch } from '../src/core/impactWatch.js';
+import type { ImpactItem } from '../src/core/impactWatch.js';
 import { createRng } from '../src/core/rng.js';
 import type { Vec3 } from '../src/core/vec3.js';
 import { shownAvatarColors } from '../src/core/avatarColors.js';
@@ -56,6 +59,12 @@ import type { ServerLog } from './serverLog.js';
 /** At most this many throws per client per second — six sticks is a
  * whole turn; anything faster is a flood (review, 2026-09-26). */
 const MAX_THROWS_PER_SECOND = 6;
+/** Server impacts (core/impactWatch.ts): a jump this much past a piece's
+ * own reach in one step is a teleport, and one contact reports at most
+ * once per cooldown; a snapshot carries at most this many. */
+const IMPACT_TELEPORT_M = 0.2;
+const IMPACT_COOLDOWN_S = 0.08;
+const MAX_IMPACTS_PER_SNAPSHOT = 32;
 /** A dropped player keeps its side this long: a reloading headset
  * rejoins with the same clientId and the match simply continues
  * (docs/QUESTIONS.md, option 1 — decided 2026-09-27). */
@@ -139,6 +148,13 @@ export class GameServer {
   private seats: Seat[] = [];
   private readonly spectators = new Set<ClientConnection>();
   private world: PhysicsWorld | null = null;
+  /** Server-side impacts, sent with each snapshot (core/impactWatch.ts). */
+  private readonly impactWatch = createImpactWatch({
+    thresholdMps: pieces.throw.impactThresholdMps,
+    teleportM: IMPACT_TELEPORT_M,
+    cooldownS: IMPACT_COOLDOWN_S,
+  });
+  private pendingImpacts: ImpactItem[] = [];
   private host: MatchHost | null = null;
   private worldPromise: Promise<PhysicsWorld> | null = null;
   private lastMatch: ServerMessage | null = null;
@@ -197,12 +213,34 @@ export class GameServer {
         this.broadcast({ type: 'clock', ...clock });
       }
     }
+    const pieceStates = this.world.snapshot(NETWORKED_PIECE_IDS);
+    const nowS = this.tickCount / TICK_HZ;
+    for (const p of pieceStates) {
+      const v = this.world.linearVelocity(p.id);
+      if (v) {
+        this.impactWatch.observe(
+          p.id,
+          p.position,
+          v,
+          nowS,
+          1 / TICK_HZ,
+          this.pendingImpacts,
+        );
+      }
+    }
     if (this.tickCount % SNAPSHOT_EVERY_TICKS === 0) {
       this.broadcast({
         type: 'snapshot',
         tick: this.tickCount,
-        pieces: this.world.snapshot(NETWORKED_PIECE_IDS),
+        pieces: pieceStates,
       });
+      if (this.pendingImpacts.length > 0) {
+        this.broadcast({
+          type: 'impacts',
+          items: this.pendingImpacts.slice(0, MAX_IMPACTS_PER_SNAPSHOT),
+        });
+        this.pendingImpacts = [];
+      }
     }
   }
 
@@ -673,6 +711,8 @@ export class GameServer {
       return;
     }
     this.world = world;
+    this.impactWatch.reset();
+    this.pendingImpacts = [];
     this.host = new MatchHost(world, this.gameMode, {
       matchState: (state) => {
         this.matchState = state;

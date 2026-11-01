@@ -486,6 +486,18 @@ export class ServerLinkSystem extends createSystem({}) {
         }
         return;
       }
+      case 'impacts':
+        for (const item of message.items) {
+          const entity = this.pieces.get(item.id);
+          if (entity) {
+            gameEvents.emit('ServerImpact', {
+              entityIndex: entity.index,
+              deltaVMps: item.deltaVMps,
+              position: item.position,
+            });
+          }
+        }
+        return;
       case 'clock':
         roomState.clock = {
           remainingS: message.remainingS,

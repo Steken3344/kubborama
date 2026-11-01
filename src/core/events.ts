@@ -78,6 +78,13 @@ export interface GameEvents {
     position: Vec3;
     timeS: number;
   };
+  /** An impact the authoritative game server saw (core/impactWatch.ts):
+   * ServerLinkSystem relays it, ImpactSystem plays it. */
+  ServerImpact: {
+    entityIndex: number;
+    deltaVMps: number;
+    position: Vec3;
+  };
   Reset: {
     timeS: number;
     // 'roundEnd' is RoundSystem's own auto-continuation (MenuSystem's

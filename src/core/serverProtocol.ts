@@ -237,6 +237,20 @@ const serverMessageSchema = z.discriminatedUnion('type', [
     pieceId,
     tick: z.number().int().nonnegative(),
   }),
+  /** Impacts the server's physics saw since the last snapshot
+   * (core/impactWatch.ts): clients play the knock and the haptics. */
+  z.object({
+    type: z.literal('impacts'),
+    items: z
+      .array(
+        z.object({
+          id: pieceId,
+          deltaVMps: z.number().min(0).max(200),
+          position: vec3,
+        }),
+      )
+      .max(32),
+  }),
   /** The match clock under a time limit, about once a second. */
   z.object({
     type: z.literal('clock'),

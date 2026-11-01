@@ -5856,3 +5856,19 @@ own sticks as a legal toss lies. Each toss strays by
 `inkastClusterSpreadM` (0.45 m) × the level's `inkastSpreadFactor`, so
 an easy bot (0.9 m) still tosses one over the line now and then, a hard
 one never. The bot-match tool (tools/botmatch) keeps its spread tosses.
+
+## 2026-11-01 — Impacts come from the server
+
+Erik's test of #236: "ljudet när man fäller en kubb … hörs knappt".
+The log showed why beyond the chime: since 11:21 (the release-hitch
+fix) the own stick follows the server's time line after release, so no
+client runs physics on a flying stick and the stick-strikes-kubb /
+lands-on-grass knock was never detected (0–2 "free" impacts per test
+since, 11–24 before; the bot's and the opponent's sticks never had one
+in server mode). The server now watches every networked piece after
+each step with the same |Δv| heuristic (core/impactWatch.ts — teleports
+skipped, 80 ms cooldown per piece) and sends `impacts` with each
+snapshot (additive server message, protocol unchanged); ImpactSystem
+plays the sound and the haptics. Held sticks are still detected
+locally. Played on receipt: up to ~100 ms before the interpolated view
+of someone else's stick — fine for now.
