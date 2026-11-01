@@ -22,7 +22,8 @@ describe('stickInHand', () => {
     const near = [0, 1, 2].map(
       (i) => (o.position[i] ?? 0) - (axis[i] ?? 0) * 0.15,
     );
-    expect(Math.hypot(near[0]!, near[1]! - 1, near[2]!)).toBeCloseTo(0.04);
+    const [nx = 0, ny = 0, nz = 0] = near;
+    expect(Math.hypot(nx, ny - 1, nz)).toBeCloseTo(0.04);
   });
 
   it('turns with the hand', () => {
