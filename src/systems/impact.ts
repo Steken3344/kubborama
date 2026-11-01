@@ -118,8 +118,9 @@ export class ImpactSystem extends createSystem({
 
       // Tracked every frame (not only on a hit), so a release is seen.
       const releasing = this.releasing(entity, time);
-      // Server mode: only a held stick is local physics. Everything else
-      // follows the server's snapshots, which send their own impacts —
+      // Server mode: only a held stick's knocks are the headset's own.
+      // Everything else follows the server's snapshots (local contacts
+      // are overwritten) and the server sends its impacts —
       // a hand brushing a kubb at the advantage line knocked locally
       // and snapped back (Erik, 2026-11-01: "trä-kollisionsljudet när
       // man går framåt").
@@ -144,6 +145,10 @@ export class ImpactSystem extends createSystem({
       log('debug', 'physics', 'impact', {
         entityIndex: entity.index,
         deltaVMps,
+        // Where it happened and whether it was in a hand (2026-11-01:
+        // many hard knocks on held sticks mid-swing — ground or table?).
+        held: entity.hasComponent(Grabbed),
+        position,
       });
 
       this.pulseHapticForStick(entity, deltaVMps);

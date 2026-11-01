@@ -25,6 +25,7 @@ import { nextInCycle } from '../core/cycle.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { accuracy } from '../core/stats.js';
 import { isMatchUnderway } from '../core/match.js';
+import { panelPoseInFront } from '../core/menuPlacement.js';
 import type { MatchSide, MatchState } from '../core/match.js';
 import { gameEvents } from '../core/events.js';
 import { roomRulesSchema } from '../core/serverProtocol.js';
@@ -689,19 +690,18 @@ export class MenuSystem extends createSystem({
     }
     const head = this.player.head;
     head.getWorldPosition(this.headPos);
-    head.getWorldDirection(this.headDir); // three: the camera looks down −z
-    this.headDir.set(-this.headDir.x, 0, -this.headDir.z);
-    if (this.headDir.lengthSq() < 1e-6) {
-      this.headDir.set(0, 0, -1);
-    }
-    this.headDir.normalize();
-    panel.position.set(
-      this.headPos.x + this.headDir.x * MENU_DISTANCE_M,
-      this.headPos.y - MENU_BELOW_EYES_M,
-      this.headPos.z + this.headDir.z * MENU_DISTANCE_M,
+    // The head is a Group: its world direction is its +z, so forward is
+    // the opposite (review, 2026-11-01).
+    head.getWorldDirection(this.headDir);
+    const pose = panelPoseInFront(
+      this.headPos,
+      -this.headDir.x,
+      -this.headDir.z,
+      MENU_DISTANCE_M,
+      MENU_BELOW_EYES_M,
     );
-    // Face the player: the panel's front is +z.
-    panel.rotation.set(0, Math.atan2(-this.headDir.x, -this.headDir.z), 0);
+    panel.position.set(pose.x, pose.y, pose.z);
+    panel.rotation.set(0, pose.yawRad, 0);
   }
 
   /** During a match, and while a guest plays on the host's borrowed

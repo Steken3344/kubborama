@@ -1,5 +1,6 @@
 import type { CourtHalves } from './inkast.js';
-import type { MatchSide } from './match.js';
+import { isFreshMatch } from './match.js';
+import type { MatchSide, MatchState } from './match.js';
 
 /**
  * Thumbstick locomotion (Erik, 2026-10-31) is limited to the garden:
@@ -148,4 +149,41 @@ export function throwSpot(
   return side === 'host'
     ? { x: 0, z: halves.nearBaselineZ + behindLineM }
     : { x: 0, z: halves.farBaselineZ - behindLineM };
+}
+
+/**
+ * When to put me on my throwing spot (throwSpot): a key per turn and
+ * phase of MINE in an undecided match — '' otherwise. A new non-empty
+ * key (compared with the last one) re-centres; a fresh match always
+ * does, even when its first key equals the last match's (review,
+ * 2026-11-01: after Ny runda in my own turn the starter was not
+ * re-centred on the opening turn).
+ */
+export function recentreKey(
+  state: MatchState | null,
+  mySide: MatchSide | null,
+): string {
+  if (!state || mySide === null || state.winner !== null) {
+    return '';
+  }
+  if (state.currentTurn !== mySide) {
+    return '';
+  }
+  return `${state.currentTurn}/${state.phase}`;
+}
+
+/** `wasFresh`: the previous state was already a fresh match — the same
+ * fresh state broadcast again must not pull me back mid-turn. */
+export function shouldRecentre(
+  state: MatchState | null,
+  mySide: MatchSide | null,
+  lastKey: string,
+  wasFresh: boolean,
+): boolean {
+  const key = recentreKey(state, mySide);
+  if (key === '') {
+    return false;
+  }
+  const becameFresh = state !== null && isFreshMatch(state) && !wasFresh;
+  return key !== lastKey || becameFresh;
 }

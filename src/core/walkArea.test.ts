@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { initialMatchState } from './match.js';
 import {
   behindLineCorrectionZ,
   clampToWalkArea,
   blockSlideIntoFootprints,
+  recentreKey,
+  shouldRecentre,
   throwSpot,
   isFootFault,
 } from './walkArea.js';
@@ -111,5 +114,50 @@ describe('throwSpot (2026-11-01)', () => {
   it("just behind each side's own baseline, centred", () => {
     expect(throwSpot('host', halves, 0.35)).toEqual({ x: 0, z: 0.35 });
     expect(throwSpot('guest', halves, 0.35)).toEqual({ x: 0, z: -6.35 });
+  });
+});
+
+describe('recentre on my turn (2026-11-01)', () => {
+  const fresh = initialMatchState(); // host to throw
+  const guestTurn = {
+    ...fresh,
+    currentTurn: 'guest' as const,
+    felledThisTurn: ['kubb-0'],
+  };
+  const midHost = {
+    ...fresh,
+    baselineKubbs: { ...fresh.baselineKubbs, guest: ['kubb-1'] },
+  };
+
+  it('only on my own turn of an undecided match', () => {
+    expect(recentreKey(fresh, 'host')).toBe('host/throwing');
+    expect(recentreKey(fresh, 'guest')).toBe('');
+    expect(recentreKey({ ...fresh, winner: 'host' }, 'host')).toBe('');
+    expect(recentreKey(null, 'host')).toBe('');
+    expect(recentreKey(fresh, null)).toBe('');
+  });
+
+  it('once per turn and phase', () => {
+    expect(shouldRecentre(midHost, 'host', '', false)).toBe(true);
+    expect(shouldRecentre(midHost, 'host', 'host/throwing', false)).toBe(false);
+    expect(
+      shouldRecentre(
+        { ...midHost, phase: 'inkast' },
+        'host',
+        'host/throwing',
+        false,
+      ),
+    ).toBe(true);
+    expect(shouldRecentre(guestTurn, 'host', 'host/throwing', false)).toBe(
+      false,
+    );
+  });
+
+  it('a fresh match re-centres the starter even with the same key (review)', () => {
+    expect(shouldRecentre(fresh, 'host', 'host/throwing', false)).toBe(true);
+  });
+
+  it('…but the same fresh state again does not pull me back mid-turn', () => {
+    expect(shouldRecentre(fresh, 'host', 'host/throwing', true)).toBe(false);
   });
 });

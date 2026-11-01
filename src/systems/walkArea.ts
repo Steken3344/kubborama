@@ -1,5 +1,6 @@
 import {
   createSystem,
+  Grabbed,
   LocomotionEnvironment,
   LocomotionSystem,
   Vector3,
@@ -14,12 +15,14 @@ import {
   walkArea,
 } from '../config.js';
 import { gameEvents } from '../core/events.js';
-import { standingLineZ } from '../core/match.js';
+import { isFreshMatch, standingLineZ } from '../core/match.js';
 import type { MatchSide } from '../core/match.js';
 import {
   behindLineCorrectionZ,
   clampToWalkArea,
   blockSlideIntoFootprints,
+  recentreKey,
+  shouldRecentre,
   throwSpot,
 } from '../core/walkArea.js';
 import type { Footprint } from '../core/walkArea.js';
@@ -43,7 +46,11 @@ const TELEPORT_JUMP_M = 0.5;
  * LocomotionSystem, so it corrects the frame's slide before anything
  * reads the rig.
  */
-export class WalkAreaSystem extends createSystem({}) {
+export class WalkAreaSystem extends createSystem({
+  /** Anything in a hand: re-centring then would jolt the held piece and
+   * corrupt its release velocity (review, 2026-11-01). */
+  held: { required: [Grabbed] },
+}) {
   private point = { x: 0, z: 0 };
   private target = new Vector3();
   private headPos = new Vector3();
@@ -74,6 +81,7 @@ export class WalkAreaSystem extends createSystem({}) {
   /** `turn/phase` I was last centred for; a new one of mine re-centres. */
   private centredKey = '';
   private recentrePending = false;
+  private wasFresh = false;
 
   init(): void {
     // The walkable surface is set here rather than in the scene JSON, so
@@ -86,30 +94,32 @@ export class WalkAreaSystem extends createSystem({}) {
         this.side = mySide;
         this.lineZ = standingLineZ(state, mySide, activeCourtHalves());
         // My turn (or its next phase) starts: put me on the throwing spot.
-        const key =
-          state.currentTurn === mySide && state.winner === null
-            ? `${state.currentTurn}/${state.phase}`
-            : '';
-        if (key !== '' && key !== this.centredKey) {
+        if (shouldRecentre(state, mySide, this.centredKey, this.wasFresh)) {
           this.recentrePending = true;
         }
-        this.centredKey = key;
+        this.centredKey = recentreKey(state, mySide);
+        this.wasFresh = isFreshMatch(state);
       }),
       // No line until the next match state: a court switch moves the
       // baselines, and the room emptying ends the match.
       gameEvents.on('GameModeChanged', () => {
         this.lineZ = null;
+        this.centredKey = '';
       }),
       gameEvents.on('MultiplayerPeerDisconnected', () => {
         this.side = null;
         this.lineZ = null;
+        this.centredKey = '';
+        this.wasFresh = false;
+        this.recentrePending = false;
       }),
     );
   }
 
   update(_delta: number, timeS: number): void {
     this.applyStickMove();
-    if (this.recentrePending) {
+    // Waits while anything is held (it happens when the hand lets go).
+    if (this.recentrePending && this.queries.held.entities.size === 0) {
       this.recentrePending = false;
       this.recentre();
     }

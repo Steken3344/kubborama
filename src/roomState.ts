@@ -1,3 +1,4 @@
+import type { MatchSide } from './core/match.js';
 import type { BotLevelName, RoomRules } from './core/serverProtocol.js';
 
 /** The game server's room settings beside the court (2026-11-01), as
@@ -8,9 +9,12 @@ export const roomState: {
   bot: BotLevelName | null;
   rules: RoomRules;
   clock: { remainingS: number; timeUp: boolean } | null;
+  /** My seat on the game server (welcome), null when not seated. */
+  seatSide: MatchSide | null;
 } = {
   timeLimitMin: 0,
   bot: null,
   rules: 'standard',
+  seatSide: null,
   clock: null,
 };

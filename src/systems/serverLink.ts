@@ -287,6 +287,7 @@ export class ServerLinkSystem extends createSystem({}) {
       serverShownColors.current = null;
       // The next room tells us its own settings on joining.
       roomState.timeLimitMin = 0;
+      roomState.seatSide = null;
       roomState.bot = null;
       roomState.rules = 'standard';
       roomState.clock = null;
@@ -343,6 +344,7 @@ export class ServerLinkSystem extends createSystem({}) {
         return;
       case 'welcome':
         this.side = message.side;
+        roomState.seatSide = message.side;
         debugContext.role = message.side;
         log('info', 'net', 'joined game server', {
           side: message.side,

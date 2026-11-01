@@ -25,6 +25,7 @@ import { aimTargetIds, assistAim } from '../core/aimAssist.js';
 import { initialMatchState } from '../core/match.js';
 import type { MatchSide, MatchState } from '../core/match.js';
 import { settingsState } from '../settingsState.js';
+import { roomState } from '../roomState.js';
 import { assistRelease } from '../core/throwAssist.js';
 import { computeThrowRelease, isThrowRelease } from '../core/throwRelease.js';
 import { activePreset, percentToReal, tuningParams } from '../core/tuning.js';
@@ -185,7 +186,8 @@ export class ThrowingSystem extends createSystem({
     // Practice (no match): at the far baseline's kubbs, as in a fresh
     // match — Erik practises alone, and that is where the help is learnt.
     const state = this.matchState ?? PRACTICE_STATE;
-    const side = this.mySide ?? 'host';
+    // Practice: my seat's side (a lone player may sit on B's side).
+    const side = this.mySide ?? roomState.seatSide ?? 'host';
     if (
       this.matchState &&
       (state.currentTurn !== side ||

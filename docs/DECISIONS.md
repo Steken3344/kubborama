@@ -5993,8 +5993,9 @@ standard. Var roligare när man kändes som man kom närmare." The default
 is now "more" (0.75). His test was a practice session, where the help
 did not yet act (match turns only) — so it now also helps practice
 throws, aimed at a fresh match's far baseline kubbs (lying ones are
-skipped). A headset that already saved "some" keeps it until the button
-is pressed.
+skipped). A saved "some" was later migrated to "more" (see "Easier for
+a first-time player": the migration cannot tell a chosen "Lite" from the
+old default, which is accepted).
 
 ## 2026-11-01 — The menu: four tabs, two buttons to a row
 
@@ -6040,7 +6041,8 @@ went bad when a hand left it. So:
 
 - **Centred on your turn:** when my turn (or its next phase) starts the
   rig moves so my head is on the throwing spot (core/walkArea.ts
-  throwSpot: centred, `standBehindLineM` 0.35 m behind my baseline) —
+  throwSpot: centred, `standBehindLineM` 0.3 m behind my baseline —
+  0.35 put the head exactly on the stick table's keep-out edge) —
   wherever I stand in the room becomes the spot; nobody has to walk.
   Not a teleport to the advantage line (still declined), only the own
   baseline.
@@ -6053,3 +6055,18 @@ went bad when a hand left it. So:
 - **Music at 25 %** by default ("börjar bli lite tjatigt"); a saved
   file still on the old defaults (music 70 %, Kasthjälp "Lite") is moved
   to the new ones once (Settings.defaultsRevision); choices stay.
+
+## 2026-11-01 — Review of the beginner batch
+
+Fixed: the re-centre key now lives in core (recentreKey / shouldRecentre,
+tested) and resets when the match is dropped or the court changes, and a
+match that has just become fresh re-centres the starter even when its key
+equals the last one (after Ny runda in your own turn it did not); it
+waits while anything is held (a jump mid-swing corrupted the release);
+the menu pose is core (panelPoseInFront, tested); practice throw help
+uses the seat's side (a lone player can sit on B's side). Known: a kubb
+to toss glows under the ray like a stick, but only sticks can be pulled
+from afar — kubbs are picked up by hand (the table is in reach now). In
+server mode the other pieces still touch the hands in local physics;
+only their sound and haptics are dropped and snapshots win. P2P keeps
+six sticks on the opening turn (issue filed).
