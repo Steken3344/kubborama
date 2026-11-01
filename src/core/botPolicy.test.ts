@@ -4,6 +4,7 @@ import { initialMatchState } from './match.js';
 import type { Vec3 } from './vec3.js';
 import {
   chooseTarget,
+  clusterInkastTarget,
   isFreshMatch,
   jitter,
   planInkast,
@@ -122,5 +123,54 @@ describe('policy', () => {
     expect(
       isFreshMatch({ ...initialMatchState(), felledThisTurn: ['kubb-0'] }),
     ).toBe(false);
+  });
+});
+
+describe('clusterInkastTarget (Erik, 2026-11-01: "samla dem")', () => {
+  // The guest tosses into the host half: z from 0 (host baseline) to -4.
+  const guestInkast = {
+    ...initialMatchState(),
+    currentTurn: 'guest' as const,
+    phase: 'inkast' as const,
+  };
+
+  it('starts the cluster just inside the centre line of the half', () => {
+    const [x, , z] = clusterInkastTarget(view({ state: guestInkast }), 1, 0.5);
+    expect(x).toBeCloseTo(0);
+    expect(z).toBeCloseTo(-3);
+  });
+
+  it('gathers further tosses around the field kubbs already there', () => {
+    const state = {
+      ...guestInkast,
+      fieldKubbs: [
+        { kubbId: 'kubb-0', half: 'host' as const, x: 0.6, z: -2.6 },
+        { kubbId: 'kubb-1', half: 'host' as const, x: 1.0, z: -3.0 },
+        // a kubb on the other half is not part of this cluster
+        { kubbId: 'kubb-2', half: 'guest' as const, x: -2, z: -6 },
+      ],
+    };
+    const [x, , z] = clusterInkastTarget(view({ state }), 1, 0.5);
+    expect(x).toBeCloseTo(0.8);
+    expect(z).toBeCloseTo(-2.8);
+  });
+
+  it('stays the margin inside the half', () => {
+    const state = {
+      ...guestInkast,
+      fieldKubbs: [
+        { kubbId: 'kubb-0', half: 'host' as const, x: 2.4, z: -3.9 },
+      ],
+    };
+    const [x, , z] = clusterInkastTarget(view({ state }), 1, 0.5);
+    expect(x).toBeCloseTo(2);
+    expect(z).toBeCloseTo(-3.5);
+  });
+
+  it('the host tosses into the guest half beyond the centre line', () => {
+    const hostInkast = { ...initialMatchState(), phase: 'inkast' as const };
+    expect(
+      clusterInkastTarget(view({ state: hostInkast }), 1, 0.5)[2],
+    ).toBeCloseTo(-5);
   });
 });

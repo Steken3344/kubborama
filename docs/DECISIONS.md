@@ -5843,3 +5843,16 @@ thrower" entries.
 - **Felling chime barely heard by the thrower:** it was positional at
   the kubb (6–8 m away). The wooden knock stays positional; the chime
   now plays from the listener, at 0.9 instead of 0.5.
+
+## 2026-11-01 — The bot opponent gathers its inkast
+
+Erik: "när botten skall kasta tillbaka kubbarna så skall strategin vara
+att samla dem". The server bot used to spread legal tosses over the
+half (a bot-match fix against kubbs landing on each other). Now every
+toss aims at a cluster (core/botPolicy.ts clusterInkastTarget): the
+middle of the field kubbs already on that half, or — for the first —
+`inkastClusterInsideM` (0.8 m) inside the centre line, as close to its
+own sticks as a legal toss lies. Each toss strays by
+`inkastClusterSpreadM` (0.45 m) × the level's `inkastSpreadFactor`, so
+an easy bot (0.9 m) still tosses one over the line now and then, a hard
+one never. The bot-match tool (tools/botmatch) keeps its spread tosses.

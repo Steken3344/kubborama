@@ -1,5 +1,10 @@
 import { aimRelease, flightTimeFor } from './aim.js';
-import { jitter, planInkast, planStick } from './botPolicy.js';
+import {
+  clusterInkastTarget,
+  jitter,
+  planInkast,
+  planStick,
+} from './botPolicy.js';
 import type { PolicyView, ThrowPlan } from './botPolicy.js';
 import type { CourtHalves } from './inkast.js';
 import { isFinished } from './match.js';
@@ -28,6 +33,11 @@ export interface BotTuning {
   /** After its last stick comes to rest, before the next: time for a
    * felled kubb to topple and count, so it aims at what still stands. */
   afterStickRestsS: number;
+  /** Inkast clustering (botPolicy clusterInkastTarget): the first kubb
+   * this far into the half from the centre line, and how far each toss
+   * strays from the cluster at factor 1 (× inkastSpreadFactor). */
+  inkastClusterInsideM: number;
+  inkastClusterSpreadM: number;
 }
 
 export interface BotMemory {
@@ -130,12 +140,18 @@ export function botStep(
     if (!plan || memory.tossed.includes(key)) {
       return { memory, action: null };
     }
+    // Gathered, not spread (Erik, 2026-11-01): every toss aims at the
+    // cluster; a weaker level strays further and may toss one out.
     const aimed = {
       ...plan,
       target: jitter(
-        plan.target,
+        clusterInkastTarget(
+          policyView,
+          t.inkastClusterInsideM,
+          t.inkastLineMarginM,
+        ),
         rng,
-        inkastSpreadM(view.halves, t) * t.inkastSpreadFactor,
+        t.inkastClusterSpreadM * t.inkastSpreadFactor,
       ),
     };
     return {

@@ -21,5 +21,7 @@
   "inkastSpreadMaxM": 1.2,
   "inkastLineMarginM": 0.5,
   "stickSpinRadS": 22,
-  "afterStickRestsS": 1
+  "afterStickRestsS": 1,
+  "inkastClusterInsideM": 0.8,
+  "inkastClusterSpreadM": 0.45
 }

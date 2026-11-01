@@ -126,6 +126,47 @@ export function planInkast(view: PolicyView, legal: boolean): ThrowPlan | null {
   };
 }
 
+/**
+ * Where the bot opponent tosses its inkast kubbs (Erik, 2026-11-01:
+ * "strategin skall vara att samla dem"): kubbs lying together can be
+ * felled several with one stick. With field kubbs already on the half it
+ * aims at their middle; otherwise at the court's centre line, `insideM`
+ * into the half — the closest the kubbs can lie to its own sticks. Kept
+ * `marginM` inside every line of the half (kubbs roll after landing).
+ */
+export function clusterInkastTarget(
+  view: PolicyView,
+  insideM: number,
+  marginM: number,
+): Vec3 {
+  const other = otherSide(view.state.currentTurn);
+  const { nearBaselineZ, centreZ, farBaselineZ, halfWidthM } = view.halves;
+  const otherZ = other === 'host' ? nearBaselineZ : farBaselineZ;
+  const into = Math.sign(otherZ - centreZ);
+  let sumX = 0;
+  let sumZ = 0;
+  let n = 0;
+  for (const k of view.state.fieldKubbs) {
+    if (k.half === other) {
+      sumX += k.x;
+      sumZ += k.z;
+      n += 1;
+    }
+  }
+  const x = n > 0 ? sumX / n : 0;
+  const z = n > 0 ? sumZ / n : centreZ + into * insideM;
+  const maxX = Math.max(0, halfWidthM - marginM);
+  const nearLine = centreZ + into * marginM;
+  const farLine = otherZ - into * marginM;
+  const lo = Math.min(nearLine, farLine);
+  const hi = Math.max(nearLine, farLine);
+  return [
+    Math.min(maxX, Math.max(-maxX, x)),
+    KUBB_AIM_HEIGHT_M,
+    Math.min(hi, Math.max(lo, z)),
+  ];
+}
+
 /** A human-ish aim: the target moved by up to `spreadM` along the
  * ground, uniform over the disc (√r keeps it from bunching in the
  * middle). Seeded: the same seed gives the same aim sequence. */

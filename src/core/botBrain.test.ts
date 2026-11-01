@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { GRAVITY_MPS2 } from './aim.js';
 import { botStep, freshBotMemory, inkastSpreadM } from './botBrain.js';
 import type { BotTuning, BotView } from './botBrain.js';
 import { courtHalves } from './inkast.js';
@@ -8,6 +9,7 @@ import { createRng } from './rng.js';
 import type { Vec3 } from './vec3.js';
 
 const halves = courtHalves({ widthM: 5, lengthM: 8 });
+const G = GRAVITY_MPS2;
 const tuning: BotTuning = {
   aimSpreadM: 0.3,
   inkastSpreadFactor: 1,
@@ -18,6 +20,8 @@ const tuning: BotTuning = {
   inkastLineMarginM: 0.5,
   stickSpinRadS: 22,
   afterStickRestsS: 1,
+  inkastClusterInsideM: 0.8,
+  inkastClusterSpreadM: 0.45,
 };
 const positions = new Map<string, Vec3>([
   ['kubb-0', [-2, 0.15, -8]],
@@ -176,12 +180,16 @@ describe('botStep', () => {
         );
         const a = step.action;
         if (!a) continue;
-        // The aim point: along the release direction to the middle of
-        // the host half (z = centre / 2), where the toss is aimed.
-        const aimZ = halves.centreZ / 2;
-        const x =
-          a.from[0] + (a.velocity[0] / a.velocity[2]) * (aimZ - a.from[2]);
-        if (Math.abs(x) > halves.halfWidthM) out += 1;
+        // Where the toss comes down to the aim height (0.15 m), from the
+        // release (1 m high): out if outside the host half (z 0 … centre).
+        const [vx, vy, vz] = a.velocity;
+        const drop = a.from[1] - 0.15;
+        const t = (vy + Math.sqrt(vy * vy + 2 * G * drop)) / G;
+        const x = a.from[0] + vx * t;
+        const z = a.from[2] + vz * t;
+        if (Math.abs(x) > halves.halfWidthM || z < halves.centreZ || z > 0) {
+          out += 1;
+        }
       }
       return out;
     };
