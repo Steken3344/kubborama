@@ -126,7 +126,11 @@ kubbs left to knock down wins (level: one more pair at a time).
 going) takes a felled field kubb — one that was tossed over — out of
 play: it is laid on the grass beside the court instead of being tossed
 back, so only felled baseline kubbs travel. All three are room
-settings, kept until the room empties. On the backyard court
+settings, kept until the room empties. Whoever starts a match throws
+only two sticks on the opening turn (the other four wait on the other
+table); every turn after that has six. "Kasthjälp" (Av / Lite / Mycket,
+per headset) bends a near miss part of the way towards a kubb you may
+aim at. On the backyard court
 the half you toss your inkast into is outlined on the grass while it is
 your inkast.
 

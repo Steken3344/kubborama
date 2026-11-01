@@ -3,6 +3,9 @@ export const STICKS_PER_ROUND = 6;
 
 export interface RoundState {
   roundNumber: number;
+  /** How many sticks this round has: STICKS_PER_ROUND, or fewer for the
+   * match's opening turn (Erik, 2026-11-01: the starter throws 2). */
+  sticksThisRound: number;
   sticksThrownThisRound: number;
   sticksSettledThisRound: number;
   kubbsFelledThisRound: string[];
@@ -12,9 +15,13 @@ export interface RoundState {
   sticksThrownWhenKingFelled: number | null;
 }
 
-export function initialRoundState(roundNumber = 1): RoundState {
+export function initialRoundState(
+  roundNumber = 1,
+  sticksThisRound: number = STICKS_PER_ROUND,
+): RoundState {
   return {
     roundNumber,
+    sticksThisRound,
     sticksThrownThisRound: 0,
     sticksSettledThisRound: 0,
     kubbsFelledThisRound: [],
@@ -72,7 +79,7 @@ export function scoringReducer(
 }
 
 export function isRoundComplete(state: RoundState): boolean {
-  return state.sticksSettledThisRound >= STICKS_PER_ROUND;
+  return state.sticksSettledThisRound >= state.sticksThisRound;
 }
 
 export interface RoundResult {

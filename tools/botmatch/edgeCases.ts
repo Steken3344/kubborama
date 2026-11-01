@@ -76,6 +76,36 @@ function missVelocity(side: MatchSide): Vec3 {
   return [2.5, 3, -5 * fwd(side)];
 }
 
+/** The opening turns (Erik, 2026-11-01: the starter throws only 2
+ * sticks; the other 4 wait on the guest's table): checks the layout,
+ * then both sides miss so the match proper starts at the host. */
+async function playOpening(a: ProtocolBot, b: ProtocolBot): Promise<void> {
+  const hostTable = STICKS.filter(
+    (id) => y(a, id) > ON_TABLE_Y && (a.positions.get(id)?.[2] ?? 0) > 0,
+  );
+  const guestTable = STICKS.filter(
+    (id) => y(a, id) > ON_TABLE_Y && (a.positions.get(id)?.[2] ?? 0) < -4,
+  );
+  check(
+    'opening: the starter has 2 sticks, the other 4 wait on the guest table',
+    hostTable.length === 2 && guestTable.length === 4,
+    `host table ${hostTable.join(',')}; guest table ${guestTable.join(',')}`,
+  );
+  for (const id of hostTable) {
+    send(a, id, releaseAt(a, 'host'), missVelocity('host'));
+    await sleep(700);
+  }
+  const turned = await waitFor(() => a.match?.currentTurn === 'guest', 20000);
+  await sleep(2500);
+  check("opening: the turn passes after the starter's 2 sticks", turned);
+  for (const id of STICKS) {
+    send(b, id, releaseAt(b, 'guest'), missVelocity('guest'));
+    await sleep(300);
+  }
+  await waitFor(() => a.match?.currentTurn === 'host', 25000);
+  await sleep(2500);
+}
+
 async function freshMatch(a: ProtocolBot): Promise<void> {
   const before = a.matchMessages;
   a.send({ type: 'reset' });
@@ -103,8 +133,9 @@ async function main(): Promise<void> {
     );
   }
   await freshMatch(a);
+  await playOpening(a, b);
   check(
-    'fresh match: all six sticks on the host table',
+    'after the opening: all six sticks on the host table',
     onTable(a, STICKS).length === 6,
     STICKS.map((id) => y(a, id).toFixed(2)).join(' '),
   );
@@ -285,10 +316,11 @@ async function main(): Promise<void> {
   await sleep(300);
   await freshMatch(a);
   check(
-    'Ny runda mid-flight: fresh match, all sticks on the table',
+    'Ny runda mid-flight: fresh match, every stick on a table',
     onTable(a, STICKS).length === 6 && a.match?.currentTurn === 'host',
     STICKS.map((id) => y(a, id).toFixed(2)).join(' '),
   );
+  await playOpening(a, b);
 
   // 14. Inkast edge cases: the host fells a guest baseline kubb, then the guest
   // tries the wrong things before tossing it properly.

@@ -5974,3 +5974,14 @@ calibration data isn't flattened by the assists; impacts' 32 / 200 m/s
 limits are one constant and the server clamps |Δv|. Parked: server
 impacts play ~100 ms ahead of the interpolated view (add a tick later);
 the throw help only acts in a match on your own turn, not in practice.
+
+## 2026-11-01 — The starter throws two sticks on the opening turn
+
+The 20-match simplified series: the starter won 13 of 20 — in short
+matches the first turn weighs heavily. Erik: "kör 2 pinnar i första
+omgången för den som börjar" (as tournament rules do). In a match (both
+rules) the host's opening turn racks only `openingSticks` (2,
+match.json); the other four already wait on the guest's table, out of
+the turn (phase settled, so they can't be thrown), and the round is
+complete once those two have settled (RoundState.sticksThisRound).
+Every later turn has six. Server mode only: the P2P fallback keeps six.

@@ -98,13 +98,25 @@ function host(mode: 'simple' | 'advanced' = 'simple') {
   };
 }
 
-/** The thrower's six sticks: throw each, land it on the grass. */
+/** The thrower's racked sticks (six; two on the match's opening turn):
+ * throw each, land it on the grass. */
 function throwTurn(h: ReturnType<typeof host>, side: 'host' | 'guest') {
-  for (let i = 0; i < 6; i++) {
-    expect(h.throwStick(side, `stick-${i}`)).toBe(true);
-    h.world.land(`stick-${i}`, [i * 0.3 - 0.8, 0.022, -3.5]);
+  for (const [i, id] of h.mh.rackedSticks().entries()) {
+    expect(h.throwStick(side, id)).toBe(true);
+    h.world.land(id, [i * 0.3 - 0.8, 0.022, -3.5]);
     h.run(0.6);
   }
+}
+
+/** Both opening turns, nothing felled: the host's two sticks, then the
+ * guest's six — the match proper (six a turn) starts at the host. */
+function playOpening(h: ReturnType<typeof host>) {
+  throwTurn(h, 'host');
+  h.run(3);
+  throwTurn(h, 'guest');
+  h.run(3);
+  expect(h.last()?.currentTurn).toBe('host');
+  expect(h.mh.rackedSticks()).toHaveLength(6);
 }
 
 describe('MatchHost — practice (one player)', () => {
@@ -265,6 +277,7 @@ describe('MatchHost — stability scenarios (2026-10-31)', () => {
     const h = host();
     h.mh.setPlayers(['host', 'guest']);
     h.run(1.2);
+    playOpening(h);
     knock(h, 'host', ['kubb-0', 'kubb-1', 'kubb-2', 'kubb-3', 'kubb-4']);
     expect(h.last()?.baselineKubbs.guest).toEqual([]);
     expect(h.throwStick('host', 'stick-5')).toBe(true);
@@ -511,9 +524,26 @@ describe('MatchHost — time limit changes (review, 2026-11-01)', () => {
   it('reports the racked sticks', () => {
     const h = host();
     h.mh.setPlayers(['host', 'guest']);
-    expect(h.mh.rackedSticks()).toHaveLength(6);
+    expect(h.mh.rackedSticks()).toHaveLength(2); // the opening turn
     h.throwStick('host', 'stick-0');
     expect(h.mh.rackedSticks()).not.toContain('stick-0');
+  });
+
+  it('the starter throws two sticks on the opening turn, then six a turn (Erik, 2026-11-01)', () => {
+    const h = host();
+    h.mh.setPlayers(['host', 'guest']);
+    expect(h.mh.rackedSticks()).toEqual(['stick-0', 'stick-1']);
+    // The other four wait on the guest's table and cannot be thrown now.
+    expect(h.throwStick('host', 'stick-2')).toBe(false);
+    expect(h.world.pose('stick-2')?.position[2]).toBeLessThan(-4);
+    throwTurn(h, 'host');
+    h.run(3);
+    expect(h.last()?.currentTurn).toBe('guest');
+    expect(h.mh.rackedSticks()).toHaveLength(6);
+    throwTurn(h, 'guest');
+    h.run(3);
+    expect(h.last()?.currentTurn).toBe('host');
+    expect(h.mh.rackedSticks()).toHaveLength(6);
   });
 });
 
@@ -555,6 +585,7 @@ describe('MatchHost — simplified rules (Förenklat, 2026-11-01)', () => {
     h.mh.setPlayers(['host', 'guest']);
     expect(h.last()?.simplified).toBe(true);
     h.run(1.2);
+    playOpening(h);
     // Host fells guest baseline kubb-0: tossed over as usual.
     expect(h.throwStick('host', 'stick-0')).toBe(true);
     h.world.land('kubb-0', [-1.2, 0.035, -6.1]);

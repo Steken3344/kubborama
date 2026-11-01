@@ -2,5 +2,6 @@
   "kingDecisionGraceS": 1.5,
   "restartDelayS": 10,
   "timeLimitChoicesMin": [0, 20, 30, 45],
-  "clockEveryTicks": 30
+  "clockEveryTicks": 30,
+  "openingSticks": 2
 }

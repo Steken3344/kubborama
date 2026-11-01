@@ -814,17 +814,26 @@ export class MatchHost {
   // --- placement ---------------------------------------------------------
 
   /** The thrower's rack on its own stick table, which always stands at
-   * its baseline (Erik, 2026-11-01: the tables never move). */
-  private placeSticksFor(side: MatchSide): void {
+   * its baseline (Erik, 2026-11-01: the tables never move). With fewer
+   * than all six (the match's opening turn), the rest already wait on
+   * the other side's table, out of this turn. */
+  private placeSticksFor(
+    side: MatchSide,
+    count: number = STICKS_PER_ROUND,
+  ): void {
+    let index = 0;
     for (const [id, stick] of this.sticks) {
       const home = this.world.homePose(id);
       if (!home) {
         continue;
       }
+      const inPlay = index < count;
+      index += 1;
+      const tableSide = inPlay ? side : otherSide(side);
       const pose =
-        side === 'host' ? home : mirrorPoseToFarBaseline(home, this.farZ);
+        tableSide === 'host' ? home : mirrorPoseToFarBaseline(home, this.farZ);
       this.world.setPose(id, pose);
-      stick.phase = 'racked';
+      stick.phase = inPlay ? 'racked' : 'settled';
       stick.restS = 0;
     }
   }
@@ -863,7 +872,9 @@ export class MatchHost {
     this.placeEverythingHome();
     this.matchState = initialMatchState(KUBB_COUNT, this.simplified);
     if (this.matchActive) {
-      this.placeSticksFor('host');
+      // The starter's opening turn has fewer sticks (match.json).
+      this.startRound(initialRoundState(1, match.openingSticks));
+      this.placeSticksFor('host', match.openingSticks);
     }
     this.out.matchState(this.matchActive ? this.matchState : null);
   }

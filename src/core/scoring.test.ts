@@ -109,3 +109,19 @@ describe('scoringReducer', () => {
     expect(next.sticksThrownWhenKingFelled).toBeNull();
   });
 });
+
+describe('a shorter opening round (2026-11-01)', () => {
+  it('is complete once its own sticks have settled', () => {
+    let s = initialRoundState(1, 2);
+    s = scoringReducer(s, { type: 'StickThrown' });
+    s = scoringReducer(s, { type: 'StickSettled' });
+    expect(isRoundComplete(s)).toBe(false);
+    s = scoringReducer(s, { type: 'StickThrown' });
+    s = scoringReducer(s, { type: 'StickSettled' });
+    expect(isRoundComplete(s)).toBe(true);
+  });
+
+  it('the next round has all six again', () => {
+    expect(nextRoundState(initialRoundState(1, 2)).sticksThisRound).toBe(6);
+  });
+});
