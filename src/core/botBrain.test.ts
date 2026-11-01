@@ -22,6 +22,7 @@ const tuning: BotTuning = {
   afterStickRestsS: 1,
   inkastClusterInsideM: 0.8,
   inkastClusterSpreadM: 0.45,
+  inkastRollM: 0.9,
 };
 const positions = new Map<string, Vec3>([
   ['kubb-0', [-2, 0.15, -8]],
@@ -186,7 +187,8 @@ describe('botStep', () => {
         const drop = a.from[1] - 0.15;
         const t = (vy + Math.sqrt(vy * vy + 2 * G * drop)) / G;
         const x = a.from[0] + vx * t;
-        const z = a.from[2] + vz * t;
+        // …and it rolls on towards the host baseline (+z) as it settles.
+        const z = a.from[2] + vz * t + tuning.inkastRollM;
         if (Math.abs(x) > halves.halfWidthM || z < halves.centreZ || z > 0) {
           out += 1;
         }

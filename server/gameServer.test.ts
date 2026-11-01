@@ -6,6 +6,7 @@ import {
   MAX_SPECTATORS,
   REJOIN_GRACE_MS,
   ROOM_ACTION_COOLDOWN_MS,
+  SEAT_IDLE_MS,
 } from './gameServer.js';
 import { memoryProfileRepository } from './profileRepository.js';
 import { noServerLog } from './serverLog.js';
@@ -41,6 +42,17 @@ const join = (
   gameMode,
   clientId,
 });
+
+const presence = () => {
+  const pose = { position: [0, 1.6, 0], quaternion: [0, 0, 0, 1] };
+  return {
+    version: 2,
+    head: pose,
+    leftHand: pose,
+    rightHand: pose,
+    colorIndex: 1,
+  };
+};
 
 describe('GameServer (MP5)', () => {
   it('assigns side A then B, rejects a third player', async () => {
@@ -680,6 +692,49 @@ describe('GameServer — bot opponent and time limit (2026-11-01)', () => {
     }
     expect(guestTurnAt).toBeGreaterThanOrEqual(0);
     expect(botThrew).toBe(true);
+  });
+
+  it('an idle player holding the other seat gives it up to the bot (Erik, 2026-11-01)', async () => {
+    // An old tab of the same headset kept the guest seat: "room full".
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const ghost = fakeClient();
+    const ha = server.connect(a.connection);
+    await ha.receive(join());
+    const ghostId = 'client-ghost-tab-xxxx';
+    await server.connect(ghost.connection).receive(join('simple', ghostId));
+    clock.now += ROOM_ACTION_COOLDOWN_MS * 2;
+    // A is in the headset (presence), the ghost sends none.
+    await ha.receive({ type: 'presence', message: presence() });
+    clock.now += SEAT_IDLE_MS + 1;
+    await ha.receive({ type: 'presence', message: presence() });
+    expect(await ha.receive({ type: 'setBot', level: 'easy' })).toBe(true);
+    expect(ghost.received).toContainEqual({ type: 'rejected', reason: 'full' });
+    expect(a.received.filter((m) => m.type === 'roomSettings').at(-1)).toEqual({
+      type: 'roomSettings',
+      timeLimitMin: 0,
+      bot: 'easy',
+    });
+    // The ghost reconnecting does not take the seat back from the bot.
+    const again = fakeClient();
+    expect(
+      await server.connect(again.connection).receive(join('simple', ghostId)),
+    ).toBe(false);
+    expect(again.received).toContainEqual({ type: 'rejected', reason: 'full' });
+  });
+
+  it('a present opponent is never replaced by the bot', async () => {
+    const server = new GameServer({ log: noServerLog, nowMs: () => clock.now });
+    const a = fakeClient();
+    const b = fakeClient();
+    const ha = server.connect(a.connection);
+    const hb = server.connect(b.connection);
+    await ha.receive(join());
+    await hb.receive(join());
+    clock.now += SEAT_IDLE_MS + ROOM_ACTION_COOLDOWN_MS * 2;
+    await hb.receive({ type: 'presence', message: presence() });
+    expect(await ha.receive({ type: 'setBot', level: 'easy' })).toBe(false);
+    expect(b.received).not.toContainEqual({ type: 'rejected', reason: 'full' });
   });
 
   it('a person joining takes the seat from the bot', async () => {

@@ -38,6 +38,8 @@ export interface BotTuning {
    * strays from the cluster at factor 1 (× inkastSpreadFactor). */
   inkastClusterInsideM: number;
   inkastClusterSpreadM: number;
+  /** How far a tossed kubb rolls on after landing (m). */
+  inkastRollM: number;
 }
 
 export interface BotMemory {
@@ -142,14 +144,19 @@ export function botStep(
     }
     // Gathered, not spread (Erik, 2026-11-01): every toss aims at the
     // cluster; a weaker level strays further and may toss one out.
+    const restAt = clusterInkastTarget(
+      policyView,
+      t.inkastClusterInsideM,
+      t.inkastLineMarginM,
+    );
+    // A tossed kubb tumbles on after landing (~0.9 m on grass, measured
+    // against the server, 2026-11-01): aim that much short of where it
+    // should come to rest.
+    const towardThrower = Math.sign(plan.from[2] - restAt[2]);
     const aimed = {
       ...plan,
       target: jitter(
-        clusterInkastTarget(
-          policyView,
-          t.inkastClusterInsideM,
-          t.inkastLineMarginM,
-        ),
+        [restAt[0], restAt[1], restAt[2] + towardThrower * t.inkastRollM],
         rng,
         t.inkastClusterSpreadM * t.inkastSpreadFactor,
       ),

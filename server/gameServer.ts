@@ -69,6 +69,11 @@ const MAX_IMPACTS_PER_SNAPSHOT = 32;
  * rejoins with the same clientId and the match simply continues
  * (docs/QUESTIONS.md, option 1 — decided 2026-09-27). */
 export const REJOIN_GRACE_MS = 60_000;
+/** A seated player with no presence (head/hands, sent 20 Hz from the
+ * headset) for this long is not playing: asking for the bot takes that
+ * seat (Erik, 2026-11-01 — an old tab of the same headset held it and
+ * the bot was refused, "room full"). */
+export const SEAT_IDLE_MS = 10_000;
 /** "Ny runda" and a court switch each act at most once per this long,
  * room-wide: a repeated press (a bouncing ray, a quick double click, or
  * both players at once) must not restart the match — or flip the court
@@ -113,6 +118,8 @@ interface Seat {
   leftAtMs: number | null;
   recentThrowsMs: number[];
   lastPresenceMs: number;
+  /** When this seat was taken or reclaimed (idleness counts from here). */
+  seatedAtMs: number;
   recentSignalsMs: number[];
   lastProfileChangeMs: number;
   /** A server-run bot (no connection, never expires, no profile). */
@@ -155,6 +162,8 @@ export class GameServer {
     cooldownS: IMPACT_COOLDOWN_S,
   });
   private pendingImpacts: ImpactItem[] = [];
+  /** Clients whose idle seat went to the bot (cleared when it leaves). */
+  private readonly idleClientIds = new Set<string>();
   private host: MatchHost | null = null;
   private worldPromise: Promise<PhysicsWorld> | null = null;
   private lastMatch: ServerMessage | null = null;
@@ -470,10 +479,20 @@ export class GameServer {
       seat.connection?.close(); // a second tab of the same browser wins
       seat.connection = connection;
       seat.leftAtMs = null;
+      seat.seatedAtMs = this.nowMs();
       seat.deviceId = deviceId;
       seat.profileKey = this.seatProfileKey(deviceId, message);
     } else {
-      // A person always beats the bot to a seat.
+      // A person always beats the bot to a seat — except the idle one
+      // the bot was given it from (giveIdleSeatToBot).
+      if (
+        this.idleClientIds.has(message.clientId) &&
+        this.seats.some((s) => s.bot)
+      ) {
+        connection.send({ type: 'rejected', reason: 'full' });
+        connection.close();
+        return false;
+      }
       if (this.seats.length >= SIDES.length && this.seats.some((s) => s.bot)) {
         this.removeBot('player joined');
       }
@@ -494,6 +513,8 @@ export class GameServer {
         lastProfileChangeMs: -Infinity,
         recentThrowsMs: [],
         lastPresenceMs: -Infinity,
+        // Counts as present from joining (SEAT_IDLE_MS).
+        seatedAtMs: this.nowMs(),
         recentSignalsMs: [],
         bot: false,
       };
@@ -805,6 +826,17 @@ export class GameServer {
     }
     const seated = this.seats.find((s) => s.bot);
     if (!seated) {
+      const now = this.nowMs();
+      const idle = this.seats.find(
+        (s) =>
+          !s.bot &&
+          s.side !== by &&
+          (s.connection === null ||
+            now - Math.max(s.lastPresenceMs, s.seatedAtMs) > SEAT_IDLE_MS),
+      );
+      if (this.seats.length >= SIDES.length && idle) {
+        this.giveIdleSeatToBot(idle);
+      }
       const taken = new Set(this.seats.map((s) => s.side));
       const side = SIDES.find((s) => !taken.has(s));
       if (!side) {
@@ -821,6 +853,7 @@ export class GameServer {
         lastProfileChangeMs: -Infinity,
         recentThrowsMs: [],
         lastPresenceMs: -Infinity,
+        seatedAtMs: this.nowMs(),
         recentSignalsMs: [],
         bot: true,
       });
@@ -841,6 +874,18 @@ export class GameServer {
   }
 
   /** A person's seat is held for a rejoin: the match waits for them. */
+  /** An idle seat is cleared for the bot; its client is told the room
+   * is full and, while the bot sits, may not take a seat back. */
+  private giveIdleSeatToBot(seat: (typeof this.seats)[number]): void {
+    this.log('info', 'gate', 'idle seat given to the bot', {
+      side: seat.side,
+    });
+    seat.connection?.send({ type: 'rejected', reason: 'full' });
+    seat.connection?.close();
+    this.seats = this.seats.filter((s) => s !== seat);
+    this.idleClientIds.add(seat.clientId);
+  }
+
   private playerAway(): boolean {
     return this.seats.some((s) => !s.bot && s.connection === null);
   }
@@ -860,6 +905,7 @@ export class GameServer {
     const before = this.seats.length;
     this.seats = this.seats.filter((s) => !s.bot);
     this.botLevel = null;
+    this.idleClientIds.clear();
     if (this.seats.length === before) {
       return;
     }

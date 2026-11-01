@@ -5886,3 +5886,17 @@ the shortest way into the throw's vertical plane, keeping its tilt.
 Both are 0…1 knobs (`spinAssist`, `alignAssist` in pieces.json, 1 by
 default) — a feel calibration for the headset (M2 human gate), not
 self-approved.
+
+## 2026-11-01 — An idle seat goes to the bot; the bot's inkast allows for roll
+
+- Erik's solo test: "Motståndare" was refused 7× ("room full") — an
+  old tab of his headset (no XR, no presence) kept the guest seat and
+  reconnected about once a minute. Asking for the bot now takes a seat
+  whose player has sent no presence for `SEAT_IDLE_MS` (10 s, counted
+  from joining). That client is told "full", and while the bot sits it
+  cannot reclaim a seat (a person joining otherwise always beats the
+  bot). A present opponent is never replaced.
+- Watched against the server, the gathered inkast came to rest ~0.9 m
+  past its aim point (a tossed kubb tumbles on): it piled up on the
+  thrower's baseline instead of near the centre line. The bot now aims
+  `inkastRollM` (0.9 m) short of where the kubbs should rest.
