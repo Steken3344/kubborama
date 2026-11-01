@@ -4,10 +4,10 @@ import {
   Grabbed,
   Hovered,
   Mesh,
+  OneHandGrabbable,
   RayInteractable,
 } from '@iwsdk/core';
 import type { Entity } from '@iwsdk/core';
-import { StickState } from '../components/stick-state.js';
 import { woodMaterial } from '../scene-assets/materials.js';
 
 // A clone, never the shared instance itself — see
@@ -19,14 +19,15 @@ highlightMaterial.emissive = new Color(0xfff0a0);
 highlightMaterial.emissiveIntensity = 0.55;
 
 /**
- * Warm emissive glow on a stick's contours while it's in ray range to
- * grab (RayInteractable + Hovered, the documented pattern — see
- * @iwsdk/core's state-tags.d.ts). Excludes Grabbed sticks: once held,
- * there's nothing left to advertise.
+ * Warm emissive glow on a grabbable piece's contours while it's in ray
+ * range to grab (RayInteractable + Hovered, the documented pattern — see
+ * @iwsdk/core's state-tags.d.ts): sticks, and since 2026-11-01 the kubbs
+ * waiting to be tossed (InkastSystem makes them grabbable). Excludes
+ * Grabbed pieces: once held, there's nothing left to advertise.
  */
 export class GrabHighlightSystem extends createSystem({
   sticks: {
-    required: [StickState, RayInteractable],
+    required: [OneHandGrabbable, RayInteractable],
     excluded: [Grabbed],
   },
 }) {

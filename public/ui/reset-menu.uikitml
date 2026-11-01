@@ -3,9 +3,11 @@
   kit. Toggled by the B button on the right controller — see
   src/systems/menu.ts. Hidden by default (display: none on the root).
 
-  Four tabs (Spel/Match/Alternativ/Statistik — Erik, 2026-11-01: "det
-  börjar bli trångt … fler flikar och lägga två bredvid varandra"), the
-  buttons two to a row; each tab a plain div shown/hidden
+  Five tabs with icons (Spel/Match/Spelare/Alternativ/Statistik — Erik,
+  2026-11-01: "fler flikar och lägga två bredvid varandra … en flik som
+  heter spelare … några ikoner på flikarna"); Spel and Match are player
+  A's (room settings), the rest everyone's. The buttons two to a row; the
+  active tab is drawn as primary. Each tab a plain div shown/hidden
   by MenuSystem — no native UIKitML tab component, so this is the same
   display:none toggle already used for the whole panel, just applied
   per-tab. Every control is a Button that shows its current value and
@@ -71,7 +73,13 @@
 
   .tab-button {
     justify-content: center;
-    width: 112px;
+    width: 92px;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .tab-label {
+    font-size: 13px;
   }
 
   .button {
@@ -140,20 +148,29 @@
 <Panel id="menu-root" class="panel-root" style="display: none">
   <div class="tab-bar">
     <Button id="tab-main-button" class="tab-button">
-      <ButtonLabel id="tab-main-label">Spel</ButtonLabel>
+      <ButtonIcon><Gamepad2></Gamepad2></ButtonIcon>
+      <ButtonLabel id="tab-main-label" class="tab-label">Spel</ButtonLabel>
     </Button>
     <Button id="tab-match-button" class="tab-button">
-      <ButtonLabel id="tab-match-label">Match</ButtonLabel>
+      <ButtonIcon><Trophy></Trophy></ButtonIcon>
+      <ButtonLabel id="tab-match-label" class="tab-label">Match</ButtonLabel>
+    </Button>
+    <Button id="tab-player-button" class="tab-button">
+      <ButtonIcon><User></User></ButtonIcon>
+      <ButtonLabel id="tab-player-label" class="tab-label">Spelare</ButtonLabel>
     </Button>
     <Button id="tab-settings-button" class="tab-button">
-      <ButtonLabel id="tab-settings-label">Alternativ</ButtonLabel>
+      <ButtonIcon><Settings></Settings></ButtonIcon>
+      <ButtonLabel id="tab-settings-label" class="tab-label">Alternativ</ButtonLabel>
     </Button>
     <Button id="tab-stats-button" class="tab-button">
-      <ButtonLabel id="tab-stats-label">Statistik</ButtonLabel>
+      <ButtonIcon><ChartColumn></ChartColumn></ButtonIcon>
+      <ButtonLabel id="tab-stats-label" class="tab-label">Statistik</ButtonLabel>
     </Button>
   </div>
   <Divider></Divider>
 
+  <!-- Player A only: the room. -->
   <div id="tab-main-content" class="tab-content">
     <Button id="reset-button" class="button">
       <ButtonLabel id="reset-button-label">Ny runda</ButtonLabel>
@@ -161,16 +178,9 @@
     <Button id="game-mode-button" class="button">
       <ButtonLabel id="game-mode-button-label">Enkelt</ButtonLabel>
     </Button>
-    <!-- Throw help, per headset (2026-11-01). -->
-    <Button id="aim-assist-button" class="button">
-      <ButtonLabel id="aim-assist-label">Kasthjälp: Mycket</ButtonLabel>
-    </Button>
-    <Button id="language-button" class="button">
-      <ButtonLabel id="language-button-label">Svenska</ButtonLabel>
-    </Button>
   </div>
 
-  <!-- Room settings, game server only (2026-11-01). -->
+  <!-- Room settings, game server only (2026-11-01). Player A only. -->
   <div id="tab-match-content" class="tab-content" style="display: none">
     <Button id="opponent-button" class="button" style="display: none">
       <ButtonLabel id="opponent-label">Motståndare: Person</ButtonLabel>
@@ -186,30 +196,43 @@
     >
   </div>
 
-  <div id="tab-settings-content" class="tab-content" style="display: none">
-    <Button id="court-lines-button" class="button">
-      <ButtonLabel id="court-lines-label">Planlinjer: Av</ButtonLabel>
+  <!-- Per headset: who I am and how I play. -->
+  <div id="tab-player-content" class="tab-content" style="display: none">
+    <Button id="profile-name-button" class="button">
+      <ButtonLabel id="profile-name-label">Namn: Spelare</ButtonLabel>
+    </Button>
+    <Button id="avatar-color-button" class="button">
+      <ButtonLabel id="avatar-color-label">Färg: Röd</ButtonLabel>
+    </Button>
+    <Button id="aim-assist-button" class="button">
+      <ButtonLabel id="aim-assist-label">Kasthjälp: Mycket</ButtonLabel>
+    </Button>
+    <Button id="stick-move-button" class="button">
+      <ButtonLabel id="stick-move-label">Gå med spaken: På</ButtonLabel>
     </Button>
     <Button id="mic-button" class="button">
       <ButtonLabel id="mic-button-label">Mikrofon: Av</ButtonLabel>
+    </Button>
+    <Button id="haptics-button" class="button">
+      <ButtonLabel id="haptics-button-label">Haptik: På</ButtonLabel>
+    </Button>
+    <Button id="haptics-strength-button" class="button">
+      <ButtonLabel id="haptics-strength-label">Styrka: 70%</ButtonLabel>
+    </Button>
+  </div>
+
+  <div id="tab-settings-content" class="tab-content" style="display: none">
+    <Button id="language-button" class="button">
+      <ButtonLabel id="language-button-label">Svenska</ButtonLabel>
+    </Button>
+    <Button id="court-lines-button" class="button">
+      <ButtonLabel id="court-lines-label">Planlinjer: Av</ButtonLabel>
     </Button>
     <Button id="music-volume-button" class="button">
       <ButtonLabel id="music-volume-label">Musik: 70%</ButtonLabel>
     </Button>
     <Button id="sfx-volume-button" class="button">
       <ButtonLabel id="sfx-volume-label">Ljud: 70%</ButtonLabel>
-    </Button>
-    <Button id="haptics-button" class="button">
-      <ButtonLabel id="haptics-button-label">Haptik: Pa</ButtonLabel>
-    </Button>
-    <Button id="haptics-strength-button" class="button">
-      <ButtonLabel id="haptics-strength-label">Styrka: 70%</ButtonLabel>
-    </Button>
-    <Button id="avatar-color-button" class="button">
-      <ButtonLabel id="avatar-color-label">Färg: Röd</ButtonLabel>
-    </Button>
-    <Button id="profile-name-button" class="button">
-      <ButtonLabel id="profile-name-label">Namn: Spelare</ButtonLabel>
     </Button>
     <Button id="debug-button" class="button">
       <ButtonLabel id="debug-button-label">Debug: Av</ButtonLabel>

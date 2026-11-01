@@ -95,5 +95,8 @@
   "aimAssistSome": "Throw help: Some",
   "aimAssistMore": "Throw help: More",
   "tabMatch": "Match",
-  "matchNeedsServer": "Match settings need the game server"
+  "matchNeedsServer": "Match settings need the game server",
+  "tabPlayer": "Player",
+  "stickMoveOn": "Stick walking: On",
+  "stickMoveOff": "Stick walking: Off"
 }

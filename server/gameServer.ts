@@ -997,7 +997,10 @@ export class GameServer {
         halves,
         positions: this.botPositions,
         racked: myTurn ? this.host.rackedSticks() : [],
-        stickInFlight: myTurn && this.host.stickInFlight(),
+        // Also holds the bot while a felled king's decision is pending.
+        stickInFlight:
+          myTurn &&
+          (this.host.stickInFlight() || this.host.kingDecisionPending()),
         nowS: this.tickCount / TICK_HZ,
       },
       { ...botTuning, ...botTuning.levels[this.botLevel] },

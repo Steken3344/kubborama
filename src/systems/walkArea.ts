@@ -1,4 +1,10 @@
-import { createSystem, LocomotionEnvironment, Vector3 } from '@iwsdk/core';
+import {
+  createSystem,
+  LocomotionEnvironment,
+  LocomotionSystem,
+  Vector3,
+} from '@iwsdk/core';
+import { settingsState } from '../settingsState.js';
 import {
   kubbTable,
   lineLeanAllowanceM,
@@ -59,6 +65,11 @@ export class WalkAreaSystem extends createSystem({}) {
   private lastRigX = Number.NaN;
   private lastRigZ = Number.NaN;
 
+  /** The configured slide speed, restored when walking is switched back
+   * on; NaN until read. */
+  private slideSpeed = Number.NaN;
+  private appliedStickMove: boolean | null = null;
+
   init(): void {
     // The walkable surface is set here rather than in the scene JSON, so
     // the editor and the game server's scene reader stay untouched.
@@ -83,6 +94,7 @@ export class WalkAreaSystem extends createSystem({}) {
   }
 
   update(_delta: number, timeS: number): void {
+    this.applyStickMove();
     const position = this.player.position;
     this.point.x = position.x;
     this.point.z = position.z;
@@ -170,5 +182,24 @@ export class WalkAreaSystem extends createSystem({}) {
       n.halfX = f.halfX = t.w / 2;
       n.halfZ = f.halfZ = t.d / 2;
     });
+  }
+
+  /** "Gå med spaken" (settings.stickMove, Erik 2026-11-01): off sets the
+   * locomotion slide speed to 0 — snap turning stays. Checked each frame,
+   * applied only on a change (no allocation). */
+  private applyStickMove(): void {
+    const on = settingsState.current.stickMove;
+    if (on === this.appliedStickMove) {
+      return;
+    }
+    const locomotion = this.world.getSystem(LocomotionSystem);
+    if (!locomotion) {
+      return;
+    }
+    if (Number.isNaN(this.slideSpeed)) {
+      this.slideSpeed = locomotion.config.slidingSpeed.value;
+    }
+    locomotion.config.slidingSpeed.value = on ? this.slideSpeed : 0;
+    this.appliedStickMove = on;
   }
 }

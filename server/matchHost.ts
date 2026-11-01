@@ -359,6 +359,13 @@ export class MatchHost {
     return racked;
   }
 
+  /** The king is down and the decision is pending (its grace): nothing
+   * more should be thrown (Erik, 2026-11-01: the bot threw its sixth
+   * stick after felling the king with its fifth). */
+  kingDecisionPending(): boolean {
+    return this.kingFelledAtS !== null;
+  }
+
   /** A thrown stick has not come to rest yet (the bot waits for it). */
   stickInFlight(): boolean {
     for (const stick of this.sticks.values()) {

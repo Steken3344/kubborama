@@ -547,6 +547,22 @@ describe('MatchHost — time limit changes (review, 2026-11-01)', () => {
   });
 });
 
+describe('MatchHost — the king decision holds further throws (2026-11-01)', () => {
+  it('reports a pending decision from the king falling until it is decided', () => {
+    const h = host();
+    h.mh.setPlayers(['host', 'guest']);
+    h.run(1.2);
+    expect(h.mh.kingDecisionPending()).toBe(false);
+    expect(h.throwStick('host', 'stick-0')).toBe(true);
+    h.world.land('king', [0, 0.045, -3.1]);
+    h.world.land('stick-0', [0, 0.022, -2.8]);
+    h.run(0.6);
+    expect(h.mh.kingDecisionPending()).toBe(true);
+    h.run(2.5);
+    expect(h.last()?.winner).not.toBeNull();
+  });
+});
+
 describe('MatchHost — put down, not thrown (2026-11-01)', () => {
   it('a slow release is refused: the stick stays racked and can be thrown after', () => {
     const h = host();

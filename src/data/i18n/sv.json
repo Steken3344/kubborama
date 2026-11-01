@@ -95,5 +95,8 @@
   "aimAssistSome": "Kasthjälp: Lite",
   "aimAssistMore": "Kasthjälp: Mycket",
   "tabMatch": "Match",
-  "matchNeedsServer": "Matchinställningarna kräver spelservern"
+  "matchNeedsServer": "Matchinställningarna kräver spelservern",
+  "tabPlayer": "Spelare",
+  "stickMoveOn": "Gå med spaken: På",
+  "stickMoveOff": "Gå med spaken: Av"
 }

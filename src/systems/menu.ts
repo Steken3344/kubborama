@@ -4,6 +4,7 @@ import {
   InputComponent,
   PhysicsSystem,
   UIKitMLAsset,
+  Vector3,
 } from '@iwsdk/core';
 import type { Entity } from '@iwsdk/core';
 import { Resettable } from '../components/resettable.js';
@@ -24,7 +25,7 @@ import { nextInCycle } from '../core/cycle.js';
 import { KUBB_COUNT } from '../core/court-layout.js';
 import { accuracy } from '../core/stats.js';
 import { isMatchUnderway } from '../core/match.js';
-import type { MatchState } from '../core/match.js';
+import type { MatchSide, MatchState } from '../core/match.js';
 import { gameEvents } from '../core/events.js';
 import { roomRulesSchema } from '../core/serverProtocol.js';
 import type { GameEvents } from '../core/events.js';
@@ -49,7 +50,14 @@ export interface HomePose {
   quaternion: [number, number, number, number];
 }
 
-type TabId = 'main' | 'match' | 'settings' | 'stats';
+type TabId = 'main' | 'match' | 'player' | 'settings' | 'stats';
+const TABS: readonly TabId[] = ['main', 'match', 'player', 'settings', 'stats'];
+/** Player A's tabs: the room (Erik, 2026-11-01: "bara match och spel
+ * som spelare A får ha"). Everyone else opens on Spelare. */
+const HOST_TABS: ReadonlySet<TabId> = new Set(['main', 'match']);
+/** The menu opens this far in front of the head, a little below it. */
+const MENU_DISTANCE_M = 2.2;
+const MENU_BELOW_EYES_M = 0.15;
 
 /** Cycle grid for the volume/haptics-strength buttons. `defaultSettings()`
  * starts these at 70, off this grid, so advancing must find the next step
@@ -100,6 +108,10 @@ export class MenuSystem extends createSystem({
   private menuPanel!: UIKitMLAsset;
   private menuOpen = false;
   private activeTab: TabId = 'main';
+  /** My side in a match (null outside one): B gets no room tabs. */
+  private mySide: MatchSide | null = null;
+  private readonly headPos = new Vector3();
+  private readonly headDir = new Vector3();
   private currentTimeS = 0;
   private uiSfxRng = createRng(UI_SFX_SEED);
   private matchState: MatchState | null = null;
@@ -157,10 +169,13 @@ export class MenuSystem extends createSystem({
     this.menuPanel =
       this.world.requireSceneObject<UIKitMLAsset>('reset-menu-panel');
 
-    this.wireButton('tab-main-button', () => this.setActiveTab('main'));
-    this.wireButton('tab-match-button', () => this.setActiveTab('match'));
-    this.wireButton('tab-settings-button', () => this.setActiveTab('settings'));
-    this.wireButton('tab-stats-button', () => this.setActiveTab('stats'));
+    for (const tab of TABS) {
+      this.wireButton(`tab-${tab}-button`, () => this.setActiveTab(tab));
+    }
+    this.wireButton('stick-move-button', () => {
+      this.settingsSystem.setStickMove(!settingsState.current.stickMove);
+      this.refreshLabels();
+    });
 
     this.wireButton('reset-button', () => {
       gateLog('reset pressed', {});
@@ -359,15 +374,21 @@ export class MenuSystem extends createSystem({
         }
       }),
       // The time-limit and rules lock follows the match.
-      gameEvents.on('MatchStateChanged', ({ state }) => {
+      gameEvents.on('MatchStateChanged', ({ state, mySide }) => {
         const locked = isMatchUnderway(state);
         this.matchState = state;
+        if (mySide !== this.mySide) {
+          this.mySide = mySide;
+          this.setActiveTab(this.activeTab); // B loses the room tabs
+        }
         if (locked !== this.roomSettingsLocked) {
           this.roomSettingsLocked = locked;
           this.refreshLabels();
         }
       }),
       gameEvents.on('MultiplayerPeerDisconnected', () => {
+        this.mySide = null;
+        this.setActiveTab(this.activeTab);
         this.matchState = null;
         this.roomSettingsLocked = false;
         this.refreshLabels();
@@ -411,22 +432,27 @@ export class MenuSystem extends createSystem({
   }
 
   private setActiveTab(tab: TabId): void {
-    this.activeTab = tab;
-    this.menuPanel
-      .requireElementById('tab-main-content')
-      .setProperties({ display: tab === 'main' ? 'flex' : 'none' });
-    this.menuPanel
-      .requireElementById('tab-match-content')
-      .setProperties({ display: tab === 'match' ? 'flex' : 'none' });
-    this.menuPanel
-      .requireElementById('tab-settings-content')
-      .setProperties({ display: tab === 'settings' ? 'flex' : 'none' });
-    this.menuPanel
-      .requireElementById('tab-stats-content')
-      .setProperties({ display: tab === 'stats' ? 'flex' : 'none' });
-    if (tab === 'stats') {
+    const target = this.isGuest() && HOST_TABS.has(tab) ? 'player' : tab;
+    this.activeTab = target;
+    for (const t of TABS) {
+      this.menuPanel
+        .requireElementById(`tab-${t}-content`)
+        .setProperties({ display: t === target ? 'flex' : 'none' });
+      // The open tab stands out (Erik, 2026-11-01: "kan fliken man är
+      // inne på lysa upp så man ser att den är aktiv").
+      this.menuPanel.requireElementById(`tab-${t}-button`).setProperties({
+        variant: t === target ? 'primary' : 'tertiary',
+        display: this.isGuest() && HOST_TABS.has(t) ? 'none' : 'flex',
+      });
+    }
+    if (target === 'stats') {
       this.refreshStats();
     }
+  }
+
+  /** Player B (the guest) gets no room tabs. */
+  private isGuest(): boolean {
+    return this.mySide === 'guest';
   }
 
   private refreshLabels(): void {
@@ -438,6 +464,12 @@ export class MenuSystem extends createSystem({
     this.menuPanel
       .requireElementById('tab-match-label')
       .setProperties({ text: t('tabMatch') });
+    this.menuPanel
+      .requireElementById('tab-player-label')
+      .setProperties({ text: t('tabPlayer') });
+    this.menuPanel.requireElementById('stick-move-label').setProperties({
+      text: s.stickMove ? t('stickMoveOn') : t('stickMoveOff'),
+    });
     this.menuPanel
       .requireElementById('tab-settings-label')
       .setProperties({ text: t('tabSettings') });
@@ -636,11 +668,39 @@ export class MenuSystem extends createSystem({
     const root = this.menuPanel.requireElementById('menu-root');
     root.setProperties({ display: open ? 'flex' : 'none' });
     if (open) {
+      this.placeMenuInFront();
+      this.setActiveTab(this.activeTab);
       // Labels can go stale while the menu is closed — the match lock
       // suffix on the game-mode button in particular (code review,
       // 2026-09-05: this system has no MatchStateChanged subscription).
       this.refreshLabels();
     }
+  }
+
+  /** The menu opens in front of whoever pressed B, facing them, a bit
+   * below the eyes (Erik, 2026-11-01: player B, at the far end, never
+   * saw the panel that stood fixed at A's end; a tall tab went into the
+   * ground). On open only, so it never chases the head. */
+  private placeMenuInFront(): void {
+    const panel = this.world.requireSceneEntity('reset-menu-panel').object3D;
+    if (!panel) {
+      return;
+    }
+    const head = this.player.head;
+    head.getWorldPosition(this.headPos);
+    head.getWorldDirection(this.headDir); // three: the camera looks down −z
+    this.headDir.set(-this.headDir.x, 0, -this.headDir.z);
+    if (this.headDir.lengthSq() < 1e-6) {
+      this.headDir.set(0, 0, -1);
+    }
+    this.headDir.normalize();
+    panel.position.set(
+      this.headPos.x + this.headDir.x * MENU_DISTANCE_M,
+      this.headPos.y - MENU_BELOW_EYES_M,
+      this.headPos.z + this.headDir.z * MENU_DISTANCE_M,
+    );
+    // Face the player: the panel's front is +z.
+    panel.rotation.set(0, Math.atan2(-this.headDir.x, -this.headDir.z), 0);
   }
 
   /** During a match, and while a guest plays on the host's borrowed

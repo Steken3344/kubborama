@@ -6008,3 +6008,26 @@ at scale 0.8 (was 340 at 0.85): wider than ~560 × 0.85 it reached
 behind the scoreboard on the right. Checked in the emulator on all
 tabs. UIKitML stylesheets take no `/* comments */` — one stopped the
 whole level loading.
+
+## 2026-11-01 — Playtest of #251: bot after the king, glowing kubbs, the menu again
+
+- The bot threw its sixth stick after felling the king with its fifth:
+  the decision waits `kingDecisionGraceS`, and the bot only waited for
+  its stick to rest. It now also holds while a king decision is pending
+  (MatchHost.kingDecisionPending).
+- "Trä-kollisionsljud när man går framåt" (advantage line): the
+  advantage line is at the nearest field kubb, so walking up to it the
+  hands brushed kubbs in the headset's local physics, which knocked and
+  snapped back. In server mode only a held stick is local physics now —
+  everything else gets its sound from the server's impacts.
+- Kubbs waiting to be tossed glow when in reach, like sticks: they get
+  RayInteractable while grabbable, and the highlight follows
+  OneHandGrabbable + RayInteractable instead of StickState.
+- Menu: five tabs with Lucide icons — Spel and Match (player A only: the
+  room), Spelare (name, colour, Kasthjälp, "Gå med spaken", mic, haptics),
+  Alternativ, Statistik; the open tab is drawn primary, the others
+  tertiary. It opens 2.2 m in front of whoever pressed B, just below the
+  eyes, facing them (scale 0.55): player B at the far end never saw the
+  panel fixed at A's end, and a tall tab reached into the ground.
+- "Gå med spaken: Av" sets the locomotion slide speed to 0 (snap turning
+  stays), per headset.

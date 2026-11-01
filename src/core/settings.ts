@@ -52,6 +52,10 @@ const settingsSchema = z.object({
    * little by default — the game felt "jättesvårt"; `.default` for
    * settings saved before it existed. */
   aimAssist: z.enum(['off', 'some', 'more']).default('more'),
+  /** Walking with the left thumbstick (Erik, 2026-11-01: "skulle kunna
+   * stänga av funktionen att röra sig med joystick"); snap turning
+   * stays. On by default, `.default` for older saved settings. */
+  stickMove: z.boolean().default(true),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -72,6 +76,7 @@ export function defaultSettings(): Settings {
     roomId: null,
     serverChoice: 'auto',
     aimAssist: 'more',
+    stickMove: true,
   };
 }
 

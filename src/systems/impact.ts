@@ -22,6 +22,7 @@ import { createStartupGate } from '../core/startupGrace.js';
 import type { Vec3 } from '../core/vec3.js';
 import { isHand, pulseHaptic } from './hapticPlayer.js';
 import { playSfxVariant } from './playSfx.js';
+import { isServerModeOn } from '../serverMode.js';
 import type { SfxCategoryName } from './sfxLibrary.js';
 
 /** Deterministic per-session impact-sfx-variant picker — not the physics RNG. */
@@ -60,6 +61,7 @@ export class ImpactSystem extends createSystem({
   private sfxRng = createRng(IMPACT_SFX_SEED);
   private isPastStartupGrace = createStartupGate(pieces.throw.startupGraceS);
   private grabSystem!: GrabSystem;
+  private readonly serverMode = isServerModeOn();
 
   init(): void {
     const grabSystem = this.world.getSystem(GrabSystem);
@@ -116,7 +118,13 @@ export class ImpactSystem extends createSystem({
 
       // Tracked every frame (not only on a hit), so a release is seen.
       const releasing = this.releasing(entity, time);
-      if (!isImpact || !isPastGrace || releasing) {
+      // Server mode: only a held stick is local physics. Everything else
+      // follows the server's snapshots, which send their own impacts —
+      // a hand brushing a kubb at the advantage line knocked locally
+      // and snapped back (Erik, 2026-11-01: "trä-kollisionsljudet när
+      // man går framåt").
+      const localOnly = this.serverMode && !entity.hasComponent(Grabbed);
+      if (!isImpact || !isPastGrace || releasing || localOnly) {
         continue;
       }
 

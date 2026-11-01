@@ -5,6 +5,7 @@ import {
   OneHandGrabbable,
   PhysicsManipulation,
   Quaternion,
+  RayInteractable,
   Vector3,
 } from '@iwsdk/core';
 import type { Entity } from '@iwsdk/core';
@@ -284,5 +285,17 @@ function setGrabbable(entity: Entity, grabbable: boolean): void {
     entity.addComponent(OneHandGrabbable, GRAB_CONFIG);
   } else if (!grabbable && has) {
     entity.removeComponent(OneHandGrabbable);
+  }
+  // A kubb to toss glows when in reach, like a stick (Erik, 2026-11-01:
+  // "lyser inte upp som pinnarna … borde göra det mer intuitivt"):
+  // GrabHighlightSystem lights RayInteractable grabbables when Hovered.
+  // Sticks carry RayInteractable from the scene and keep it.
+  if (!entity.hasComponent(StickState)) {
+    const ray = entity.hasComponent(RayInteractable);
+    if (grabbable && !ray) {
+      entity.addComponent(RayInteractable);
+    } else if (!grabbable && ray) {
+      entity.removeComponent(RayInteractable);
+    }
   }
 }

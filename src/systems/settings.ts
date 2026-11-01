@@ -176,6 +176,11 @@ export class SettingsSystem extends createSystem({}) {
     this.persist();
   }
 
+  setStickMove(stickMove: boolean): void {
+    settingsState.current = { ...settingsState.current, stickMove };
+    this.persist();
+  }
+
   setAimAssist(aimAssist: Settings['aimAssist']): void {
     settingsState.current = { ...settingsState.current, aimAssist };
     this.persist();
