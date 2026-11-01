@@ -3,5 +3,7 @@
   "zM": 1.0896,
   "plankTopM": 0.95,
   "spacingM": 0.08,
-  "yawRad": -3.141592653589793
+  "yawRad": -3.141592653589793,
+  "widthM": 0.5,
+  "depthM": 0.4
 }

@@ -20,5 +20,6 @@
   "presenceEveryTicks": 3,
   "inkastSpreadMaxM": 1.2,
   "inkastLineMarginM": 0.5,
-  "stickSpinRadS": 22
+  "stickSpinRadS": 22,
+  "afterStickRestsS": 1
 }

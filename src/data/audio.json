@@ -10,7 +10,7 @@
     "foley": 0.12,
     "uiClick": 0.35,
     "ambienceBaseGain": 0.3,
-    "felledChime": 0.5
+    "felledChime": 0.9
   },
   "positional": {
     "refDistanceM": 0.6,

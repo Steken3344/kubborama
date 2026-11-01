@@ -87,6 +87,9 @@ export const confetti = confettiData;
 export const spectator = spectatorData;
 /** Menu buttons ignore a repeat click within this long (gh#27). */
 export const ui = uiData;
+/** The player's body radius against the tables (core/walkArea.ts). */
+export const tableBodyRadiusM = locomotionData.tableBodyRadiusM;
+
 /** How far past the throwing line the head may lean (core/walkArea.ts). */
 export const lineLeanAllowanceM = locomotionData.lineLeanAllowanceM;
 /** A stick released further than this past the throwing line is a

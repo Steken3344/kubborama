@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   behindLineCorrectionZ,
   clampToWalkArea,
+  pushOutOfFootprints,
   isFootFault,
 } from './walkArea.js';
 
@@ -62,5 +63,29 @@ describe('isFootFault', () => {
   it('side B is mirrored', () => {
     expect(isFootFault(-7.5, 'guest', -8, 0.9)).toBe(false);
     expect(isFootFault(-6.9, 'guest', -8, 0.9)).toBe(true);
+  });
+});
+
+describe('pushOutOfFootprints (tables are solid, Erik 2026-11-01)', () => {
+  const table = { x: 0, z: 1, halfX: 0.25, halfZ: 0.2 };
+
+  it('leaves a body clear of the table alone', () => {
+    const p = { x: 0, z: 0.5 };
+    expect(pushOutOfFootprints(p, [table], 0.2)).toBe(false);
+    expect(p).toEqual({ x: 0, z: 0.5 });
+  });
+
+  it('pushes a body that slid into the table back out the near side', () => {
+    const p = { x: 0.05, z: 0.7 };
+    expect(pushOutOfFootprints(p, [table], 0.2)).toBe(true);
+    expect(p.z).toBeCloseTo(0.6);
+    expect(p.x).toBeCloseTo(0.05);
+  });
+
+  it('pushes sideways when that is the shorter way out', () => {
+    const p = { x: 0.4, z: 1.05 };
+    pushOutOfFootprints(p, [table], 0.2);
+    expect(p.x).toBeCloseTo(0.45);
+    expect(p.z).toBeCloseTo(1.05);
   });
 });

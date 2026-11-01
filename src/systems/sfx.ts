@@ -79,13 +79,11 @@ export class SfxSystem extends createSystem({}) {
         audio.volume.felledFixed,
         position,
       );
+      // The chime plays from the listener, not the kubb (Erik,
+      // 2026-11-01: "hörs knappt … hörs inte över till andra sidan, till
+      // den spelare som fällde den"): the thrower stands 6–8 m away.
       if (this.chimeUrl) {
-        playSfxSrc(
-          this.world,
-          this.chimeUrl,
-          audio.volume.felledChime,
-          position,
-        );
+        playSfxSrc(this.world, this.chimeUrl, audio.volume.felledChime);
       }
       this.pulseBothHands(kubbFelled);
     });

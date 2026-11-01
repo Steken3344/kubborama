@@ -70,3 +70,41 @@ export function isFootFault(
     ? releaseZ < lineZ - reachM
     : releaseZ > lineZ + reachM;
 }
+
+/** A table's footprint on the ground: centre and half extents (m). */
+export interface Footprint {
+  x: number;
+  z: number;
+  halfX: number;
+  halfZ: number;
+}
+
+/**
+ * The tables are solid (Erik, 2026-11-01: "man inte kan flyta igenom
+ * bordet"): a body of `radiusM` around `point` (the head, x/z) inside a
+ * footprint is pushed out the shortest way, IN PLACE. Every frame —
+ * allocates nothing. Returns whether it moved the point.
+ */
+export function pushOutOfFootprints(
+  point: { x: number; z: number },
+  footprints: readonly Footprint[],
+  radiusM: number,
+): boolean {
+  let moved = false;
+  for (const f of footprints) {
+    const dx = point.x - f.x;
+    const dz = point.z - f.z;
+    const overX = f.halfX + radiusM - Math.abs(dx);
+    const overZ = f.halfZ + radiusM - Math.abs(dz);
+    if (overX <= 0 || overZ <= 0) {
+      continue;
+    }
+    if (overX < overZ) {
+      point.x += dx >= 0 ? overX : -overX;
+    } else {
+      point.z += dz >= 0 ? overZ : -overZ;
+    }
+    moved = true;
+  }
+  return moved;
+}

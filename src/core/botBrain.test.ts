@@ -17,6 +17,7 @@ const tuning: BotTuning = {
   inkastSpreadMaxM: 1.2,
   inkastLineMarginM: 0.5,
   stickSpinRadS: 22,
+  afterStickRestsS: 1,
 };
 const positions = new Map<string, Vec3>([
   ['kubb-0', [-2, 0.15, -8]],
@@ -28,16 +29,41 @@ const view = (
   state: MatchState,
   nowS: number,
   racked: readonly string[] = ALL,
+  stickInFlight = false,
 ): BotView => ({
   state,
   side: 'guest',
   halves,
   positions,
   racked,
+  stickInFlight,
   nowS,
 });
 
 describe('botStep', () => {
+  it('waits for its last stick to come to rest before aiming again (Erik, 2026-11-01: it threw at kubbs it had just felled)', () => {
+    const rng = createRng(3);
+    let step = botStep(freshBotMemory(), view(guestTurn, 0), tuning, rng);
+    step = botStep(step.memory, view(guestTurn, 2), tuning, rng);
+    expect(step.action?.pieceId).toBe('stick-0');
+    const rest = ALL.slice(1);
+    // Past the between-sticks pause, but stick-0 is still flying.
+    let s2 = botStep(
+      step.memory,
+      view(guestTurn, 3.5, rest, true),
+      tuning,
+      rng,
+    );
+    expect(s2.action).toBeNull();
+    s2 = botStep(s2.memory, view(guestTurn, 5, rest, true), tuning, rng);
+    expect(s2.action).toBeNull();
+    // At rest at 5.2 s: a moment for a felled kubb to count, then throw.
+    s2 = botStep(s2.memory, view(guestTurn, 5.2, rest), tuning, rng);
+    expect(s2.action).toBeNull();
+    s2 = botStep(s2.memory, view(guestTurn, 6.3, rest), tuning, rng);
+    expect(s2.action?.pieceId).toBe('stick-1');
+  });
+
   it('waits out the turn-start delay, then throws one stick at a time', () => {
     const rng = createRng(1);
     let mem = freshBotMemory();

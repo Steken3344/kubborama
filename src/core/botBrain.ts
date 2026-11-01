@@ -25,6 +25,9 @@ export interface BotTuning {
   inkastSpreadMaxM: number;
   inkastLineMarginM: number;
   stickSpinRadS: number;
+  /** After its last stick comes to rest, before the next: time for a
+   * felled kubb to topple and count, so it aims at what still stands. */
+  afterStickRestsS: number;
 }
 
 export interface BotMemory {
@@ -45,6 +48,9 @@ export interface BotView {
    * bot's own count, which a restart or reset would leave stale
    * (review, 2026-11-01). */
   racked: readonly string[];
+  /** One of its sticks is still flying or rolling (the server's own
+   * stick tracking): what it hit is not known yet. */
+  stickInFlight: boolean;
   nowS: number;
 }
 
@@ -144,6 +150,14 @@ export function botStep(
         velocity: velocityFor(aimed),
         spin: [0, 0, 0],
       },
+    };
+  }
+  if (view.stickInFlight) {
+    // Aiming now would pick a kubb the flying stick is about to fell
+    // (Erik, 2026-11-01): wait until it rests, then a moment more.
+    return {
+      memory: { ...memory, readyAtS: nowS + t.afterStickRestsS },
+      action: null,
     };
   }
   const plan = planStick(policyView, 'hit');

@@ -39,7 +39,9 @@ describe('scene tables match their data', () => {
   });
 
   it('the stick rack collider top is the plank top the sticks lie on', () => {
-    const [, h = 0] = dims('stick-rack-collider');
+    const [w = 0, h = 0, d = 0] = dims('stick-rack-collider');
+    expect(w).toBeCloseTo(stickRack.widthM);
+    expect(d).toBeCloseTo(stickRack.depthM);
     const [cx = 0, cy = 0, cz = 0] = pos('stick-rack-collider');
     expect(cy + h / 2).toBeCloseTo(stickRack.plankTopM);
     expect([cx, cz]).toEqual([stickRack.xM, stickRack.zM]);

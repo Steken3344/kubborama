@@ -1,15 +1,27 @@
 import { createSystem, LocomotionEnvironment, Vector3 } from '@iwsdk/core';
-import { lineLeanAllowanceM, walkArea } from '../config.js';
+import {
+  kubbTable,
+  lineLeanAllowanceM,
+  stickRack,
+  tableBodyRadiusM,
+  walkArea,
+} from '../config.js';
 import { gameEvents } from '../core/events.js';
 import { standingLineZ } from '../core/match.js';
 import type { MatchSide } from '../core/match.js';
-import { behindLineCorrectionZ, clampToWalkArea } from '../core/walkArea.js';
+import {
+  behindLineCorrectionZ,
+  clampToWalkArea,
+  pushOutOfFootprints,
+} from '../core/walkArea.js';
+import type { Footprint } from '../core/walkArea.js';
 import { gateLog } from '../debug/gateLog.js';
 import { movePlayerTo } from '../playerPlacement.js';
-import { activeCourtHalves } from './activeCourt.js';
+import { activeCourtHalves, activeFarBaselineZ } from './activeCourt.js';
 
 /** At most one gate line per this many seconds while held at a line. */
 const LINE_LOG_INTERVAL_S = 2;
+const SLIDE_EPSILON_M = 0.001;
 
 /**
  * Thumbstick locomotion (Erik, 2026-10-31; iwsdk.config.json
@@ -30,6 +42,21 @@ export class WalkAreaSystem extends createSystem({}) {
   private side: MatchSide | null = null;
   private lineZ: number | null = null;
   private lastLineLogS = -Infinity;
+  /** Both baselines' stick and kubb tables (Erik, 2026-11-01: no
+   * sliding through them); the far ones follow the court. */
+  private readonly tables: Footprint[] = [
+    { x: 0, z: 0, halfX: 0, halfZ: 0 },
+    { x: 0, z: 0, halfX: 0, halfZ: 0 },
+    { x: 0, z: 0, halfX: 0, halfZ: 0 },
+    { x: 0, z: 0, halfX: 0, halfZ: 0 },
+  ];
+  private tablesFarZ = Number.NaN;
+  private head = { x: 0, z: 0 };
+  /** The rig at the end of last frame: the tables only stop a SLIDE
+   * (the thumbstick moved the rig) — leaning over a table in the room
+   * to reach a stick must never shove the world. */
+  private lastRigX = Number.NaN;
+  private lastRigZ = Number.NaN;
 
   init(): void {
     // The walkable surface is set here rather than in the scene JSON, so
@@ -59,8 +86,23 @@ export class WalkAreaSystem extends createSystem({}) {
     this.point.x = position.x;
     this.point.z = position.z;
     let moved = clampToWalkArea(this.point, walkArea);
+    this.layOutTables();
+    this.player.head.getWorldPosition(this.headPos);
+    // The head (the body) against the tables; the rig follows the push.
+    this.head.x = this.headPos.x + (this.point.x - position.x);
+    this.head.z = this.headPos.z + (this.point.z - position.z);
+    const hx = this.head.x;
+    const hz = this.head.z;
+    // A millimetre, so locomotion's own per-frame float jitter isn't a slide.
+    const slid =
+      Math.hypot(position.x - this.lastRigX, position.z - this.lastRigZ) >
+      SLIDE_EPSILON_M;
+    if (slid && pushOutOfFootprints(this.head, this.tables, tableBodyRadiusM)) {
+      this.point.x += this.head.x - hx;
+      this.point.z += this.head.z - hz;
+      moved = true;
+    }
     if (this.side !== null && this.lineZ !== null) {
-      this.player.head.getWorldPosition(this.headPos);
       const dz = behindLineCorrectionZ(
         this.headPos.z + (this.point.z - position.z),
         this.side,
@@ -80,5 +122,42 @@ export class WalkAreaSystem extends createSystem({}) {
       this.target.set(this.point.x, position.y, this.point.z);
       movePlayerTo(this.world, this.player, this.target);
     }
+    this.lastRigX = this.player.position.x;
+    this.lastRigZ = this.player.position.z;
+  }
+
+  /** The four table footprints for the current court — rewritten in
+   * place only when the far baseline moves (a court switch). */
+  private layOutTables(): void {
+    const farZ = activeFarBaselineZ();
+    if (farZ === this.tablesFarZ) {
+      return;
+    }
+    this.tablesFarZ = farZ;
+    const near = [
+      {
+        x: stickRack.xM,
+        z: stickRack.zM,
+        w: stickRack.widthM,
+        d: stickRack.depthM,
+      },
+      {
+        x: kubbTable.xM,
+        z: kubbTable.zM,
+        w: kubbTable.widthM,
+        d: kubbTable.depthM,
+      },
+    ];
+    near.forEach((t, i) => {
+      const n = this.tables[i * 2];
+      const f = this.tables[i * 2 + 1];
+      if (!n || !f) return;
+      n.x = t.x;
+      n.z = t.z;
+      f.x = -t.x; // mirrored onto the far baseline (core/presence.ts)
+      f.z = farZ - t.z;
+      n.halfX = f.halfX = t.w / 2;
+      n.halfZ = f.halfZ = t.d / 2;
+    });
   }
 }

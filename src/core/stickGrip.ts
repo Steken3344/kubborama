@@ -59,3 +59,38 @@ export function stickInHand(
   out.quaternion[2] = -dx / length;
   out.quaternion[3] = w / length;
 }
+
+/**
+ * The stick is the same at both ends, so it may be held by either: the
+ * grip takes the end that keeps the stick's long axis pointing the way
+ * it already did (Erik, 2026-11-01: picked up from one side of the table
+ * the stick swung half a turn as it glided into the hand, from the other
+ * side it did not). True when `from`'s +Y and `to`'s +Y point the same
+ * way, so no flip is needed.
+ */
+export function stickEndsAgree(from: Quat, to: Quat): boolean {
+  return dotUpAxes(from, to) >= 0;
+}
+
+/** World +Y of a rotation: the stick's long axis. */
+function dotUpAxes(a: Quat, b: Quat): number {
+  const [ax, ay, az, aw] = a;
+  const [bx, by, bz, bw] = b;
+  const ux = 2 * (ax * ay - aw * az);
+  const uy = 1 - 2 * (ax * ax + az * az);
+  const uz = 2 * (ay * az + aw * ax);
+  const vx = 2 * (bx * by - bw * bz);
+  const vy = 1 - 2 * (bx * bx + bz * bz);
+  const vz = 2 * (by * bz + bw * bx);
+  return ux * vx + uy * vy + uz * vz;
+}
+
+/** `q` turned half a turn about the stick's own X: the same line, the
+ * other end first (q ⊗ (1, 0, 0, 0)). `out` may be `q`. */
+export function flipStickEnds(q: Quat, out: Quat): void {
+  const [x, y, z, w] = q;
+  out[0] = w;
+  out[1] = z;
+  out[2] = -y;
+  out[3] = -x;
+}

@@ -340,6 +340,14 @@ export class MatchHost {
     return racked;
   }
 
+  /** A thrown stick has not come to rest yet (the bot waits for it). */
+  stickInFlight(): boolean {
+    for (const stick of this.sticks.values()) {
+      if (stick.phase === 'flying') return true;
+    }
+    return false;
+  }
+
   /** What the clients' clock shows; null without a limit, outside a
    * match, and once the match is decided (the end row says it all). */
   clock(): { remainingS: number; timeUp: boolean } | null {

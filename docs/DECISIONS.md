@@ -5821,3 +5821,22 @@ advantage line while it applies (standingLineZ), so walking or sliding
 up to it with the thumbstick is allowed but never required. Supersedes
 the 2026-10-31 teleport and the earlier 2026-11-01 "table follows the
 thrower" entries.
+
+## 2026-11-01 — Playtest feedback: bot aim, grip end, solid tables, chime
+
+- **Bot aimed at kubbs it had just felled:** it planned the next stick
+  2.5 s after the last, before that stick had landed and the kubb had
+  toppled and counted. It now waits until none of its sticks is flying
+  (MatchHost.stickInFlight) plus `afterStickRestsS` (1 s, bot.json).
+- **Picked-up stick swung half a turn (side A):** the grip always put
+  the stick's +Y end forward, so a stick lying the other way slerped
+  180° while gliding in. The stick is the same at both ends: the grip
+  now keeps whichever end already pointed forward (stickEndsAgree /
+  flipStickEnds, decided on the first held frame).
+- **Sliding through the tables:** the four tables' footprints are
+  solid for the head (0.2 m body radius) — but only when the thumbstick
+  moved the rig that frame, so leaning over a table in the room to
+  reach a stick never shoves the world.
+- **Felling chime barely heard by the thrower:** it was positional at
+  the kubb (6–8 m away). The wooden knock stays positional; the chime
+  now plays from the listener, at 0.9 instead of 0.5.

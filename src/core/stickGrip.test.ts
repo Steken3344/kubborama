@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fromAxisAngle, rotateVectorByQuaternion } from './quat.js';
 import type { Quat } from './quat.js';
-import { stickInHand } from './stickGrip.js';
+import { flipStickEnds, stickEndsAgree, stickInHand } from './stickGrip.js';
 import type { Vec3 } from './vec3.js';
 
 const opts = { lengthM: 0.3, holdFromEndM: 0.04, pitchDownDeg: 20 };
@@ -39,5 +39,29 @@ describe('stickInHand', () => {
     const o = out();
     stickInHand([0, 0, 0], fromAxisAngle([1, 0.3, 0.2], 1.1), opts, o);
     expect(Math.hypot(...o.quaternion)).toBeCloseTo(1);
+  });
+});
+
+describe('either end in the hand (Erik, 2026-11-01: the stick turned half a turn when picked up from one side of the table)', () => {
+  const up = (q: Quat) => rotateVectorByQuaternion([0, 1, 0], q);
+
+  it('flipStickEnds keeps the shaft on its line but swaps the ends', () => {
+    const q = fromAxisAngle([0.6, 0.0, 0.8], 0.8);
+    const f: Quat = [0, 0, 0, 1];
+    flipStickEnds(q, f);
+    const [ax, ay, az] = up(q);
+    const [bx, by, bz] = up(f);
+    expect(bx).toBeCloseTo(-ax);
+    expect(by).toBeCloseTo(-ay);
+    expect(bz).toBeCloseTo(-az);
+    expect(Math.hypot(...f)).toBeCloseTo(1);
+  });
+
+  it('stickEndsAgree: the same end leads when the long axes point the same way', () => {
+    const lyingTowardField = fromAxisAngle([1, 0, 0], -Math.PI / 2); // +Y → −Z
+    const inHandForward = fromAxisAngle([1, 0, 0], -Math.PI / 2 + 0.3);
+    const lyingTowardPlayer = fromAxisAngle([1, 0, 0], Math.PI / 2); // +Y → +Z
+    expect(stickEndsAgree(lyingTowardField, inHandForward)).toBe(true);
+    expect(stickEndsAgree(lyingTowardPlayer, inHandForward)).toBe(false);
   });
 });

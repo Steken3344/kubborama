@@ -8,7 +8,11 @@ import {
 import { StickState } from '../components/stick-state.js';
 import { pieces, stickGrip } from '../config.js';
 import { slerpInto } from '../core/quat.js';
-import { stickInHand } from '../core/stickGrip.js';
+import {
+  flipStickEnds,
+  stickEndsAgree,
+  stickInHand,
+} from '../core/stickGrip.js';
 import type { Quat } from '../core/quat.js';
 import type { Vec3 } from '../core/vec3.js';
 
@@ -47,6 +51,9 @@ export class StickGripSystem extends createSystem({
     { atS: number; position: Vec3; quaternion: Quat }
   >();
   private nowS = 0;
+  /** Held sticks gripped by their other end (decided on the first held
+   * frame, kept for the whole hold — core/stickGrip.ts stickEndsAgree). */
+  private readonly flipped = new Map<number, boolean>();
 
   init(): void {
     const grabSystem = this.world.getSystem(GrabSystem);
@@ -71,6 +78,7 @@ export class StickGripSystem extends createSystem({
     });
     this.queries.held.subscribe('disqualify', (entity) => {
       this.grabbedFrom.delete(entity.index);
+      this.flipped.delete(entity.index);
     });
   }
 
@@ -97,6 +105,16 @@ export class StickGripSystem extends createSystem({
       this.gripQuaternion[3] = this.tmpQuat.w;
       stickInHand(this.gripPosition, this.gripQuaternion, this.opts, this.pose);
       const from = this.grabbedFrom.get(entity.index);
+      let flip = this.flipped.get(entity.index);
+      if (flip === undefined) {
+        flip = from
+          ? !stickEndsAgree(from.quaternion, this.pose.quaternion)
+          : false;
+        this.flipped.set(entity.index, flip);
+      }
+      if (flip) {
+        flipStickEnds(this.pose.quaternion, this.pose.quaternion);
+      }
       if (from) {
         const t = Math.min(1, (time - from.atS) / stickGrip.blendInS);
         if (t >= 1) {
